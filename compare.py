@@ -133,15 +133,27 @@ def run_compare_models(
     limit: int | None = None,
     no_progress: bool = False,
     verbose: bool = False,
+    domain: str | None = None,
 ) -> None:
     """Прогоняет каждую модель через все done-URL и сохраняет в model_results.
 
+    domain — опциональный фильтр по домену (нечувствителен к www и регистру).
     Справочник тегов (tags) в этом режиме НЕ обновляется —
     чистый эксперимент без побочных эффектов.
     """
+    from urllib.parse import urlparse
+
     init_compare_schema()
 
     rows = get_done_urls()
+
+    if domain:
+        domain_norm = domain.lower().removeprefix("www.")
+        rows = [
+            r for r in rows
+            if urlparse(r["url"]).netloc.lower().removeprefix("www.") == domain_norm
+        ]
+
     if limit:
         rows = rows[:limit]
 
@@ -172,9 +184,11 @@ def run_compare_models(
         console.print("[red]Нет доступных моделей для запуска.[/red]")
         sys.exit(1)
 
+    domain_label = f"  |  Домен: [bold magenta]{domain}[/bold magenta]" if domain else ""
     console.print(
         f"URL: [bold yellow]{len(rows)}[/bold yellow]  |  "
-        f"Модели: [bold cyan]{', '.join(m.split(':')[0] for m in valid)}[/bold cyan]\n"
+        f"Модели: [bold cyan]{', '.join(m.split(':')[0] for m in valid)}[/bold cyan]"
+        f"{domain_label}\n"
     )
 
     # Подсказки пустые — режим сравнения изолирован от справочника

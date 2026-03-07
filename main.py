@@ -225,6 +225,7 @@ def main() -> None:
             limit=args.limit,
             no_progress=args.no_progress,
             verbose=args.verbose,
+            domain=args.domain,
         )
         return
 
