@@ -249,3 +249,89 @@ def clear_tags() -> int:
     with get_conn() as conn:
         cur = conn.execute("DELETE FROM tags")
         return cur.rowcount
+
+
+# ── Сравнение моделей ─────────────────────────────────────────────────────────
+
+def init_compare_schema() -> None:
+    """Создаёт таблицу model_results (идемпотентно)."""
+    with get_conn() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS model_results (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                url_id    INTEGER NOT NULL REFERENCES urls(id) ON DELETE CASCADE,
+                model     TEXT    NOT NULL,
+                category  TEXT,
+                tagged_at TEXT    DEFAULT (datetime('now')),
+                UNIQUE(url_id, model)
+            )
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_mr_model ON model_results(model)"
+        )
+
+
+def save_model_result(url_id: int, model: str, category: str) -> None:
+    """Upsert результата для пары (url_id, model).
+    Повторный вызов той же модели перезаписывает предыдущий результат.
+    """
+    with get_conn() as conn:
+        conn.execute("""
+            INSERT INTO model_results (url_id, model, category, tagged_at)
+            VALUES (?, ?, ?, datetime('now'))
+            ON CONFLICT(url_id, model) DO UPDATE SET
+                category  = excluded.category,
+                tagged_at = excluded.tagged_at
+        """, (url_id, model, category))
+
+
+def get_done_urls() -> list[dict]:
+    """Возвращает все done-записи (id, url, title) для запуска сравнения моделей."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id, url, title FROM urls WHERE status = 'done' ORDER BY id"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def get_compared_models() -> list[str]:
+    """Возвращает отсортированный список моделей, участвовавших в сравнении."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT model FROM model_results ORDER BY model"
+        ).fetchall()
+    return [row["model"] for row in rows]
+
+
+def get_model_results_raw() -> list[dict]:
+    """Возвращает все строки model_results, объединённые с urls."""
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT u.id, u.url, u.title, mr.model, mr.category, mr.tagged_at
+              FROM model_results mr
+              JOIN urls u ON u.id = mr.url_id
+             ORDER BY u.id, mr.model
+        """).fetchall()
+    return [dict(row) for row in rows]
+
+
+def accept_model(model: str) -> int:
+    """Копирует результаты выбранной модели из model_results в urls.category + tagged_by.
+    Возвращает кол-во обновлённых строк.
+    """
+    with get_conn() as conn:
+        cur = conn.execute("""
+            UPDATE urls
+               SET category  = (SELECT mr.category  FROM model_results mr
+                                 WHERE mr.url_id = urls.id AND mr.model = ?),
+                   tagged_by = ?
+             WHERE id IN (SELECT url_id FROM model_results WHERE model = ?)
+        """, (model, model, model))
+        return cur.rowcount
+
+
+def clear_model_results() -> int:
+    """Очищает таблицу model_results. Возвращает кол-во удалённых строк."""
+    with get_conn() as conn:
+        cur = conn.execute("DELETE FROM model_results")
+        return cur.rowcount

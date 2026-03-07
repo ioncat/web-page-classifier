@@ -3,12 +3,16 @@ import argparse
 from rich.console import Console
 from rich.rule import Rule
 
+import compare
 import step1
 import step2
 import step3
 from db import (
+    accept_model as db_accept_model,
     add_tags,
+    clear_model_results,
     clear_tags,
+    init_compare_schema,
     init_db,
     init_tags_schema,
     insert_urls,
@@ -27,24 +31,29 @@ def parse_args() -> argparse.Namespace:
         description="URL Parser Pipeline — импорт, парсинг и классификация ссылок",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""примеры:
-  python main.py                                    полный пайплайн (step1 + step2)
-  python main.py --only-parse                       только парсинг (step2)
-  python main.py --only-classify                    только классификация (step3)
-  python main.py --only-classify --model llama3     классификация конкретной моделью
-  python main.py --list-models                      показать доступные модели Ollama
-  python main.py --add-tags python,ai,tutorial      добавить теги в справочник
-  python main.py --sync-tags                        импортировать теги из category в справочник
-  python main.py --re-tag                           сбросить категории и перетэггировать заново
-  python main.py --re-tag --model mistral           то же, другой моделью
-  python main.py --clear-tags                       очистить справочник тегов
-  python main.py --only-parse --limit 50            первые 50 pending URL
-  python main.py --retry-failed                     повторить URL с ошибками
-  python main.py --force                            сбросить всё и начать заново
-  python main.py --url https://example.com          обработать один URL
-  python main.py --input links.txt                  другой входной файл
-  python main.py --no-progress -v                   plain вывод + детали
-  python main.py --domain habr.com                  только URL с habr.com
-  python main.py --domain habr.com --retry-failed   повторить ошибки для домена
+  python main.py                                         полный пайплайн (step1 + step2)
+  python main.py --only-parse                            только парсинг (step2)
+  python main.py --only-classify                         только классификация (step3)
+  python main.py --only-classify --model llama3          классификация конкретной моделью
+  python main.py --list-models                           показать доступные модели Ollama
+  python main.py --add-tags python,ai,tutorial           добавить теги в справочник
+  python main.py --sync-tags                             импортировать теги из category в справочник
+  python main.py --re-tag                                сбросить категории и перетэггировать заново
+  python main.py --re-tag --model mistral                то же, другой моделью
+  python main.py --clear-tags                            очистить справочник тегов
+  python main.py --only-parse --limit 50                 первые 50 pending URL
+  python main.py --retry-failed                          повторить URL с ошибками
+  python main.py --force                                 сбросить всё и начать заново
+  python main.py --url https://example.com               обработать один URL
+  python main.py --input links.txt                       другой входной файл
+  python main.py --no-progress -v                        plain вывод + детали
+  python main.py --domain habr.com                       только URL с habr.com
+  python main.py --domain habr.com --retry-failed        повторить ошибки для домена
+  python main.py --compare-models llama3,mistral         сравнить две модели
+  python main.py --compare                               side-by-side таблица результатов
+  python main.py --compare --export out.csv              + экспорт в CSV
+  python main.py --accept-model mistral                  принять результаты модели как финальные
+  python main.py --compare-clear                         очистить таблицу model_results
 """,
     )
 
@@ -128,6 +137,40 @@ def parse_args() -> argparse.Namespace:
         help="очистить справочник тегов (таблицу tags) и выйти",
     )
 
+    # ── Сравнение моделей ─────────────────────────────────────────────────────
+    parser.add_argument(
+        "--compare-models",
+        metavar="MODELS",
+        default=None,
+        dest="compare_models",
+        help="запустить несколько моделей и сохранить результаты для сравнения "
+             "(через запятую: llama3,mistral,gemma2)",
+    )
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="показать side-by-side таблицу результатов сравнения моделей",
+    )
+    parser.add_argument(
+        "--export",
+        metavar="FILE",
+        default=None,
+        help="экспортировать результаты сравнения в CSV (используется вместе с --compare)",
+    )
+    parser.add_argument(
+        "--accept-model",
+        metavar="MODEL",
+        default=None,
+        dest="accept_model",
+        help="принять результаты выбранной модели как финальные (копирует в urls.category)",
+    )
+    parser.add_argument(
+        "--compare-clear",
+        action="store_true",
+        dest="compare_clear",
+        help="очистить таблицу model_results (все результаты сравнения)",
+    )
+
     # ── Управление пайплайном ─────────────────────────────────────────────────
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument(
@@ -172,6 +215,50 @@ def main() -> None:
 
     init_db()
     init_tags_schema()
+    init_compare_schema()
+
+    # ── --compare-models ───────────────────────────────────────────────────────
+    if args.compare_models:
+        models = [m.strip() for m in args.compare_models.split(",") if m.strip()]
+        compare.run_compare_models(
+            models=models,
+            limit=args.limit,
+            no_progress=args.no_progress,
+            verbose=args.verbose,
+        )
+        return
+
+    # ── --compare [--export FILE] ──────────────────────────────────────────────
+    if args.compare:
+        compare.show_comparison(limit=args.limit, export=args.export)
+        return
+
+    # ── --accept-model ─────────────────────────────────────────────────────────
+    if args.accept_model:
+        n = db_accept_model(args.accept_model)
+        if n:
+            console.print(
+                f"[green]--accept-model:[/green] принята модель "
+                f"[bold cyan]{args.accept_model}[/bold cyan] — "
+                f"обновлено [bold]{n}[/bold] записей в urls.category"
+            )
+        else:
+            console.print(
+                f"[yellow]--accept-model:[/yellow] нет результатов для модели "
+                f"[bold]{args.accept_model}[/bold] в model_results. "
+                f"Сначала запустите [bold]--compare-models[/bold]."
+            )
+        console.print(Rule("[bold green]Готово[/bold green]", style="green"))
+        return
+
+    # ── --compare-clear ────────────────────────────────────────────────────────
+    if args.compare_clear:
+        n = clear_model_results()
+        console.print(
+            f"[yellow]--compare-clear:[/yellow] удалено [bold]{n}[/bold] строк из model_results"
+        )
+        console.print(Rule("[bold green]Готово[/bold green]", style="green"))
+        return
 
     # ── --clear-tags ───────────────────────────────────────────────────────────
     if args.clear_tags:

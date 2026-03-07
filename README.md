@@ -89,6 +89,11 @@ python main.py --only-classify
 | `--sync-tags` | импортировать накопленные теги из `category` в справочник и выйти |
 | `--re-tag` | сбросить `category`/`tagged_by` у всех done-URL и запустить step3 заново |
 | `--clear-tags` | очистить таблицу `tags` (справочник) и выйти |
+| `--compare-models M1,M2,...` | запустить несколько моделей, сохранить результаты в `model_results` |
+| `--compare` | показать side-by-side Rich-таблицу результатов сравнения |
+| `--compare --export FILE.csv` | то же + экспорт в CSV |
+| `--accept-model MODEL` | скопировать результаты модели в `urls.category` (финальный выбор) |
+| `--compare-clear` | очистить таблицу `model_results` |
 | `--no-progress` | отключить progress bar, plain вывод в консоль |
 | `-v, --verbose` | показывать заголовок / теги / ошибку по каждому URL |
 
@@ -265,6 +270,41 @@ Title: ...
 python -c "import sqlite3; conn = sqlite3.connect('urls.db'); conn.execute('UPDATE urls SET category = NULL'); conn.commit()"
 python main.py --only-classify
 ```
+
+## Сравнение моделей
+
+Режим позволяет прогнать несколько Ollama-моделей на одном наборе URL и сравнить их результаты side-by-side — без влияния на основные данные (`urls.category`).
+
+### Полный цикл сравнения
+
+```bash
+# 1. Запустить несколько моделей (результаты пишутся в model_results, не в urls.category)
+python main.py --compare-models llama3,mistral,gemma2
+
+# 2. Посмотреть результаты в терминале
+python main.py --compare
+
+# 3. Экспортировать в CSV для детального анализа
+python main.py --compare --export compare_results.csv
+
+# 4. Выбрать лучшую модель и применить её результаты как финальные
+python main.py --accept-model mistral
+
+# 5. Очистить таблицу сравнения (если нужно начать заново)
+python main.py --compare-clear
+```
+
+### Изоляция
+
+`--compare-models` **не трогает** `urls.category` и таблицу `tags` — это чистый эксперимент.
+Переход результатов в основные данные происходит **только явным** `--accept-model`.
+
+| Таблица | Кто пишет | Изоляция |
+|---|---|---|
+| `model_results` | `--compare-models` | только для сравнения |
+| `urls.category` | `--only-classify`, `--accept-model` | финальный результат |
+
+Подробная схема и диаграммы: [`docs/models-compare.md`](docs/models-compare.md)
 
 ## Polite crawling
 
