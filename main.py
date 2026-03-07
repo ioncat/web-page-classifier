@@ -49,7 +49,7 @@ def parse_args() -> argparse.Namespace:
   python main.py --no-progress -v                        plain вывод + детали
   python main.py --domain habr.com                       только URL с habr.com
   python main.py --domain habr.com --retry-failed        повторить ошибки для домена
-  python main.py --compare-models llama3,mistral         сравнить две модели
+  python main.py --compare-models llama3 mistral          сравнить две модели (через пробел)
   python main.py --compare                               side-by-side таблица результатов
   python main.py --compare --export out.csv              + экспорт в CSV
   python main.py --accept-model mistral                  принять результаты модели как финальные
@@ -140,11 +140,12 @@ def parse_args() -> argparse.Namespace:
     # ── Сравнение моделей ─────────────────────────────────────────────────────
     parser.add_argument(
         "--compare-models",
-        metavar="MODELS",
+        metavar="MODEL",
+        nargs="+",
         default=None,
         dest="compare_models",
-        help="запустить несколько моделей и сохранить результаты для сравнения "
-             "(через запятую: llama3,mistral,gemma2)",
+        help="запустить несколько моделей и сохранить результаты для сравнения. "
+             "Модели через пробел или запятую: llama3 mistral  /  llama3,mistral",
     )
     parser.add_argument(
         "--compare",
@@ -227,7 +228,10 @@ def main() -> None:
 
     # ── --compare-models ───────────────────────────────────────────────────────
     if args.compare_models:
-        models = [m.strip() for m in args.compare_models.split(",") if m.strip()]
+        # nargs='+' → список; каждый элемент может содержать запятые ("m1,m2")
+        models = []
+        for item in args.compare_models:
+            models.extend(m.strip() for m in item.split(",") if m.strip())
         compare.run_compare_models(
             models=models,
             limit=args.limit,
