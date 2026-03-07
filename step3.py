@@ -12,6 +12,7 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
+from rich.prompt import IntPrompt
 from rich.table import Table
 
 from db import get_done_unclassified, get_tags, init_db, init_tags_schema, set_category
@@ -31,6 +32,43 @@ def get_available_models(client: ollama.Client) -> list[str]:
     """Возвращает список имён моделей, доступных в Ollama."""
     resp = client.list()
     return [m.model for m in resp.models]
+
+
+# ── Выбор модели ──────────────────────────────────────────────────────────────
+def _print_models_table(models: list[str]) -> None:
+    table = Table(
+        title="Доступные модели Ollama",
+        show_header=True,
+        header_style="bold cyan",
+    )
+    table.add_column("#", style="dim", justify="right")
+    table.add_column("Модель", style="bold")
+    for i, name in enumerate(models, 1):
+        table.add_row(str(i), name)
+    console.print(table)
+
+
+def _select_model_interactively(available: list[str]) -> str:
+    """Показывает список моделей и просит пользователя выбрать одну."""
+    _print_models_table(available)
+
+    if len(available) == 1:
+        console.print(
+            f"[dim]Единственная доступная модель — выбрана автоматически:[/dim] "
+            f"[bold]{available[0]}[/bold]\n"
+        )
+        return available[0]
+
+    while True:
+        idx = IntPrompt.ask(
+            f"[bold]Выберите модель[/bold] [dim](1–{len(available)})[/dim]",
+            console=console,
+        )
+        if 1 <= idx <= len(available):
+            selected = available[idx - 1]
+            console.print(f"Выбрана модель: [bold green]{selected}[/bold green]\n")
+            return selected
+        console.print(f"[red]Введите число от 1 до {len(available)}[/red]")
 
 
 # ── Промпт и классификация ────────────────────────────────────────────────────
@@ -75,20 +113,6 @@ def classify_url(
     return ", ".join(tags)
 
 
-# ── Отображение ───────────────────────────────────────────────────────────────
-def _print_models_table(models: list[str]) -> None:
-    table = Table(
-        title="Доступные модели Ollama",
-        show_header=True,
-        header_style="bold cyan",
-    )
-    table.add_column("#", style="dim", justify="right")
-    table.add_column("Модель", style="bold")
-    for i, name in enumerate(models, 1):
-        table.add_row(str(i), name)
-    console.print(table)
-
-
 # ── Точка входа ───────────────────────────────────────────────────────────────
 def main(
     model: str | None = None,
@@ -98,7 +122,7 @@ def main(
     verbose: bool = False,
 ) -> None:
     """
-    model            — имя модели Ollama (если None — берётся первая доступная)
+    model            — имя модели Ollama; если None — интерактивный выбор
     limit            — обработать не более N URL
     list_models_flag — показать список моделей и выйти
     no_progress      — plain вывод без rich progress bar
@@ -131,26 +155,26 @@ def main(
             )
         return
 
-    # ── Выбор модели ──────────────────────────────────────────────────────────
-    if model is None:
-        if not available:
-            console.print(
-                "[red]Нет доступных моделей.[/red] "
-                "Загрузите модель: [bold]ollama pull llama3[/bold]"
-            )
-            sys.exit(1)
-        model = available[0]
+    if not available:
         console.print(
-            f"[dim]Модель не указана, использую первую доступную:[/dim] [bold]{model}[/bold]"
+            "[red]Нет доступных моделей.[/red] "
+            "Загрузите модель: [bold]ollama pull llama3[/bold]"
         )
-    else:
+        sys.exit(1)
+
+    # ── Выбор модели: CLI-флаг или интерактивный ──────────────────────────────
+    if model is not None:
+        # Передан через --model — используем без вопросов
         if model not in available:
             console.print(
                 f"[yellow]Предупреждение:[/yellow] модель [bold]{model}[/bold] "
                 "не найдена в Ollama. Попытка использовать всё равно..."
             )
         else:
-            console.print(f"Модель: [bold]{model}[/bold]")
+            console.print(f"Модель: [bold]{model}[/bold]\n")
+    else:
+        # Интерактивный выбор
+        model = _select_model_interactively(available)
 
     # ── Теги-подсказки из справочника ─────────────────────────────────────────
     hints = get_tags()
@@ -191,7 +215,7 @@ def main(
             print(f"[{i}/{total}] {url}", flush=True)
             try:
                 category = classify_url(client, model, url, title, hints)
-                set_category(url, category)
+                set_category(url, category, model=model)
                 done_count += 1
                 if verbose:
                     print(f"  Tags: {category}")
@@ -218,7 +242,7 @@ def main(
 
                 try:
                     category = classify_url(client, model, url, title, hints)
-                    set_category(url, category)
+                    set_category(url, category, model=model)
                     done_count += 1
                     if verbose:
                         console.log(f"[green]OK[/green] {category}")

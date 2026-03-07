@@ -149,6 +149,7 @@ python main.py --only-classify --limit 20 -v
 | `added_at` | TEXT | дата добавления |
 | `processed_at` | TEXT | дата обработки |
 | `category` | TEXT | теги, присвоенные моделью (step3) |
+| `tagged_by` | TEXT | имя модели Ollama, которая классифицировала URL |
 
 Таблица `tags` — справочник тегов-подсказок для LLM:
 
@@ -172,11 +173,14 @@ UPDATE urls SET status = 'pending', error = NULL WHERE status = 'error';
 -- Посмотреть результаты по домену
 SELECT url, title FROM urls WHERE url LIKE '%habr.com%' AND status = 'done';
 
--- URL с присвоенными тегами
-SELECT url, title, category FROM urls WHERE category IS NOT NULL;
+-- URL с присвоенными тегами и моделью-классификатором
+SELECT url, title, category, tagged_by FROM urls WHERE category IS NOT NULL;
+
+-- Статистика по моделям
+SELECT tagged_by, COUNT(*) as cnt FROM urls WHERE tagged_by IS NOT NULL GROUP BY tagged_by;
 
 -- Сбросить категории (для переклассификации)
-UPDATE urls SET category = NULL WHERE status = 'done';
+UPDATE urls SET category = NULL, tagged_by = NULL WHERE status = 'done';
 ```
 
 ## Поведение при повторном запуске
@@ -188,6 +192,9 @@ UPDATE urls SET category = NULL WHERE status = 'done';
 ## Step 3 — Классификация через Ollama
 
 Step3 берёт все URL со статусом `done` и без присвоенной категории, передаёт в локальную LLM заголовок страницы и просит назначить 1–3 тега.
+
+При запуске без `--model` скрипт показывает список доступных моделей и предлагает выбрать одну интерактивно.
+Имя выбранной модели сохраняется в колонку `tagged_by` для каждого классифицированного URL.
 
 ### Теги-подсказки
 

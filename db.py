@@ -142,7 +142,7 @@ def get_errors() -> list[dict]:
 # ── Теги и классификация ──────────────────────────────────────────────────────
 
 def init_tags_schema() -> None:
-    """Создаёт таблицу tags и добавляет колонку category в urls (идемпотентно)."""
+    """Создаёт таблицу tags и добавляет колонки category / tagged_by в urls (идемпотентно)."""
     with get_conn() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS tags (
@@ -150,10 +150,14 @@ def init_tags_schema() -> None:
                 name TEXT UNIQUE NOT NULL
             )
         """)
-        try:
-            conn.execute("ALTER TABLE urls ADD COLUMN category TEXT")
-        except sqlite3.OperationalError:
-            pass  # колонка уже существует
+        for col_def in (
+            "ALTER TABLE urls ADD COLUMN category  TEXT",
+            "ALTER TABLE urls ADD COLUMN tagged_by TEXT",
+        ):
+            try:
+                conn.execute(col_def)
+            except sqlite3.OperationalError:
+                pass  # колонка уже существует
 
 
 def get_tags() -> list[str]:
@@ -194,10 +198,10 @@ def get_done_unclassified() -> list[dict]:
     return [dict(row) for row in rows]
 
 
-def set_category(url: str, category: str) -> None:
-    """Сохраняет присвоенные теги для URL."""
+def set_category(url: str, category: str, model: str | None = None) -> None:
+    """Сохраняет присвоенные теги и имя модели для URL."""
     with get_conn() as conn:
         conn.execute(
-            "UPDATE urls SET category = ? WHERE url = ?",
-            (category, url),
+            "UPDATE urls SET category = ?, tagged_by = ? WHERE url = ?",
+            (category, model, url),
         )
