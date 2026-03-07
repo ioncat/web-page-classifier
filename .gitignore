@@ -1,0 +1,22 @@
+# База данных
+urls.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Логи и данные
+log.txt
+raw_links.txt
+input.csv
+output.csv
+
+# IDE / Claude
+.claude/
+.idea/
+.vscode/

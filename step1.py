@@ -1,36 +1,62 @@
 import os
 import re
-import csv
 
-# Название входного и выходного файлов
-input_file = 'raw_links.txt'
-output_file = 'clean_links.csv'
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 
-# Диагностика текущей директории и списка файлов
-current_dir = os.getcwd()
-print(f"Текущий каталог: {current_dir}")
-print(f"Список файлов: {os.listdir(current_dir)}")
+from db import init_db, insert_urls
 
-# Проверка наличия входного файла
-if not os.path.exists(input_file):
-    print(f"Ошибка: Файл '{input_file}' не найден. Убедитесь, что он находится в текущем каталоге.")
-    exit(1)
+DEFAULT_INPUT_FILE = "raw_links.txt"
+LINK_PATTERN = re.compile(r"https?://[^\s|<>\"'`]+")
+TRAILING_JUNK = re.compile(r"[.,;!?)]+$")
 
-# Регулярное выражение для извлечения ссылок
-link_pattern = r'https?://[^\s|]+'
+console = Console()
 
-# Чтение данных из файла
-with open(input_file, 'r', encoding='utf-8') as file:
-    raw_data = file.read()
 
-# Извлечение ссылок
-links = re.findall(link_pattern, raw_data)
+def extract_links(text: str) -> list[str]:
+    raw = LINK_PATTERN.findall(text)
+    cleaned = [TRAILING_JUNK.sub("", url) for url in raw]
+    return list(dict.fromkeys(cleaned))  # дедупликация с сохранением порядка
 
-# Сохранение ссылок в файл CSV
-with open(output_file, 'w', encoding='utf-8', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow(["Link"])  # Заголовок CSV
-    for link in links:
-        writer.writerow([link])
 
-print(f'Ссылки успешно сохранены в {output_file}.')
+def main(input_file: str = DEFAULT_INPUT_FILE) -> None:
+    console.print(Panel("[bold cyan]Step 1 — Импорт ссылок в БД[/bold cyan]"))
+
+    if not os.path.exists(input_file):
+        console.print(
+            f"[bold red]Ошибка:[/bold red] файл '[yellow]{input_file}[/yellow]' не найден.\n"
+            f"Текущая директория: [dim]{os.getcwd()}[/dim]"
+        )
+        raise SystemExit(1)
+
+    init_db()
+
+    with open(input_file, "r", encoding="utf-8") as f:
+        raw_data = f.read()
+
+    links = extract_links(raw_data)
+    found = len(links)
+
+    if not links:
+        console.print("[yellow]Ссылки не найдены в файле.[/yellow]")
+        return
+
+    console.print(f"Найдено ссылок в файле: [bold]{found}[/bold]")
+
+    added, skipped = insert_urls(links)
+
+    table = Table(title="Результат импорта", show_header=True, header_style="bold magenta")
+    table.add_column("Показатель", style="cyan")
+    table.add_column("Кол-во", justify="right", style="bold")
+
+    table.add_row("Найдено в файле", str(found))
+    table.add_row("Добавлено в БД", f"[green]{added}[/green]")
+    table.add_row("Пропущено (дубликаты)", f"[dim]{skipped}[/dim]")
+
+    console.print(table)
+    console.print(Panel(f"[green]Готово.[/green] Запустите [bold]step2.py[/bold] для обработки."))
+
+
+if __name__ == "__main__":
+    main()
