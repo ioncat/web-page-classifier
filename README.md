@@ -89,11 +89,12 @@ python main.py --only-classify
 | `--sync-tags` | импортировать накопленные теги из `category` в справочник и выйти |
 | `--re-tag` | сбросить `category`/`tagged_by` у всех done-URL и запустить step3 заново |
 | `--clear-tags` | очистить таблицу `tags` (справочник) и выйти |
-| `--compare-models M1,M2,...` | запустить несколько моделей, сохранить результаты в `model_results` |
+| `--compare-models M1 M2 ...` | запустить несколько моделей, сохранить результаты в `model_results` (модели через пробел или запятую) |
 | `--compare` | показать side-by-side Rich-таблицу результатов сравнения |
 | `--compare --export FILE.csv` | то же + экспорт в CSV |
 | `--accept-model MODEL` | скопировать результаты модели в `urls.category` (финальный выбор) |
 | `--compare-clear` | очистить таблицу `model_results` |
+| `--workers N` | кол-во параллельных запросов к Ollama (по умолчанию: 1) |
 | `--no-progress` | отключить progress bar, plain вывод в консоль |
 | `-v, --verbose` | показывать заголовок / теги / ошибку по каждому URL |
 
@@ -279,13 +280,15 @@ python main.py --only-classify
 
 ```bash
 # 1. Запустить несколько моделей (результаты пишутся в model_results, не в urls.category)
-python main.py --compare-models llama3,mistral,gemma2
+#    Модели можно перечислять через пробел или запятую — оба варианта равнозначны
+python main.py --compare-models llama3 mistral gemma2
+python main.py --compare-models llama3,mistral,gemma2  # то же самое
 
-# 1а. Только для конкретного домена
-python main.py --compare-models llama3,mistral --domain habr.com
+# 1а. Только для конкретного домена + параллельные запросы
+python main.py --compare-models llama3 mistral --domain habr.com --workers 4
 
 # 1б. Ограничить кол-во URL (для быстрого теста)
-python main.py --compare-models llama3,mistral --domain habr.com --limit 20
+python main.py --compare-models llama3 mistral --domain habr.com --limit 20
 
 # 2. Посмотреть результаты в терминале
 python main.py --compare
@@ -300,13 +303,42 @@ python main.py --accept-model mistral
 python main.py --compare-clear
 ```
 
+### Параллельные запросы (`--workers N`)
+
+По умолчанию URL обрабатываются последовательно. Флаг `--workers N` запускает N параллельных потоков, каждый из которых держит отдельный запрос к Ollama — это сокращает простои между запросами.
+
+```bash
+# Классификация с 4 параллельными запросами
+python main.py --only-classify --model llama3 --workers 4
+
+# Сравнение моделей с 4 воркерами
+python main.py --compare-models llama3 mistral --workers 4
+```
+
+Для **настоящего GPU-параллелизма** дополнительно установите переменную окружения перед запуском Ollama:
+
+```bash
+# Windows
+set OLLAMA_NUM_PARALLEL=4
+ollama serve
+
+# Linux / macOS
+OLLAMA_NUM_PARALLEL=4 ollama serve
+```
+
+| `--workers` | `OLLAMA_NUM_PARALLEL` | Эффект |
+|---|---|---|
+| 1 (по умолчанию) | 1 (по умолчанию) | последовательно |
+| 4 | 1 | запросы в очереди, меньше простоев Python |
+| 4 | 4 | настоящий параллелизм на GPU |
+
 ### Фильтрация по домену
 
 `--domain` работает совместно с `--compare-models` — прогоняет модели только по URL указанного домена.
 Фильтрация нечувствительна к `www.` и регистру: `habr.com` и `www.habr.com` эквивалентны.
 
 ```bash
-python main.py --compare-models llama3,mistral --domain habr.com
+python main.py --compare-models llama3 mistral --domain habr.com
 # Вывод: URL: 42  |  Модели: llama3, mistral  |  Домен: habr.com
 ```
 

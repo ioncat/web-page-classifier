@@ -189,13 +189,26 @@ ORDER BY mr.model, freq DESC;
 
 | Флаг | Описание |
 |---|---|
-| `--compare-models M1,M2,...` | запустить несколько моделей, сохранить в `model_results` |
-| `--compare-models ... --domain D` | то же, только для URL указанного домена |
-| `--compare-models ... --limit N` | ограничить кол-во URL (для быстрого теста) |
+| `--compare-models M1 M2 ...` | запустить несколько моделей, сохранить в `model_results` (через пробел или запятую) |
+| `--compare-models ... --domain D` | только для URL указанного домена |
+| `--compare-models ... --limit N` | ограничить кол-во URL |
+| `--compare-models ... --workers N` | N параллельных запросов к Ollama |
 | `--compare` | показать side-by-side Rich-таблицу результатов |
 | `--compare --export FILE.csv` | экспортировать сравнение в CSV |
 | `--accept-model MODEL` | скопировать результаты модели в `urls.category` |
 | `--compare-clear` | очистить таблицу `model_results` |
+
+### Параллелизм (`--workers N`)
+
+`--workers` работает как для `--compare-models`, так и для `--only-classify`.
+Для GPU-параллелизма на стороне Ollama установите `OLLAMA_NUM_PARALLEL=N` перед `ollama serve`.
+
+```bash
+# Пример: 4 параллельных воркера
+python main.py --compare-models llama3 mistral --workers 4 --domain habr.com
+
+set OLLAMA_NUM_PARALLEL=4  # (Windows, перед ollama serve)
+```
 
 ---
 
