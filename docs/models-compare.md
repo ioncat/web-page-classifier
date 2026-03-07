@@ -1,7 +1,7 @@
-# A/B-тестирование моделей — схема и диаграммы
+# Сравнение моделей — схема и диаграммы
 
-Документ описывает архитектуру сравнения результатов классификации
-нескольких Ollama-моделей на одном наборе URL.
+Документ описывает архитектуру запуска нескольких Ollama-моделей
+на одном наборе URL и сравнения результатов их классификации.
 
 ---
 
@@ -68,8 +68,8 @@ flowchart TD
         NORM --> DBcat[(urls\ncategory=...\ntagged_by=...)]
         NORM --> DBtags[(tags\nсправочник\nобновляется)]
 
-        S3 -->|"--ab-test"| AB[Несколько моделей\nпо очереди]
-        AB --> DBmr[(model_results\nurl_id + model\n+ category)]
+        S3 -->|"--compare-models"| CM[Несколько моделей\nпо очереди]
+        CM --> DBmr[(model_results\nurl_id + model\n+ category)]
     end
 
     subgraph compare["Сравнение и выбор"]
@@ -82,7 +82,7 @@ flowchart TD
 
 ---
 
-## Процесс A/B-тестирования
+## Процесс сравнения моделей
 
 ```mermaid
 sequenceDiagram
@@ -92,10 +92,10 @@ sequenceDiagram
     participant OL  as Ollama
     participant DB  as urls.db
 
-    User->>CLI: --ab-test llama3,mistral,gemma2
+    User->>CLI: --compare-models llama3,mistral,gemma2
 
     loop для каждой модели
-        CLI->>S3: main(model=X, ab_test=True)
+        CLI->>S3: main(model=X, compare_mode=True)
         S3->>DB: get_done_urls() → N строк
 
         loop для каждого URL
@@ -152,7 +152,7 @@ DO UPDATE SET
 ## SQL-запросы для анализа
 
 ```sql
--- Side-by-side для первых 20 URL (ручной pivot через GROUP BY + MAX CASE)
+-- Side-by-side для первых 20 URL (pivot через GROUP BY + MAX CASE)
 SELECT
     u.title,
     u.url,
@@ -167,7 +167,7 @@ LIMIT 20;
 -- Сколько URL каждая модель обработала
 SELECT model, COUNT(*) AS cnt FROM model_results GROUP BY model;
 
--- URL где все модели дали разные теги (наибольшее расхождение)
+-- URL где модели дали наиболее разные теги
 SELECT u.url, u.title, COUNT(DISTINCT mr.category) AS unique_results
 FROM urls u
 JOIN model_results mr ON mr.url_id = u.id
@@ -189,19 +189,19 @@ ORDER BY mr.model, freq DESC;
 
 | Флаг | Описание |
 |---|---|
-| `--ab-test M1,M2,...` | запустить несколько моделей, сохранить в `model_results` |
+| `--compare-models M1,M2,...` | запустить несколько моделей, сохранить в `model_results` |
 | `--compare` | показать side-by-side Rich-таблицу результатов |
 | `--compare --export FILE.csv` | экспортировать сравнение в CSV |
 | `--accept-model MODEL` | скопировать результаты модели в `urls.category` |
-| `--ab-clear` | очистить таблицу `model_results` |
+| `--compare-clear` | очистить таблицу `model_results` |
 
 ---
 
-## Статусы и изоляция
+## Изоляция: эксперименты vs финальный выбор
 
 ```mermaid
 flowchart LR
-    MR[(model_results\nэксперименты)]
+    MR[(model_results\nрезультаты сравнения)]
     UC[(urls.category\nфинальный выбор)]
 
     MR -->|"--accept-model"| UC
@@ -212,6 +212,6 @@ flowchart LR
 ```
 
 `model_results` и `urls.category` **полностью изолированы**:
-- `--ab-test` пишет только в `model_results`, не трогает `urls.category`
+- `--compare-models` пишет только в `model_results`, не трогает `urls.category`
 - `--only-classify` пишет только в `urls.category`, не трогает `model_results`
 - Переход между ними — только явный `--accept-model`
