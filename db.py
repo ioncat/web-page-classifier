@@ -137,3 +137,67 @@ def get_errors() -> list[dict]:
             "SELECT url, error FROM urls WHERE status = 'error' ORDER BY id"
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+# ── Теги и классификация ──────────────────────────────────────────────────────
+
+def init_tags_schema() -> None:
+    """Создаёт таблицу tags и добавляет колонку category в urls (идемпотентно)."""
+    with get_conn() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tags (
+                id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL
+            )
+        """)
+        try:
+            conn.execute("ALTER TABLE urls ADD COLUMN category TEXT")
+        except sqlite3.OperationalError:
+            pass  # колонка уже существует
+
+
+def get_tags() -> list[str]:
+    """Возвращает список тегов из справочника."""
+    with get_conn() as conn:
+        rows = conn.execute("SELECT name FROM tags ORDER BY name").fetchall()
+    return [row["name"] for row in rows]
+
+
+def add_tags(names: list[str]) -> tuple[int, int]:
+    """Добавляет теги в справочник, пропуская дубликаты.
+    Возвращает (добавлено, пропущено).
+    """
+    added = 0
+    skipped = 0
+    with get_conn() as conn:
+        for name in names:
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO tags (name) VALUES (?)", (name.strip(),)
+            )
+            if cur.rowcount:
+                added += 1
+            else:
+                skipped += 1
+    return added, skipped
+
+
+def get_done_unclassified() -> list[dict]:
+    """Возвращает done-записи без присвоенной категории."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT id, url, title
+                 FROM urls
+                WHERE status = 'done'
+                  AND (category IS NULL OR category = '')
+                ORDER BY id"""
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def set_category(url: str, category: str) -> None:
+    """Сохраняет присвоенные теги для URL."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE urls SET category = ? WHERE url = ?",
+            (category, url),
+        )

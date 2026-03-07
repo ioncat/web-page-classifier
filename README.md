@@ -1,6 +1,6 @@
 # URL Parser
 
-Инструмент для сбора и парсинга заголовков веб-страниц по списку URL.
+Инструмент для сбора, парсинга заголовков и LLM-классификации веб-страниц по списку URL.
 Данные хранятся в SQLite, прогресс сохраняется между запусками.
 
 ## Структура проекта
@@ -10,7 +10,7 @@ url-parser/
 ├── main.py          # точка входа, CLI
 ├── step1.py         # импорт URL из файла в БД
 ├── step2.py         # парсинг <title> для каждого URL
-├── step3.py         # анализ через LLM (в разработке)
+├── step3.py         # классификация через локальный Ollama LLM
 ├── db.py            # работа с SQLite
 ├── requirements.txt
 ├── raw_links.txt    # входной файл со ссылками
@@ -21,6 +21,15 @@ url-parser/
 
 ```bash
 pip install -r requirements.txt
+```
+
+Для step3 также нужна локальная [Ollama](https://ollama.com):
+```bash
+# Установить и запустить Ollama
+ollama serve
+
+# Загрузить модель (один раз)
+ollama pull llama3
 ```
 
 ## Входной файл
@@ -37,13 +46,11 @@ https://example.com | Example Site
 
 ## Запуск
 
-### Полный пайплайн
+### Полный пайплайн (step1 + step2)
 
 ```bash
 python main.py
 ```
-
-Запускает step1 (импорт) → step2 (парсинг) последовательно.
 
 ### Только импорт URL в БД
 
@@ -55,6 +62,12 @@ python main.py --only-import
 
 ```bash
 python main.py --only-parse
+```
+
+### Только классификация через Ollama
+
+```bash
+python main.py --only-classify
 ```
 
 ## Все флаги
@@ -69,8 +82,12 @@ python main.py --only-parse
 | `--domain DOMAIN` | обработать только URL указанного домена |
 | `--only-import` | запустить только step1 |
 | `--only-parse` | запустить только step2 |
+| `--only-classify` | запустить только step3 (Ollama) |
+| `--model MODEL` | модель Ollama для step3 (по умолчанию: первая доступная) |
+| `--list-models` | показать список доступных моделей и выйти |
+| `--add-tags TAGS` | добавить теги-подсказки в справочник (через запятую) |
 | `--no-progress` | отключить progress bar, plain вывод в консоль |
-| `-v, --verbose` | показывать заголовок / ошибку по каждому URL |
+| `-v, --verbose` | показывать заголовок / теги / ошибку по каждому URL |
 
 ## Примеры
 
@@ -104,6 +121,18 @@ python main.py --no-progress -v
 
 # Записать вывод в файл
 python main.py --no-progress > run.log
+
+# Классификация — посмотреть доступные модели
+python main.py --list-models
+
+# Классифицировать с конкретной моделью
+python main.py --only-classify --model mistral
+
+# Добавить подсказки для классификации
+python main.py --add-tags "python,ai,tutorial,data science,devops"
+
+# Классифицировать первые 20 URL с деталями
+python main.py --only-classify --limit 20 -v
 ```
 
 ## Схема БД
@@ -119,6 +148,14 @@ python main.py --no-progress > run.log
 | `error` | TEXT | текст ошибки если статус `error` |
 | `added_at` | TEXT | дата добавления |
 | `processed_at` | TEXT | дата обработки |
+| `category` | TEXT | теги, присвоенные моделью (step3) |
+
+Таблица `tags` — справочник тегов-подсказок для LLM:
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | INTEGER | первичный ключ |
+| `name` | TEXT | название тега (уникальное) |
 
 ### Полезные SQL-запросы
 
@@ -134,13 +171,55 @@ UPDATE urls SET status = 'pending', error = NULL WHERE status = 'error';
 
 -- Посмотреть результаты по домену
 SELECT url, title FROM urls WHERE url LIKE '%habr.com%' AND status = 'done';
+
+-- URL с присвоенными тегами
+SELECT url, title, category FROM urls WHERE category IS NOT NULL;
+
+-- Сбросить категории (для переклассификации)
+UPDATE urls SET category = NULL WHERE status = 'done';
 ```
 
 ## Поведение при повторном запуске
 
-- URL со статусом `done` **пропускаются** — повторно не запрашиваются
-- URL со статусом `pending` или `error` обрабатываются
+- URL со статусом `done` **пропускаются** в step2 — повторно не запрашиваются
+- URL без `category` обрабатываются в step3 — классифицируются заново только при сбросе
 - При добавлении дублирующихся URL через `--url` или `--input` — они игнорируются (`INSERT OR IGNORE`)
+
+## Step 3 — Классификация через Ollama
+
+Step3 берёт все URL со статусом `done` и без присвоенной категории, передаёт в локальную LLM заголовок страницы и просит назначить 1–3 тега.
+
+### Теги-подсказки
+
+Теги из таблицы `tags` передаются в промпт как подсказки. Модель **может использовать их или создавать собственные** — ограничений нет, сохраняется всё, что вернула модель.
+
+```bash
+# Добавить подсказки один раз
+python main.py --add-tags "python, machine learning, devops, frontend, security, tutorial"
+```
+
+### Промпт
+
+```
+Classify the following web page by assigning 1 to 3 short topic tags.
+Rules:
+- Tags must be in the same language as the title (Russian or English).
+- You may use the suggested tags OR invent your own — pick whatever fits best.
+- Respond with ONLY a comma-separated list of tags, nothing else.
+
+Tag suggestions: python, tutorial, ...
+
+URL: https://...
+Title: ...
+```
+
+### Переклассификация
+
+```bash
+# Сбросить категории и запустить заново
+python -c "import sqlite3; conn = sqlite3.connect('urls.db'); conn.execute('UPDATE urls SET category = NULL'); conn.commit()"
+python main.py --only-classify
+```
 
 ## Polite crawling
 

@@ -5,41 +5,57 @@ from rich.rule import Rule
 
 import step1
 import step2
-from db import init_db, insert_urls, reset_all_to_pending, reset_errors_to_pending, set_url_pending
+import step3
+from db import (
+    add_tags,
+    init_db,
+    init_tags_schema,
+    insert_urls,
+    reset_all_to_pending,
+    reset_errors_to_pending,
+    set_url_pending,
+)
 
 console = Console()
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="URL Parser Pipeline — импорт ссылок и парсинг заголовков",
+        description="URL Parser Pipeline — импорт, парсинг и классификация ссылок",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""примеры:
-  python main.py                                  полный пайплайн (step1 + step2)
-  python main.py --only-parse                     только парсинг (step2)
-  python main.py --only-parse --limit 50          первые 50 pending URL
-  python main.py --retry-failed                   повторить URL с ошибками
-  python main.py --force                          сбросить всё и начать заново
-  python main.py --url https://example.com        обработать один URL
-  python main.py --input links.txt                другой входной файл
-  python main.py --no-progress -v                 plain вывод + детали
-  python main.py --domain habr.com                только URL с habr.com
-  python main.py --domain habr.com --retry-failed повторить ошибки для домена
+  python main.py                                    полный пайплайн (step1 + step2)
+  python main.py --only-parse                       только парсинг (step2)
+  python main.py --only-classify                    только классификация (step3)
+  python main.py --only-classify --model llama3     классификация конкретной моделью
+  python main.py --list-models                      показать доступные модели Ollama
+  python main.py --add-tags python,ai,tutorial      добавить теги в справочник
+  python main.py --only-parse --limit 50            первые 50 pending URL
+  python main.py --retry-failed                     повторить URL с ошибками
+  python main.py --force                            сбросить всё и начать заново
+  python main.py --url https://example.com          обработать один URL
+  python main.py --input links.txt                  другой входной файл
+  python main.py --no-progress -v                   plain вывод + детали
+  python main.py --domain habr.com                  только URL с habr.com
+  python main.py --domain habr.com --retry-failed   повторить ошибки для домена
 """,
     )
 
+    # ── Step 1 / импорт ───────────────────────────────────────────────────────
     parser.add_argument(
         "--input",
         metavar="FILE",
         default="raw_links.txt",
         help="входной файл для step1 (по умолчанию: raw_links.txt)",
     )
+
+    # ── Step 2 / парсинг ─────────────────────────────────────────────────────
     parser.add_argument(
         "--limit",
         type=int,
         metavar="N",
         default=None,
-        help="обработать не более N URL в step2",
+        help="обработать не более N URL в step2 / step3",
     )
     parser.add_argument(
         "--force",
@@ -59,17 +75,55 @@ def parse_args() -> argparse.Namespace:
         help="добавить и обработать один конкретный URL (пропускает step1)",
     )
     parser.add_argument(
+        "--domain",
+        metavar="DOMAIN",
+        default=None,
+        help="обработать только URL указанного домена (напр. habr.com)",
+    )
+
+    # ── Step 3 / классификация ────────────────────────────────────────────────
+    parser.add_argument(
+        "--model",
+        metavar="MODEL",
+        default=None,
+        help="модель Ollama для step3 (по умолчанию: первая доступная)",
+    )
+    parser.add_argument(
+        "--list-models",
+        action="store_true",
+        dest="list_models",
+        help="показать список доступных моделей Ollama и выйти",
+    )
+    parser.add_argument(
+        "--add-tags",
+        metavar="TAGS",
+        default=None,
+        dest="add_tags",
+        help="добавить теги-подсказки в справочник (через запятую: тег1,тег2,...)",
+    )
+
+    # ── Управление пайплайном ─────────────────────────────────────────────────
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
         "--only-import",
         action="store_true",
         dest="only_import",
         help="запустить только step1 (импорт ссылок в БД)",
     )
-    parser.add_argument(
+    mode_group.add_argument(
         "--only-parse",
         action="store_true",
         dest="only_parse",
         help="запустить только step2 (парсинг заголовков)",
     )
+    mode_group.add_argument(
+        "--only-classify",
+        action="store_true",
+        dest="only_classify",
+        help="запустить только step3 (классификация через Ollama)",
+    )
+
+    # ── Вывод ─────────────────────────────────────────────────────────────────
     parser.add_argument(
         "--no-progress",
         action="store_true",
@@ -79,13 +133,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-v", "--verbose",
         action="store_true",
-        help="показывать заголовок / ошибку по каждому URL",
-    )
-    parser.add_argument(
-        "--domain",
-        metavar="DOMAIN",
-        default=None,
-        help="обработать только URL указанного домена (напр. habr.com)",
+        help="показывать заголовок / теги / ошибку по каждому URL",
     )
 
     return parser.parse_args()
@@ -97,6 +145,21 @@ def main() -> None:
     console.print(Rule("[bold cyan]URL Parser Pipeline[/bold cyan]"))
 
     init_db()
+    init_tags_schema()
+
+    # ── --list-models ──────────────────────────────────────────────────────────
+    if args.list_models:
+        step3.main(list_models_flag=True)
+        return
+
+    # ── --add-tags ─────────────────────────────────────────────────────────────
+    if args.add_tags:
+        names = [t.strip() for t in args.add_tags.split(",") if t.strip()]
+        added, skipped = add_tags(names)
+        console.print(
+            f"[cyan]--add-tags:[/cyan] добавлено [bold green]{added}[/bold green], "
+            f"пропущено [dim]{skipped}[/dim] (дубликаты)"
+        )
 
     # ── Режим одного URL ──────────────────────────────────────────────────────
     if args.url:
@@ -111,7 +174,7 @@ def main() -> None:
         console.print(Rule("[bold green]Готово[/bold green]", style="green"))
         return
 
-    # ── Флаги сброса ─────────────────────────────────────────────────────────
+    # ── Флаги сброса ──────────────────────────────────────────────────────────
     if args.force:
         n = reset_all_to_pending()
         console.print(f"[yellow]--force:[/yellow] сброшено [bold]{n}[/bold] записей → pending")
@@ -119,9 +182,10 @@ def main() -> None:
         n = reset_errors_to_pending()
         console.print(f"[yellow]--retry-failed:[/yellow] сброшено [bold]{n}[/bold] ошибок → pending")
 
-    # ── Запуск шагов ─────────────────────────────────────────────────────────
-    run_import = not args.only_parse
-    run_parse = not args.only_import
+    # ── Запуск шагов ──────────────────────────────────────────────────────────
+    run_import   = not args.only_parse and not args.only_classify
+    run_parse    = not args.only_import and not args.only_classify
+    run_classify = args.only_classify  # явно запрошено; в полном пайплайне — нет
 
     if run_import:
         console.print()
@@ -136,6 +200,16 @@ def main() -> None:
             no_progress=args.no_progress,
             verbose=args.verbose,
             domain=args.domain,
+        )
+
+    if run_classify:
+        console.print()
+        console.print(Rule("[dim]Step 3 — Классификация[/dim]", style="dim"))
+        step3.main(
+            model=args.model,
+            limit=args.limit,
+            no_progress=args.no_progress,
+            verbose=args.verbose,
         )
 
     console.print()
