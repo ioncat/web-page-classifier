@@ -205,3 +205,26 @@ def set_category(url: str, category: str, model: str | None = None) -> None:
             "UPDATE urls SET category = ?, tagged_by = ? WHERE url = ?",
             (category, model, url),
         )
+
+
+def sync_tags_from_categories() -> tuple[int, int]:
+    """Читает все category из urls и добавляет уникальные теги в справочник.
+    Возвращает (добавлено, уже было).
+    """
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT category FROM urls WHERE category IS NOT NULL AND category != ''"
+        ).fetchall()
+
+    # Собираем все теги из всех строк
+    all_tags: set[str] = set()
+    for row in rows:
+        for tag in row["category"].split(","):
+            tag = tag.strip()
+            if tag:
+                all_tags.add(tag)
+
+    if not all_tags:
+        return 0, 0
+
+    return add_tags(sorted(all_tags))

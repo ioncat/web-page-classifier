@@ -14,6 +14,7 @@ from db import (
     reset_all_to_pending,
     reset_errors_to_pending,
     set_url_pending,
+    sync_tags_from_categories,
 )
 
 console = Console()
@@ -30,6 +31,7 @@ def parse_args() -> argparse.Namespace:
   python main.py --only-classify --model llama3     классификация конкретной моделью
   python main.py --list-models                      показать доступные модели Ollama
   python main.py --add-tags python,ai,tutorial      добавить теги в справочник
+  python main.py --sync-tags                        импортировать теги из category в справочник
   python main.py --only-parse --limit 50            первые 50 pending URL
   python main.py --retry-failed                     повторить URL с ошибками
   python main.py --force                            сбросить всё и начать заново
@@ -101,6 +103,12 @@ def parse_args() -> argparse.Namespace:
         dest="add_tags",
         help="добавить теги-подсказки в справочник (через запятую: тег1,тег2,...)",
     )
+    parser.add_argument(
+        "--sync-tags",
+        action="store_true",
+        dest="sync_tags",
+        help="синхронизировать справочник из накопленных category в БД и выйти",
+    )
 
     # ── Управление пайплайном ─────────────────────────────────────────────────
     mode_group = parser.add_mutually_exclusive_group()
@@ -146,6 +154,16 @@ def main() -> None:
 
     init_db()
     init_tags_schema()
+
+    # ── --sync-tags ────────────────────────────────────────────────────────────
+    if args.sync_tags:
+        added, skipped = sync_tags_from_categories()
+        console.print(
+            f"[cyan]--sync-tags:[/cyan] добавлено [bold green]{added}[/bold green] новых тегов, "
+            f"[dim]{skipped}[/dim] уже были в справочнике"
+        )
+        console.print(Rule("[bold green]Готово[/bold green]", style="green"))
+        return
 
     # ── --list-models ──────────────────────────────────────────────────────────
     if args.list_models:

@@ -15,7 +15,7 @@ from rich.progress import (
 from rich.prompt import IntPrompt
 from rich.table import Table
 
-from db import get_done_unclassified, get_tags, init_db, init_tags_schema, set_category
+from db import add_tags, get_done_unclassified, get_tags, init_db, init_tags_schema, set_category
 
 # ── Параметры ─────────────────────────────────────────────────────────────────
 OLLAMA_HOST = "http://localhost:11434"
@@ -167,6 +167,22 @@ def _process_one(
         raise RuntimeError(f"Ошибка соединения: {exc}") from exc
 
 
+# ── Обновление справочника тегов ─────────────────────────────────────────────
+def _update_hints(category: str, hints: list[str]) -> int:
+    """Добавляет теги из category в справочник и в список hints текущего запуска.
+    Возвращает количество новых тегов (не было в справочнике ранее).
+    """
+    new_tags = [t.strip() for t in category.split(",") if t.strip()]
+    added, _ = add_tags(new_tags)
+
+    # Обновляем hints в памяти — следующие URL сразу увидят новые теги
+    for tag in new_tags:
+        if tag not in hints:
+            hints.append(tag)
+
+    return added
+
+
 # ── Вывод итогов ──────────────────────────────────────────────────────────────
 def _print_summary(done_count: int, error_count: int, aborted: bool = False) -> None:
     summary = Table(
@@ -297,9 +313,11 @@ def main(
                     client, model, url, title, hints, conn_errors
                 )
                 set_category(url, category, model=model)
+                new_in_dict = _update_hints(category, hints)
                 done_count += 1
                 if verbose:
-                    print(f"  Tags: {category}")
+                    suffix = f" [dim](+{new_in_dict} в справочник)[/dim]" if new_in_dict else ""
+                    print(f"  Tags: {category}{suffix}")
             except _OllamaDown as exc:
                 console.print(f"\n[bold red]Прерывание:[/bold red] {exc}")
                 aborted = True
@@ -329,9 +347,11 @@ def main(
                         client, model, url, title, hints, conn_errors
                     )
                     set_category(url, category, model=model)
+                    new_in_dict = _update_hints(category, hints)
                     done_count += 1
                     if verbose:
-                        console.log(f"[green]OK[/green] {category}")
+                        suffix = f" [dim](+{new_in_dict} в справочник)[/dim]" if new_in_dict else ""
+                        console.log(f"[green]OK[/green] {category}{suffix}")
                 except _OllamaDown as exc:
                     console.log(f"[bold red]Прерывание:[/bold red] {exc}")
                     aborted = True
