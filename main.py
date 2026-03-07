@@ -204,6 +204,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="показывать заголовок / теги / ошибку по каждому URL",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        metavar="N",
+        default=1,
+        help="кол-во параллельных запросов к Ollama (по умолчанию: 1). "
+             "Для реального параллелизма также установите OLLAMA_NUM_PARALLEL=N перед ollama serve",
+    )
 
     return parser.parse_args()
 
@@ -226,6 +234,7 @@ def main() -> None:
             no_progress=args.no_progress,
             verbose=args.verbose,
             domain=args.domain,
+            workers=args.workers,
         )
         return
 
@@ -293,6 +302,7 @@ def main() -> None:
             limit=args.limit,
             no_progress=args.no_progress,
             verbose=args.verbose,
+            workers=args.workers,
         )
         console.print()
         console.print(Rule("[bold green]Pipeline завершён[/bold green]", style="green"))
@@ -361,6 +371,7 @@ def main() -> None:
             limit=args.limit,
             no_progress=args.no_progress,
             verbose=args.verbose,
+            workers=args.workers,
         )
 
     console.print()

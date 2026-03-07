@@ -7,6 +7,8 @@ compare.py — Сравнение нескольких Ollama-моделей н�
 """
 import csv
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import ollama
 from rich.console import Console
@@ -134,6 +136,7 @@ def run_compare_models(
     no_progress: bool = False,
     verbose: bool = False,
     domain: str | None = None,
+    workers: int = 1,
 ) -> None:
     """Прогоняет каждую модель через все done-URL и сохраняет в model_results.
 
@@ -199,85 +202,156 @@ def run_compare_models(
 
         done_count  = 0
         error_count = 0
-        conn_errors = 0
         aborted     = False
 
-        if no_progress:
-            total = len(rows)
-            for i, row in enumerate(rows, 1):
+        if workers > 1:
+            # ── Параллельный режим ────────────────────────────────────────────
+            _abort = threading.Event()
+            _ce    = [0]          # connection error counter
+            _ce_lk = threading.Lock()
+
+            def _worker(row: dict):
+                if _abort.is_set():
+                    return "skip", row["url"], None
                 url, title, uid = row["url"], row["title"] or "", row["id"]
-                print(f"[{i}/{total}] {url}", flush=True)
                 try:
-                    category = classify_url(client, model, url, title, hints)
-                    save_model_result(uid, model, category)
-                    done_count  += 1
-                    conn_errors  = 0
-                    if verbose:
-                        print(f"  {category}")
+                    cat = classify_url(client, model, url, title, hints)
+                    save_model_result(uid, model, cat)
+                    with _ce_lk:
+                        _ce[0] = 0
+                    return "ok", url, cat
                 except ollama.ResponseError as exc:
-                    error_count += 1
-                    print(f"  API ERR [{exc.status_code}]: {exc.error}")
+                    return "api_err", url, f"[{exc.status_code}] {exc.error}"
                 except ValueError as exc:
-                    error_count += 1
-                    print(f"  EMPTY: {exc}")
+                    return "empty", url, str(exc)
                 except Exception as exc:
-                    error_count += 1
-                    conn_errors += 1
-                    print(f"  ERR: {exc}")
-                    if conn_errors >= MAX_CONSECUTIVE_ERRS:
-                        console.print(
-                            f"\n[bold red]Прерывание:[/bold red] "
-                            f"Ollama недоступна ({MAX_CONSECUTIVE_ERRS} ошибок подряд)"
+                    with _ce_lk:
+                        _ce[0] += 1
+                        if _ce[0] >= MAX_CONSECUTIVE_ERRS:
+                            _abort.set()
+                    return "conn_err", url, str(exc)
+
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futs = [pool.submit(_worker, r) for r in rows]
+
+                if no_progress:
+                    total = len(futs)
+                    for i, fut in enumerate(as_completed(futs), 1):
+                        status, url, data = fut.result()
+                        if status == "ok":
+                            done_count += 1
+                            print(f"[{i}/{total}] OK  {url[:70]}" + (f"\n  {data}" if verbose else ""), flush=True)
+                        elif status != "skip":
+                            error_count += 1
+                            print(f"[{i}/{total}] ERR [{status}] {url[:70]}\n  {data}", flush=True)
+                else:
+                    with Progress(
+                        SpinnerColumn(),
+                        TextColumn("[progress.description]{task.description}"),
+                        BarColumn(),
+                        MofNCompleteColumn(),
+                        TaskProgressColumn(),
+                        TimeElapsedColumn(),
+                        console=console,
+                        transient=False,
+                    ) as progress:
+                        task = progress.add_task(
+                            f"{model.split(':')[0]} [dim]×{workers}[/dim]", total=len(rows)
                         )
-                        aborted = True
-                        break
+                        for fut in as_completed(futs):
+                            status, url, data = fut.result()
+                            if status == "ok":
+                                done_count += 1
+                                if verbose:
+                                    console.log(f"[green]OK[/green] {data}")
+                            elif status != "skip":
+                                error_count += 1
+                                if verbose:
+                                    console.log(f"[red]ERR[/red] [{status}] {data}")
+                            progress.advance(task)
+
+            aborted = _abort.is_set()
+
         else:
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                MofNCompleteColumn(),
-                TaskProgressColumn(),
-                TimeElapsedColumn(),
-                console=console,
-                transient=False,
-            ) as progress:
-                task = progress.add_task(model.split(":")[0], total=len(rows))
+            # ── Последовательный режим ────────────────────────────────────────
+            conn_errors = 0
 
-                for row in rows:
+            if no_progress:
+                total = len(rows)
+                for i, row in enumerate(rows, 1):
                     url, title, uid = row["url"], row["title"] or "", row["id"]
-                    short = url[:55] + "…" if len(url) > 55 else url
-                    progress.update(task, description=f"[dim]{short}[/dim]")
-
+                    print(f"[{i}/{total}] {url}", flush=True)
                     try:
                         category = classify_url(client, model, url, title, hints)
                         save_model_result(uid, model, category)
                         done_count  += 1
                         conn_errors  = 0
                         if verbose:
-                            console.log(f"[green]OK[/green] {category}")
+                            print(f"  {category}")
                     except ollama.ResponseError as exc:
                         error_count += 1
-                        if verbose:
-                            console.log(f"[red]API ERR[/red] [{exc.status_code}] {exc.error}")
+                        print(f"  API ERR [{exc.status_code}]: {exc.error}")
                     except ValueError as exc:
                         error_count += 1
-                        if verbose:
-                            console.log(f"[red]EMPTY[/red] {exc}")
+                        print(f"  EMPTY: {exc}")
                     except Exception as exc:
                         error_count += 1
                         conn_errors += 1
-                        if verbose:
-                            console.log(f"[red]ERR[/red] {exc}")
+                        print(f"  ERR: {exc}")
                         if conn_errors >= MAX_CONSECUTIVE_ERRS:
-                            console.log(
-                                f"[bold red]Прерывание:[/bold red] "
+                            console.print(
+                                f"\n[bold red]Прерывание:[/bold red] "
                                 f"Ollama недоступна ({MAX_CONSECUTIVE_ERRS} ошибок подряд)"
                             )
                             aborted = True
                             break
+            else:
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    MofNCompleteColumn(),
+                    TaskProgressColumn(),
+                    TimeElapsedColumn(),
+                    console=console,
+                    transient=False,
+                ) as progress:
+                    task = progress.add_task(model.split(":")[0], total=len(rows))
 
-                    progress.advance(task)
+                    for row in rows:
+                        url, title, uid = row["url"], row["title"] or "", row["id"]
+                        short = url[:55] + "…" if len(url) > 55 else url
+                        progress.update(task, description=f"[dim]{short}[/dim]")
+
+                        try:
+                            category = classify_url(client, model, url, title, hints)
+                            save_model_result(uid, model, category)
+                            done_count  += 1
+                            conn_errors  = 0
+                            if verbose:
+                                console.log(f"[green]OK[/green] {category}")
+                        except ollama.ResponseError as exc:
+                            error_count += 1
+                            if verbose:
+                                console.log(f"[red]API ERR[/red] [{exc.status_code}] {exc.error}")
+                        except ValueError as exc:
+                            error_count += 1
+                            if verbose:
+                                console.log(f"[red]EMPTY[/red] {exc}")
+                        except Exception as exc:
+                            error_count += 1
+                            conn_errors += 1
+                            if verbose:
+                                console.log(f"[red]ERR[/red] {exc}")
+                            if conn_errors >= MAX_CONSECUTIVE_ERRS:
+                                console.log(
+                                    f"[bold red]Прерывание:[/bold red] "
+                                    f"Ollama недоступна ({MAX_CONSECUTIVE_ERRS} ошибок подряд)"
+                                )
+                                aborted = True
+                                break
+
+                        progress.advance(task)
 
         status_parts = [
             f"[green]{done_count} OK[/green]",
