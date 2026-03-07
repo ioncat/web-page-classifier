@@ -8,10 +8,12 @@ import step2
 import step3
 from db import (
     add_tags,
+    clear_tags,
     init_db,
     init_tags_schema,
     insert_urls,
     reset_all_to_pending,
+    reset_categories,
     reset_errors_to_pending,
     set_url_pending,
     sync_tags_from_categories,
@@ -32,6 +34,9 @@ def parse_args() -> argparse.Namespace:
   python main.py --list-models                      показать доступные модели Ollama
   python main.py --add-tags python,ai,tutorial      добавить теги в справочник
   python main.py --sync-tags                        импортировать теги из category в справочник
+  python main.py --re-tag                           сбросить категории и перетэггировать заново
+  python main.py --re-tag --model mistral           то же, другой моделью
+  python main.py --clear-tags                       очистить справочник тегов
   python main.py --only-parse --limit 50            первые 50 pending URL
   python main.py --retry-failed                     повторить URL с ошибками
   python main.py --force                            сбросить всё и начать заново
@@ -109,6 +114,19 @@ def parse_args() -> argparse.Namespace:
         dest="sync_tags",
         help="синхронизировать справочник из накопленных category в БД и выйти",
     )
+    parser.add_argument(
+        "--re-tag",
+        action="store_true",
+        dest="re_tag",
+        help="сбросить category/tagged_by у всех done-URL и запустить step3 заново "
+             "(справочник тегов сохраняется как подсказки)",
+    )
+    parser.add_argument(
+        "--clear-tags",
+        action="store_true",
+        dest="clear_tags",
+        help="очистить справочник тегов (таблицу tags) и выйти",
+    )
 
     # ── Управление пайплайном ─────────────────────────────────────────────────
     mode_group = parser.add_mutually_exclusive_group()
@@ -155,6 +173,13 @@ def main() -> None:
     init_db()
     init_tags_schema()
 
+    # ── --clear-tags ───────────────────────────────────────────────────────────
+    if args.clear_tags:
+        n = clear_tags()
+        console.print(f"[yellow]--clear-tags:[/yellow] удалено [bold]{n}[/bold] тегов из справочника")
+        console.print(Rule("[bold green]Готово[/bold green]", style="green"))
+        return
+
     # ── --sync-tags ────────────────────────────────────────────────────────────
     if args.sync_tags:
         added, skipped = sync_tags_from_categories()
@@ -163,6 +188,26 @@ def main() -> None:
             f"[dim]{skipped}[/dim] уже были в справочнике"
         )
         console.print(Rule("[bold green]Готово[/bold green]", style="green"))
+        return
+
+    # ── --re-tag ───────────────────────────────────────────────────────────────
+    if args.re_tag:
+        n = reset_categories()
+        console.print(
+            f"[yellow]--re-tag:[/yellow] сброшено категорий: [bold]{n}[/bold] "
+            f"[dim](справочник тегов сохранён как подсказки)[/dim]"
+        )
+        # Сразу запускаем step3 с теми же параметрами
+        console.print()
+        console.print(Rule("[dim]Step 3 — Классификация[/dim]", style="dim"))
+        step3.main(
+            model=args.model,
+            limit=args.limit,
+            no_progress=args.no_progress,
+            verbose=args.verbose,
+        )
+        console.print()
+        console.print(Rule("[bold green]Pipeline завершён[/bold green]", style="green"))
         return
 
     # ── --list-models ──────────────────────────────────────────────────────────

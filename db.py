@@ -228,3 +228,24 @@ def sync_tags_from_categories() -> tuple[int, int]:
         return 0, 0
 
     return add_tags(sorted(all_tags))
+
+
+def reset_categories() -> int:
+    """Сбрасывает category и tagged_by для всех done-записей (подготовка к ре-тэггингу).
+    Справочник tags НЕ затрагивается — накопленные теги остаются как подсказки.
+    Возвращает кол-во затронутых строк.
+    """
+    with get_conn() as conn:
+        cur = conn.execute(
+            "UPDATE urls SET category = NULL, tagged_by = NULL WHERE status = 'done'"
+        )
+        return cur.rowcount
+
+
+def clear_tags() -> int:
+    """Полностью очищает справочник тегов (таблицу tags).
+    Возвращает кол-во удалённых строк.
+    """
+    with get_conn() as conn:
+        cur = conn.execute("DELETE FROM tags")
+        return cur.rowcount
