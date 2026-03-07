@@ -185,11 +185,13 @@ ORDER BY mr.model, freq DESC;
 
 ---
 
-## Новые флаги CLI (планируемые)
+## Флаги CLI
 
 | Флаг | Описание |
 |---|---|
 | `--compare-models M1,M2,...` | запустить несколько моделей, сохранить в `model_results` |
+| `--compare-models ... --domain D` | то же, только для URL указанного домена |
+| `--compare-models ... --limit N` | ограничить кол-во URL (для быстрого теста) |
 | `--compare` | показать side-by-side Rich-таблицу результатов |
 | `--compare --export FILE.csv` | экспортировать сравнение в CSV |
 | `--accept-model MODEL` | скопировать результаты модели в `urls.category` |

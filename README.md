@@ -281,6 +281,12 @@ python main.py --only-classify
 # 1. Запустить несколько моделей (результаты пишутся в model_results, не в urls.category)
 python main.py --compare-models llama3,mistral,gemma2
 
+# 1а. Только для конкретного домена
+python main.py --compare-models llama3,mistral --domain habr.com
+
+# 1б. Ограничить кол-во URL (для быстрого теста)
+python main.py --compare-models llama3,mistral --domain habr.com --limit 20
+
 # 2. Посмотреть результаты в терминале
 python main.py --compare
 
@@ -292,6 +298,16 @@ python main.py --accept-model mistral
 
 # 5. Очистить таблицу сравнения (если нужно начать заново)
 python main.py --compare-clear
+```
+
+### Фильтрация по домену
+
+`--domain` работает совместно с `--compare-models` — прогоняет модели только по URL указанного домена.
+Фильтрация нечувствительна к `www.` и регистру: `habr.com` и `www.habr.com` эквивалентны.
+
+```bash
+python main.py --compare-models llama3,mistral --domain habr.com
+# Вывод: URL: 42  |  Модели: llama3, mistral  |  Домен: habr.com
 ```
 
 ### Изоляция
