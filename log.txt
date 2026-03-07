@@ -1,0 +1,586 @@
+2025-05-09 20:04:21,400 - Произошла ошибка при чтении файла input.csv: [Errno 2] No such file or directory: 'input.csv'
+2025-05-09 20:04:21,400 - Произошла ошибка при чтении файла input.csv: [Errno 2] No such file or directory: 'input.csv'
+2025-05-09 20:05:48,567 - Произошла ошибка при чтении файла input.csv: [Errno 2] No such file or directory: 'input.csv'
+2025-05-09 20:05:48,567 - Произошла ошибка при чтении файла input.csv: [Errno 2] No such file or directory: 'input.csv'
+2025-05-09 20:07:52,285 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/piter/articles/805105/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/piter/articles/805105/ on 2025-05-09 20:07:52. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:07:53,842 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ru_mts/articles/805733/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ru_mts/articles/805733/ on 2025-05-09 20:07:53. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:07:55,346 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/803671/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/803671/ on 2025-05-09 20:07:55. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:07:56,807 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/805581/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/805581/ on 2025-05-09 20:07:56. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:07:58,255 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/805785/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/805785/ on 2025-05-09 20:07:58. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:07:59,677 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/805871/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/805871/ on 2025-05-09 20:07:59. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:01,286 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/805179/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/805179/ on 2025-05-09 20:08:01. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:02,875 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/805813/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/805813/ on 2025-05-09 20:08:02. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:04,503 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ruvds/articles/805719/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ruvds/articles/805719/ on 2025-05-09 20:08:04. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:06,012 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/alfa/articles/842228/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/alfa/articles/842228/ on 2025-05-09 20:08:06. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:07,540 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/805271/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/805271/ on 2025-05-09 20:08:07. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:08,851 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/805741/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/805741/ on 2025-05-09 20:08:08. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:10,440 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/805557/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/805557/ on 2025-05-09 20:08:10. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:11,959 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/agima/articles/805113/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/agima/articles/805113/ on 2025-05-09 20:08:11. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:13,452 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/otus/articles/805801/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/otus/articles/805801/ on 2025-05-09 20:08:13. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:14,959 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ruvds/articles/798813/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ruvds/articles/798813/ on 2025-05-09 20:08:14. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:16,330 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/803841/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/803841/ on 2025-05-09 20:08:16. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:17,734 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/805973/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/805973/ on 2025-05-09 20:08:17. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:19,254 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/otus/articles/805867/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/otus/articles/805867/ on 2025-05-09 20:08:19. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:20,775 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/799337/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/799337/ on 2025-05-09 20:08:20. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:22,213 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/806297/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/806297/ on 2025-05-09 20:08:22. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:23,727 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/friflex/articles/806315/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/friflex/articles/806315/ on 2025-05-09 20:08:23. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:25,276 - Произошла ошибка при обработке ссылки https://habr.com/ru/feed/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/feed/ on 2025-05-09 20:08:25. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:26,796 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/806287/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/806287/ on 2025-05-09 20:08:26. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:28,310 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/selectel/articles/806245/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/selectel/articles/806245/ on 2025-05-09 20:08:28. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:34,548 - Произошла ошибка при обращении к https://selectel.ru/blog/courses/?utm_source=habr.com&utm_medium=referral&utm_campaign=academy_article_max_010424_banner_050_01_ord%20(https://selectel.ru/blog/courses/?utm_source=habr.com&utm_medium=referral&utm_campaign=academy_article_course_160922_banner_050_ord): HTTPSConnectionPool(host='selectel.ru', port=443): Max retries exceeded with url: /blog/courses/?utm_source=habr.com&utm_medium=referral&utm_campaign=academy_article_max_010424_banner_050_01_ord%20(https://selectel.ru/blog/courses/?utm_source=habr.com&utm_medium=referral&utm_campaign=academy_article_course_160922_banner_050_ord) (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7eb204fee9f0>: Failed to resolve 'selectel.ru' ([Errno -3] Temporary failure in name resolution)"))
+2025-05-09 20:08:34,548 - Произошла ошибка при обработке ссылки https://selectel.ru/blog/courses/?utm_source=habr.com&utm_medium=referral&utm_campaign=academy_article_max_010424_banner_050_01_ord%20(https://selectel.ru/blog/courses/?utm_source=habr.com&utm_medium=referral&utm_campaign=academy_article_course_160922_banner_050_ord): cannot access local variable 'e' where it is not associated with a value
+Error at URL https://selectel.ru/blog/courses/?utm_source=habr.com&utm_medium=referral&utm_campaign=academy_article_max_010424_banner_050_01_ord%20(https://selectel.ru/blog/courses/?utm_source=habr.com&utm_medium=referral&utm_campaign=academy_article_course_160922_banner_050_ord) on 2025-05-09 20:08:34. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:36,205 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/bastion/articles/806195/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/bastion/articles/806195/ on 2025-05-09 20:08:36. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:37,662 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/806547/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/806547/ on 2025-05-09 20:08:37. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:39,145 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/806587/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/806587/ on 2025-05-09 20:08:39. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:40,629 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/806753/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/806753/ on 2025-05-09 20:08:40. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:42,266 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/homebank/articles/806905/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/homebank/articles/806905/ on 2025-05-09 20:08:42. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:43,874 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/smartup_tech/articles/807379/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/smartup_tech/articles/807379/ on 2025-05-09 20:08:43. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:45,486 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/selectel/articles/807259/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/selectel/articles/807259/ on 2025-05-09 20:08:45. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:46,978 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/beeline_cloud/articles/807099/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/beeline_cloud/articles/807099/ on 2025-05-09 20:08:46. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:48,399 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/806935/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/806935/ on 2025-05-09 20:08:48. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:49,880 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/807493/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/807493/ on 2025-05-09 20:08:49. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:51,343 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/807609/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/807609/ on 2025-05-09 20:08:51. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:52,809 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/807605/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/807605/ on 2025-05-09 20:08:52. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:54,252 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/yandex/news/807225/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/yandex/news/807225/ on 2025-05-09 20:08:54. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:55,741 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/807785/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/807785/ on 2025-05-09 20:08:55. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:57,255 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/808725/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/808725/ on 2025-05-09 20:08:57. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:08:58,801 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/doubletapp/articles/808153/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/doubletapp/articles/808153/ on 2025-05-09 20:08:58. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:00,457 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/yadro/articles/808445/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/yadro/articles/808445/ on 2025-05-09 20:09:00. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:01,862 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/806827/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/806827/ on 2025-05-09 20:09:01. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:03,337 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/809149/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/809149/ on 2025-05-09 20:09:03. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:04,751 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/809181/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/809181/ on 2025-05-09 20:09:04. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:06,133 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/bothub/articles/809421/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/bothub/articles/809421/ on 2025-05-09 20:09:06. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:07,659 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/tensor/articles/808931/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/tensor/articles/808931/ on 2025-05-09 20:09:07. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:09,122 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/selectel/articles/809669/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/selectel/articles/809669/ on 2025-05-09 20:09:09. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:10,498 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/otus/articles/809139/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/otus/articles/809139/ on 2025-05-09 20:09:10. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:11,992 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/809905/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/809905/ on 2025-05-09 20:09:11. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:13,532 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/tochka/articles/809493/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/tochka/articles/809493/ on 2025-05-09 20:09:13. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:15,029 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/automacon/articles/809679/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/automacon/articles/809679/ on 2025-05-09 20:09:15. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:16,527 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/810037/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/810037/ on 2025-05-09 20:09:16. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:18,137 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/808313/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/808313/ on 2025-05-09 20:09:18. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:19,569 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/809589/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/809589/ on 2025-05-09 20:09:19. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:20,995 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ozontech/articles/809515/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ozontech/articles/809515/ on 2025-05-09 20:09:20. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:22,450 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/810777/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/810777/ on 2025-05-09 20:09:22. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:24,163 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/811761/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/811761/ on 2025-05-09 20:09:24. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:25,644 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/yandex_praktikum/articles/809645/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/yandex_praktikum/articles/809645/ on 2025-05-09 20:09:25. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:27,185 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/809017/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/809017/ on 2025-05-09 20:09:27. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:29,430 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/1forma/articles/812119/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/1forma/articles/812119/ on 2025-05-09 20:09:29. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:30,975 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ispsystem/articles/812127/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ispsystem/articles/812127/ on 2025-05-09 20:09:30. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:32,658 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/bothub/articles/812265/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/bothub/articles/812265/ on 2025-05-09 20:09:32. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:34,163 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/812237/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/812237/ on 2025-05-09 20:09:34. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:35,634 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/bothub/articles/812659/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/bothub/articles/812659/ on 2025-05-09 20:09:35. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:37,140 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/oleg-bunin/articles/808097/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/oleg-bunin/articles/808097/ on 2025-05-09 20:09:37. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:38,602 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/dbraincloud/articles/812671/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/dbraincloud/articles/812671/ on 2025-05-09 20:09:38. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:40,043 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/otus/articles/812129/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/otus/articles/812129/ on 2025-05-09 20:09:40. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:41,590 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/nfckey/articles/804223/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/nfckey/articles/804223/ on 2025-05-09 20:09:41. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:43,187 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/725640/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/725640/ on 2025-05-09 20:09:43. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:44,649 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/815331/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/815331/ on 2025-05-09 20:09:44. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:46,139 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/betboom/articles/812773/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/betboom/articles/812773/ on 2025-05-09 20:09:46. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:47,620 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ruvds/articles/734070/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ruvds/articles/734070/ on 2025-05-09 20:09:47. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:49,361 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/productivity_inside/articles/815455/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/productivity_inside/articles/815455/ on 2025-05-09 20:09:49. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:50,783 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/yandex_praktikum/articles/814551/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/yandex_praktikum/articles/814551/ on 2025-05-09 20:09:50. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:52,365 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/surfstudio/articles/816231/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/surfstudio/articles/816231/ on 2025-05-09 20:09:52. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:53,788 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/816191/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/816191/ on 2025-05-09 20:09:53. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:55,278 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/816469/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/816469/ on 2025-05-09 20:09:55. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:56,700 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/818183/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/818183/ on 2025-05-09 20:09:56. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:58,179 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/productivity_inside/articles/818533/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/productivity_inside/articles/818533/ on 2025-05-09 20:09:58. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:09:59,742 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/lanit/articles/812261/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/lanit/articles/812261/ on 2025-05-09 20:09:59. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:01,342 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/fuse8/articles/818627/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/fuse8/articles/818627/ on 2025-05-09 20:10:01. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:02,778 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/817219/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/817219/ on 2025-05-09 20:10:02. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:04,350 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/yandex_praktikum/articles/818405/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/yandex_praktikum/articles/818405/ on 2025-05-09 20:10:04. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:05,765 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/818765/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/818765/ on 2025-05-09 20:10:05. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:07,327 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/819219/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/819219/ on 2025-05-09 20:10:07. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:08,778 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/820817/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/820817/ on 2025-05-09 20:10:08. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:10,344 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/clevertec/articles/820227/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/clevertec/articles/820227/ on 2025-05-09 20:10:10. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:11,735 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/821123/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/821123/ on 2025-05-09 20:10:11. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:13,196 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/821893/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/821893/ on 2025-05-09 20:10:13. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:14,742 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/821883/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/821883/ on 2025-05-09 20:10:14. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:16,118 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/821957/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/821957/ on 2025-05-09 20:10:16. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:17,627 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/wehive/articles/821765/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/wehive/articles/821765/ on 2025-05-09 20:10:17. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:19,176 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/beeline_cloud/articles/822123/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/beeline_cloud/articles/822123/ on 2025-05-09 20:10:19. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:20,678 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/822793/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/822793/ on 2025-05-09 20:10:20. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:22,491 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/822831/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/822831/ on 2025-05-09 20:10:22. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:23,906 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/822707/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/822707/ on 2025-05-09 20:10:23. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:25,280 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/822637/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/822637/ on 2025-05-09 20:10:25. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:26,816 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/827222/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/827222/ on 2025-05-09 20:10:26. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:28,036 - Произошла ошибка при обработке ссылки https://www.google.com/amp/s/habr.com/ru/amp/publications/713942/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://www.google.com/amp/s/habr.com/ru/amp/publications/713942/ on 2025-05-09 20:10:28. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:29,565 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/833544/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/833544/ on 2025-05-09 20:10:29. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:30,940 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/836028/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/836028/ on 2025-05-09 20:10:30. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:32,535 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/pgk/articles/835044/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/pgk/articles/835044/ on 2025-05-09 20:10:32. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:34,058 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/yadro/articles/835664/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/yadro/articles/835664/ on 2025-05-09 20:10:34. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:36,204 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/piter/articles/834562/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/piter/articles/834562/ on 2025-05-09 20:10:36. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:37,625 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/836654/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/836654/ on 2025-05-09 20:10:37. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:39,155 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/sberbank/articles/836092/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/sberbank/articles/836092/ on 2025-05-09 20:10:39. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:40,986 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/836678/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/836678/ on 2025-05-09 20:10:40. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:42,801 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/836696/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/836696/ on 2025-05-09 20:10:42. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:44,754 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/bothub/articles/836804/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/bothub/articles/836804/ on 2025-05-09 20:10:44. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:46,232 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/837006/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/837006/ on 2025-05-09 20:10:46. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:47,780 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/836822/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/836822/ on 2025-05-09 20:10:47. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:49,237 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/836756/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/836756/ on 2025-05-09 20:10:49. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:50,741 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/837070/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/837070/ on 2025-05-09 20:10:50. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:52,158 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/836046/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/836046/ on 2025-05-09 20:10:52. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:53,634 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/lamoda/articles/836582/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/lamoda/articles/836582/ on 2025-05-09 20:10:53. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:55,065 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/836588/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/836588/ on 2025-05-09 20:10:55. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:56,555 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/833106/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/833106/ on 2025-05-09 20:10:56. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:57,933 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/sberbank/articles/835786/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/sberbank/articles/835786/ on 2025-05-09 20:10:57. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:10:59,433 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/837128/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/837128/ on 2025-05-09 20:10:59. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:00,971 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/netologyru/news/837142/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/netologyru/news/837142/ on 2025-05-09 20:11:00. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:02,474 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/837578/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/837578/ on 2025-05-09 20:11:02. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:04,069 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/skillfactory/articles/837366/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/skillfactory/articles/837366/ on 2025-05-09 20:11:04. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:05,743 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/sberbank/articles/837734/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/sberbank/articles/837734/ on 2025-05-09 20:11:05. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:07,499 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/838356/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/838356/ on 2025-05-09 20:11:07. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:08,980 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/eaeconsult/articles/837674/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/eaeconsult/articles/837674/ on 2025-05-09 20:11:08. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:10,443 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/838690/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/838690/ on 2025-05-09 20:11:10. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:11,902 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/838496/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/838496/ on 2025-05-09 20:11:11. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:13,659 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ozonbank/articles/838990/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ozonbank/articles/838990/ on 2025-05-09 20:11:13. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:15,244 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ascon/articles/836778/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ascon/articles/836778/ on 2025-05-09 20:11:15. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:16,665 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/838976/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/838976/ on 2025-05-09 20:11:16. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:18,211 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/oleg-bunin/articles/836078/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/oleg-bunin/articles/836078/ on 2025-05-09 20:11:18. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:19,620 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/netologyru/news/838642/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/netologyru/news/838642/ on 2025-05-09 20:11:19. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:21,172 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/839020/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/839020/ on 2025-05-09 20:11:21. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:22,640 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/832984/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/832984/ on 2025-05-09 20:11:22. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:24,227 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/838362/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/838362/ on 2025-05-09 20:11:24. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:25,609 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/839392/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/839392/ on 2025-05-09 20:11:25. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:27,224 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/uchi_ru/articles/838824/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/uchi_ru/articles/838824/ on 2025-05-09 20:11:27. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:28,657 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/839304/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/839304/ on 2025-05-09 20:11:28. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:30,466 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/inferit/articles/839202/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/inferit/articles/839202/ on 2025-05-09 20:11:30. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:31,926 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/839676/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/839676/ on 2025-05-09 20:11:31. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:33,494 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/839882/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/839882/ on 2025-05-09 20:11:33. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:35,008 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/840066/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/840066/ on 2025-05-09 20:11:35. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:36,479 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ssp-soft/articles/840570/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ssp-soft/articles/840570/ on 2025-05-09 20:11:36. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:37,931 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/otus/articles/840764/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/otus/articles/840764/ on 2025-05-09 20:11:37. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:39,493 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/841484/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/841484/ on 2025-05-09 20:11:39. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:40,858 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/841558/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/841558/ on 2025-05-09 20:11:40. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:42,272 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/841636/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/841636/ on 2025-05-09 20:11:42. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:43,812 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/841948/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/841948/ on 2025-05-09 20:11:43. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:45,299 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/amvera/articles/841616/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/amvera/articles/841616/ on 2025-05-09 20:11:45. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:46,783 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/841794/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/841794/ on 2025-05-09 20:11:46. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:48,226 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/841994/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/841994/ on 2025-05-09 20:11:48. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:49,700 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/842254/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/842254/ on 2025-05-09 20:11:49. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:51,175 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/842270/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/842270/ on 2025-05-09 20:11:51. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:52,665 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ods/articles/839694/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ods/articles/839694/ on 2025-05-09 20:11:52. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:54,240 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ods/articles/716918/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ods/articles/716918/ on 2025-05-09 20:11:54. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:55,850 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/tensor/articles/842158/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/tensor/articles/842158/ on 2025-05-09 20:11:55. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:57,696 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/841448/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/841448/ on 2025-05-09 20:11:57. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:11:59,384 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/sapiens_solutions/news/843738/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/sapiens_solutions/news/843738/ on 2025-05-09 20:11:59. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:00,858 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/843942/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/843942/ on 2025-05-09 20:12:00. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:02,388 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/844446/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/844446/ on 2025-05-09 20:12:02. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:03,937 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/X5Tech/articles/844364/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/X5Tech/articles/844364/ on 2025-05-09 20:12:03. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:05,443 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/844352/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/844352/ on 2025-05-09 20:12:05. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:07,004 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/843284/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/843284/ on 2025-05-09 20:12:07. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:08,516 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/auriga/articles/843774/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/auriga/articles/843774/ on 2025-05-09 20:12:08. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:10,034 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/844560/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/844560/ on 2025-05-09 20:12:10. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:11,709 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/friflex/articles/843196/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/friflex/articles/843196/ on 2025-05-09 20:12:11. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:13,113 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/844132/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/844132/ on 2025-05-09 20:12:13. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:14,599 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ods/articles/843250/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ods/articles/843250/ on 2025-05-09 20:12:14. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:16,081 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ruvds/articles/844506/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ruvds/articles/844506/ on 2025-05-09 20:12:16. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:17,557 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/844708/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/844708/ on 2025-05-09 20:12:17. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:19,061 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/X5Tech/news/844900/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/X5Tech/news/844900/ on 2025-05-09 20:12:19. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:20,516 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/piter/articles/844572/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/piter/articles/844572/ on 2025-05-09 20:12:20. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:22,120 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/agima/articles/844536/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/agima/articles/844536/ on 2025-05-09 20:12:22. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:23,361 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ruvds/articles/844506/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ruvds/articles/844506/ on 2025-05-09 20:12:23. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:24,833 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/845424/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/845424/ on 2025-05-09 20:12:24. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:26,250 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/845178/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/845178/ on 2025-05-09 20:12:26. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:27,755 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/845444/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/845444/ on 2025-05-09 20:12:27. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:29,163 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/845598/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/845598/ on 2025-05-09 20:12:29. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:30,565 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/845354/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/845354/ on 2025-05-09 20:12:30. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:32,005 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/845446/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/845446/ on 2025-05-09 20:12:32. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:33,782 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/845900/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/845900/ on 2025-05-09 20:12:33. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:36,047 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ru_mts/articles/845478/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ru_mts/articles/845478/ on 2025-05-09 20:12:36. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:37,607 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/eftech/articles/845712/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/eftech/articles/845712/ on 2025-05-09 20:12:37. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:39,667 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/tensor/articles/845610/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/tensor/articles/845610/ on 2025-05-09 20:12:39. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:41,244 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/citydrive/articles/845922/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/citydrive/articles/845922/ on 2025-05-09 20:12:41. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:42,667 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/846296/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/846296/ on 2025-05-09 20:12:42. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:44,232 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/sibur_official/articles/846350/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/sibur_official/articles/846350/ on 2025-05-09 20:12:44. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:45,697 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/845536/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/845536/ on 2025-05-09 20:12:45. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:47,155 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/selectel/articles/846510/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/selectel/articles/846510/ on 2025-05-09 20:12:47. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:48,658 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/846426/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/846426/ on 2025-05-09 20:12:48. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:50,092 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/847784/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/847784/ on 2025-05-09 20:12:50. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:51,869 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/847856/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/847856/ on 2025-05-09 20:12:51. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:53,460 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/itq_group/articles/848348/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/itq_group/articles/848348/ on 2025-05-09 20:12:53. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:54,935 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/sportmaster_lab/articles/848408/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/sportmaster_lab/articles/848408/ on 2025-05-09 20:12:54. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:56,444 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/847636/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/847636/ on 2025-05-09 20:12:56. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:58,129 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ru_mts/articles/848524/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ru_mts/articles/848524/ on 2025-05-09 20:12:58. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:12:59,547 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/848594/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/848594/ on 2025-05-09 20:12:59. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:01,545 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/reksoft/articles/847874/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/reksoft/articles/847874/ on 2025-05-09 20:13:01. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:03,053 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/848642/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/848642/ on 2025-05-09 20:13:03. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:04,656 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/848794/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/848794/ on 2025-05-09 20:13:04. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:06,180 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/timeweb/articles/846420/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/timeweb/articles/846420/ on 2025-05-09 20:13:06. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:07,695 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/amvera/articles/848644/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/amvera/articles/848644/ on 2025-05-09 20:13:07. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:09,176 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/simbirsoft/articles/849000/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/simbirsoft/articles/849000/ on 2025-05-09 20:13:09. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:10,634 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/848904/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/848904/ on 2025-05-09 20:13:10. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:12,076 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/849168/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/849168/ on 2025-05-09 20:13:12. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:14,282 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/X5Tech/articles/846298/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/X5Tech/articles/846298/ on 2025-05-09 20:13:14. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:15,772 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/X5Tech/articles/849322/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/X5Tech/articles/849322/ on 2025-05-09 20:13:15. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:17,251 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/849128/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/849128/ on 2025-05-09 20:13:17. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:18,697 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/849576/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/849576/ on 2025-05-09 20:13:18. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:20,174 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/849786/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/849786/ on 2025-05-09 20:13:20. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:21,718 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/849948/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/849948/ on 2025-05-09 20:13:21. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:23,081 - Произошла ошибка при обработке ссылки https://freelance.habr.com/tasks/602937: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://freelance.habr.com/tasks/602937 on 2025-05-09 20:13:23. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:24,524 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/844836/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/844836/ on 2025-05-09 20:13:24. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:25,891 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/selectel/news/849478/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/selectel/news/849478/ on 2025-05-09 20:13:25. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:27,406 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/849874/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/849874/ on 2025-05-09 20:13:27. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:28,854 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/849622/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/849622/ on 2025-05-09 20:13:28. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:30,359 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/849770/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/849770/ on 2025-05-09 20:13:30. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:31,895 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/pgk/articles/848736/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/pgk/articles/848736/ on 2025-05-09 20:13:31. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:33,314 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/849038/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/849038/ on 2025-05-09 20:13:33. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:34,772 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/849852/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/849852/ on 2025-05-09 20:13:34. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:36,468 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/yandex_praktikum/articles/842638/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/yandex_praktikum/articles/842638/ on 2025-05-09 20:13:36. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:37,909 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/850252/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/850252/ on 2025-05-09 20:13:37. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:39,371 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/849452/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/849452/ on 2025-05-09 20:13:39. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:40,820 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/850144/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/850144/ on 2025-05-09 20:13:40. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:42,246 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/849864/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/849864/ on 2025-05-09 20:13:42. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:43,689 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ruvds/articles/849854/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ruvds/articles/849854/ on 2025-05-09 20:13:43. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:45,109 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/850336/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/850336/ on 2025-05-09 20:13:45. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:46,507 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/850398/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/850398/ on 2025-05-09 20:13:46. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:48,042 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/usetech/articles/850378/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/usetech/articles/850378/ on 2025-05-09 20:13:48. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:49,406 - Произошла ошибка при обработке ссылки https://freelance.habr.com/tasks/603333: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://freelance.habr.com/tasks/603333 on 2025-05-09 20:13:49. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:50,972 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/click/articles/849818/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/click/articles/849818/ on 2025-05-09 20:13:50. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:52,435 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ruvds/articles/850474/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ruvds/articles/850474/ on 2025-05-09 20:13:52. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:53,855 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/850542/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/850542/ on 2025-05-09 20:13:53. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:55,451 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/kuper/articles/849730/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/kuper/articles/849730/ on 2025-05-09 20:13:55. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:56,888 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/850606/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/850606/ on 2025-05-09 20:13:56. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:13:59,190 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/850754/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/850754/ on 2025-05-09 20:13:59. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:14:00,683 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/it_monsters/articles/850808/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/it_monsters/articles/850808/ on 2025-05-09 20:14:00. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:14:02,159 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ozontech/articles/850040/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ozontech/articles/850040/ on 2025-05-09 20:14:02. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:14:03,651 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/850846/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/850846/ on 2025-05-09 20:14:03. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:14:05,202 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/eftech/articles/850800/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/eftech/articles/850800/ on 2025-05-09 20:14:05. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:12,174 - Произошла ошибка при обращении к https://tech.wildberries.ru/courses/hard-analytics?utm_source=habrwbtech&utm_campaign=start_course_hard_analytics&utm_content=body: HTTPSConnectionPool(host='tech.wildberries.ru', port=443): Max retries exceeded with url: /courses/hard-analytics?utm_source=habrwbtech&utm_campaign=start_course_hard_analytics&utm_content=body (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x7eb1f619ec30>, 'Connection to tech.wildberries.ru timed out. (connect timeout=None)'))
+2025-05-09 20:21:12,174 - Произошла ошибка при обработке ссылки https://tech.wildberries.ru/courses/hard-analytics?utm_source=habrwbtech&utm_campaign=start_course_hard_analytics&utm_content=body: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://tech.wildberries.ru/courses/hard-analytics?utm_source=habrwbtech&utm_campaign=start_course_hard_analytics&utm_content=body on 2025-05-09 20:21:12. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:13,759 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/850842/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/850842/ on 2025-05-09 20:21:13. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:15,303 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/rosatom/articles/669020/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/rosatom/articles/669020/ on 2025-05-09 20:21:15. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:16,840 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/lentatech/articles/851086/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/lentatech/articles/851086/ on 2025-05-09 20:21:16. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:18,363 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851260/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851260/ on 2025-05-09 20:21:18. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:19,868 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/850874/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/850874/ on 2025-05-09 20:21:19. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:21,325 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851170/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851170/ on 2025-05-09 20:21:21. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:22,769 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/bothub/news/851212/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/bothub/news/851212/ on 2025-05-09 20:21:22. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:24,190 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851360/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851360/ on 2025-05-09 20:21:24. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:25,617 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/851246/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/851246/ on 2025-05-09 20:21:25. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:27,673 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851220/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851220/ on 2025-05-09 20:21:27. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:29,183 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851356/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851356/ on 2025-05-09 20:21:29. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:30,680 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/848868/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/848868/ on 2025-05-09 20:21:30. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:32,133 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851446/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851446/ on 2025-05-09 20:21:32. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:33,610 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/807839/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/807839/ on 2025-05-09 20:21:33. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:35,166 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/redmadrobot/articles/848996/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/redmadrobot/articles/848996/ on 2025-05-09 20:21:35. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:36,768 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/mako_digital/articles/851268/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/mako_digital/articles/851268/ on 2025-05-09 20:21:36. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:38,371 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ru_mts/articles/851450/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ru_mts/articles/851450/ on 2025-05-09 20:21:38. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:39,961 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851506/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851506/ on 2025-05-09 20:21:39. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:41,485 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/spring_aio/articles/851604/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/spring_aio/articles/851604/ on 2025-05-09 20:21:41. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:42,924 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851384/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851384/ on 2025-05-09 20:21:42. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:44,540 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/data_light/articles/851700/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/data_light/articles/851700/ on 2025-05-09 20:21:44. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:46,004 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851804/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851804/ on 2025-05-09 20:21:46. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:47,612 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851836/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851836/ on 2025-05-09 20:21:47. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:49,115 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851624/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851624/ on 2025-05-09 20:21:49. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:50,492 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/851910/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/851910/ on 2025-05-09 20:21:50. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:51,955 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/raft/articles/851548/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/raft/articles/851548/ on 2025-05-09 20:21:51. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:53,427 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/852338/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/852338/ on 2025-05-09 20:21:53. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:54,853 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/852962/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/852962/ on 2025-05-09 20:21:54. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:56,283 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/852896/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/852896/ on 2025-05-09 20:21:56. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:57,976 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/friflex/articles/853512/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/friflex/articles/853512/ on 2025-05-09 20:21:57. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:21:59,567 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/piter/articles/853400/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/piter/articles/853400/ on 2025-05-09 20:21:59. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:01,099 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/852394/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/852394/ on 2025-05-09 20:22:01. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:02,490 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/bothub/news/853248/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/bothub/news/853248/ on 2025-05-09 20:22:02. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:03,922 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/852046/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/852046/ on 2025-05-09 20:22:03. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:05,496 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/853408/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/853408/ on 2025-05-09 20:22:05. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:08,006 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/timeweb/articles/853578/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/timeweb/articles/853578/ on 2025-05-09 20:22:08. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:09,412 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/853056/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/853056/ on 2025-05-09 20:22:09. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:10,921 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/853720/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/853720/ on 2025-05-09 20:22:10. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:12,305 - Произошла ошибка при обработке ссылки https://habr.com/ru/news/853710/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/news/853710/ on 2025-05-09 20:22:12. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:13,723 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/853642/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/853642/ on 2025-05-09 20:22:13. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:15,130 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/853792/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/853792/ on 2025-05-09 20:22:15. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:16,630 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/853560/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/853560/ on 2025-05-09 20:22:16. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:18,101 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/853790/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/853790/ on 2025-05-09 20:22:18. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:19,591 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/720100/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/720100/ on 2025-05-09 20:22:19. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:21,126 - Произошла ошибка при обработке ссылки https://habr.com/ru/articles/854030/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/articles/854030/ on 2025-05-09 20:22:21. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:22,516 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/otus/articles/854014/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/otus/articles/854014/ on 2025-05-09 20:22:22. Message: cannot access local variable 'e' where it is not associated with a value
+2025-05-09 20:22:23,976 - Произошла ошибка при обработке ссылки https://habr.com/ru/companies/ruvds/articles/853084/: cannot access local variable 'e' where it is not associated with a value
+Error at URL https://habr.com/ru/companies/ruvds/articles/853084/ on 2025-05-09 20:22:23. Message: cannot access local variable 'e' where it is not associated with a value
