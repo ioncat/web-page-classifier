@@ -11,6 +11,8 @@ url-parser/
 ├── step1.py         # импорт URL из файла в БД
 ├── step2.py         # парсинг <title> для каждого URL
 ├── step3.py         # классификация через локальный Ollama LLM
+├── compare.py       # сравнение нескольких моделей side-by-side
+├── benchmark.py     # поиск оптимального batch/workers
 ├── db.py            # работа с SQLite
 ├── requirements.txt
 ├── raw_links.txt    # входной файл со ссылками
@@ -94,7 +96,8 @@ python main.py --only-classify
 | `--compare --export FILE.csv` | то же + экспорт в CSV |
 | `--accept-model MODEL` | скопировать результаты модели в `urls.category` (финальный выбор) |
 | `--compare-clear` | очистить таблицу `model_results` |
-| `--workers N` | кол-во параллельных запросов к Ollama (по умолчанию: 1) |
+| `--workers N` | кол-во параллельных потоков к Ollama (по умолчанию: 1) |
+| `--batch N` | кол-во URL в одном запросе к модели — батчинг (по умолчанию: 1, рекомендуется 5–20) |
 | `--no-progress` | отключить progress bar, plain вывод в консоль |
 | `-v, --verbose` | показывать заголовок / теги / ошибку по каждому URL |
 
@@ -249,20 +252,30 @@ python main.py --clear-tags && python main.py --re-tag
 python main.py --sync-tags
 ```
 
-### Промпт
+### Промпты
 
+**Одиночный запрос** (`--batch 1`, по умолчанию):
 ```
 Classify the following web page by assigning 1 to 3 short topic tags.
-Rules:
-- Tags must be in the same language as the title (Russian or English).
-- You may use the suggested tags OR invent your own — pick whatever fits best.
-- Respond with ONLY a comma-separated list of tags, nothing else.
-
-Tag suggestions: python, tutorial, ...
+Rules: ...
 
 URL: https://...
 Title: ...
 ```
+
+**Пакетный запрос** (`--batch N`):
+```
+Classify each web page below with 1–3 short topic tags.
+Rules: ...
+Format exactly: 1. tag1, tag2, tag3
+
+1. URL: https://...
+   Title: ...
+2. URL: https://...
+   Title: ...
+```
+
+Ответ модели ограничен `num_predict` (80 токенов для одиночного, 30×N для пакетного) — защита от бесконечной генерации. Если модель не смогла разобрать ответ для отдельного URL в батче, делается автоматический fallback на одиночный запрос для этого URL.
 
 ### Переклассификация
 
@@ -303,15 +316,22 @@ python main.py --accept-model mistral
 python main.py --compare-clear
 ```
 
-### Параллельные запросы (`--workers N`)
+### Производительность: батчинг и параллельность
 
-По умолчанию URL обрабатываются последовательно. Флаг `--workers N` запускает N параллельных потоков, каждый из которых держит отдельный запрос к Ollama — это сокращает простои между запросами.
+По умолчанию step3 отправляет по одному URL за запрос последовательно. Два флага позволяют существенно ускорить классификацию и повысить утилизацию GPU.
+
+**`--batch N`** — отправляет N URL в одном запросе к модели. Вместо N коротких запросов модель получает один нумерованный список и возвращает ответ для каждого URL. Снижает накладные расходы и позволяет модели дольше работать с GPU без простоев.
+
+**`--workers N`** — запускает N параллельных потоков, каждый со своим запросом к Ollama.
 
 ```bash
-# Классификация с 4 параллельными запросами
-python main.py --only-classify --model llama3 --workers 4
+# Батчинг: 10 URL за запрос, последовательно
+python main.py --only-classify --batch 10
 
-# Сравнение моделей с 4 воркерами
+# Батчинг + параллельность: 4 потока × 10 URL = 40 URL "в воздухе"
+python main.py --only-classify --batch 10 --workers 4
+
+# Сравнение моделей с теми же параметрами
 python main.py --compare-models llama3 mistral --workers 4
 ```
 
@@ -326,11 +346,35 @@ ollama serve
 OLLAMA_NUM_PARALLEL=4 ollama serve
 ```
 
-| `--workers` | `OLLAMA_NUM_PARALLEL` | Эффект |
-|---|---|---|
-| 1 (по умолчанию) | 1 (по умолчанию) | последовательно |
-| 4 | 1 | запросы в очереди, меньше простоев Python |
-| 4 | 4 | настоящий параллелизм на GPU |
+| `--batch` | `--workers` | `OLLAMA_NUM_PARALLEL` | Утилизация GPU |
+|---|---|---|---|
+| 1 | 1 | 1 | ~5–10% (по умолчанию) |
+| 1 | 4 | 4 | ~30–50% |
+| 10 | 4 | 4 | ~80–90% ✓ |
+| 20 | 4 | 4 | ~85–95% |
+
+> **Рекомендация:** начните с `--batch 10 --workers 4`. Для подбора оптимума используйте `benchmark.py`.
+
+### Поиск оптимальных параметров
+
+`benchmark.py` автоматически прогоняет несколько конфигураций на одном наборе URL и выводит сравнительную таблицу URL/с:
+
+```bash
+python benchmark.py                     # 50 URL × 10 конфигов
+python benchmark.py --limit 30          # быстрее, меньше URL
+python benchmark.py --no-warmup         # модель уже в VRAM
+python benchmark.py --only 0 4 6 7     # только конкретные конфиги
+```
+
+Пример вывода:
+```
+★ batch=10 ×4    10    4    18.3    54.6    ×12.3
+  batch=20 ×4    20    4    21.1    47.4    ×10.7
+  ...
+  baseline        1    1   192.0     4.4    ×1.0
+
+Запустить победителя: python main.py --only-classify --batch 10 --workers 4
+```
 
 ### Фильтрация по домену
 

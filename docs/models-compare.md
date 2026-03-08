@@ -197,18 +197,33 @@ ORDER BY mr.model, freq DESC;
 | `--compare --export FILE.csv` | экспортировать сравнение в CSV |
 | `--accept-model MODEL` | скопировать результаты модели в `urls.category` |
 | `--compare-clear` | очистить таблицу `model_results` |
+| `--only-classify ... --batch N` | батчинг для обычной классификации (не для `--compare-models`) |
 
-### Параллелизм (`--workers N`)
+> **Конфликты флагов:** `--compare-models` несовместим с `--only-classify`, `--only-parse`, `--only-import`, `--re-tag`. При попытке запустить их вместе программа остановится с объяснением.
+
+### Параллелизм и батчинг
 
 `--workers` работает как для `--compare-models`, так и для `--only-classify`.
+`--batch` доступен только для `--only-classify` и `--re-tag` (не для `--compare-models`).
 Для GPU-параллелизма на стороне Ollama установите `OLLAMA_NUM_PARALLEL=N` перед `ollama serve`.
 
 ```bash
-# Пример: 4 параллельных воркера
+# Сравнение с 4 параллельными воркерами
 python main.py --compare-models llama3 mistral --workers 4 --domain habr.com
+
+# Обычная классификация с батчингом + параллельностью
+python main.py --only-classify --batch 10 --workers 4
 
 set OLLAMA_NUM_PARALLEL=4  # (Windows, перед ollama serve)
 ```
+
+### Защита от зависания
+
+Каждый запрос к Ollama ограничен:
+- `num_predict` — максимум токенов в ответе (80 для одиночного URL, 30×N для батча из N URL)
+- `timeout=120s` — HTTP-таймаут на уровне клиента
+
+Если один батч «завис» — остальные потоки продолжают работу. После разблокировки прогресс-бар быстро наверстает накопленную очередь — это нормальное поведение.
 
 ---
 

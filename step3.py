@@ -1,3 +1,4 @@
+import re
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -25,12 +26,21 @@ OLLAMA_HOST = "http://localhost:11434"
 # После скольких подряд ошибок соединения прерываем обработку
 MAX_CONSECUTIVE_CONN_ERRORS = 3
 
+# Максимум токенов в ответе на один URL (защита от бесконечной генерации)
+NUM_PREDICT_SINGLE = 80
+# На батч — 30 токенов на URL (например, 10 URL → 300 токенов)
+NUM_PREDICT_PER_URL = 30
+
 console = Console()
 
 
+# Максимум секунд ожидания ответа от Ollama на один запрос
+# (батч из 20 URL может занять до ~120с; одиночный — обычно до 30с)
+OLLAMA_REQUEST_TIMEOUT = 120.0
+
 # ── Клиент Ollama ─────────────────────────────────────────────────────────────
 def _build_client() -> ollama.Client:
-    return ollama.Client(host=OLLAMA_HOST)
+    return ollama.Client(host=OLLAMA_HOST, timeout=OLLAMA_REQUEST_TIMEOUT)
 
 
 def get_available_models(client: ollama.Client) -> list[str]:
@@ -96,6 +106,28 @@ def _build_prompt(title: str, url: str, hints: list[str]) -> str:
     )
 
 
+def _build_batch_prompt(items: list[dict], hints: list[str]) -> str:
+    """Промпт для пакетной классификации N URL за один запрос к модели."""
+    hints_part = (
+        f"Tag suggestions (use them if they fit, or invent your own): {', '.join(hints)}\n"
+        if hints
+        else "No tag suggestions provided — invent appropriate tags yourself.\n"
+    )
+    lines = [
+        "Classify each web page below with 1–3 short topic tags.",
+        "Rules:",
+        "- Tags must be in the same language as the title (Russian or English).",
+        "- Respond with ONLY a numbered list — one line per item, nothing else.",
+        "- Format exactly: 1. tag1, tag2, tag3",
+        "",
+        hints_part,
+    ]
+    for i, item in enumerate(items, 1):
+        lines.append(f"{i}. URL: {item['url']}")
+        lines.append(f"   Title: {item['title'] or '(no title)'}")
+    return "\n".join(lines)
+
+
 def classify_url(
     client: ollama.Client,
     model: str,
@@ -103,7 +135,7 @@ def classify_url(
     title: str,
     hints: list[str],
 ) -> str:
-    """Запрашивает у Ollama теги для URL. Возвращает строку тегов через запятую.
+    """Запрашивает у Ollama теги для одного URL. Возвращает строку тегов через запятую.
 
     Исключения:
         ollama.ResponseError  — API-ошибка (неверная модель, ошибка сервера и т.п.)
@@ -114,18 +146,51 @@ def classify_url(
     resp = client.chat(
         model=model,
         messages=[{"role": "user", "content": prompt}],
+        options={"num_predict": NUM_PREDICT_SINGLE},
     )
     raw = resp.message.content.strip()
 
-    # Берём первую непустую строку, разбиваем по запятым, чистим каждый тег
     first_line = next((ln for ln in raw.splitlines() if ln.strip()), "")
     tags = [t.strip().strip("\"'.,;:-") for t in first_line.split(",")]
-    tags = [t for t in tags if t][:5]  # максимум 5 тегов, без пустых
+    tags = [t for t in tags if t][:5]
 
     if not tags:
         raise ValueError(f"Модель вернула пустой ответ: {raw!r}")
 
     return ", ".join(tags)
+
+
+def classify_batch(
+    client: ollama.Client,
+    model: str,
+    items: list[dict],   # каждый: {"url": str, "title": str | None}
+    hints: list[str],
+) -> list[str | None]:
+    """Классифицирует пакет URL за один запрос к модели.
+
+    Возвращает список строк тегов или None (если парсинг ответа не удался
+    для данной позиции). Для None-элементов вызывающая сторона делает fallback
+    на classify_url.
+    """
+    prompt = _build_batch_prompt(items, hints)
+    resp = client.chat(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        options={"num_predict": len(items) * NUM_PREDICT_PER_URL},
+    )
+    raw = resp.message.content.strip()
+
+    results: list[str | None] = [None] * len(items)
+    for line in raw.splitlines():
+        m = re.match(r"^(\d+)[.)]\s+(.+)$", line.strip())
+        if m:
+            idx = int(m.group(1)) - 1
+            if 0 <= idx < len(items):
+                tags = [t.strip().strip("\"'.,;:-") for t in m.group(2).split(",")]
+                tags = [t for t in tags if t][:5]
+                if tags:
+                    results[idx] = ", ".join(tags)
+    return results
 
 
 # ── Обработка одного URL с разделением типов ошибок ───────────────────────────
@@ -141,26 +206,22 @@ def _process_one(
     hints: list[str],
     consecutive_conn_errors: int,
 ) -> tuple[str | None, int]:
-    """Классифицирует один URL. Возвращает (category | None, новый consecutive_conn_errors).
+    """Классифицирует один URL. Возвращает (category, новый consecutive_conn_errors).
 
     Поднимает _OllamaDown, если достигнут лимит подряд идущих ошибок соединения.
     """
     try:
         category = classify_url(client, model, url, title, hints)
-        return category, 0  # сброс счётчика при успехе
+        return category, 0
 
     except ollama.ResponseError as exc:
-        # API-ошибка: неверная модель, ошибка генерации и т.п.
-        # Не сбрасываем счётчик соединений, но и не увеличиваем — это не обрыв сети.
         msg = f"ResponseError [{exc.status_code}]: {exc.error}"
         raise RuntimeError(msg) from exc
 
     except ValueError:
-        # Пустой ответ модели — пропускаем URL, продолжаем
         raise
 
     except Exception as exc:
-        # Вероятно, ошибка соединения (Ollama упала, таймаут и т.п.)
         consecutive_conn_errors += 1
         if consecutive_conn_errors >= MAX_CONSECUTIVE_CONN_ERRORS:
             raise _OllamaDown(
@@ -176,12 +237,9 @@ def _update_hints(category: str, hints: list[str]) -> int:
     """
     new_tags = [t.strip() for t in category.split(",") if t.strip()]
     added, _ = add_tags(new_tags)
-
-    # Обновляем hints в памяти — следующие URL сразу увидят новые теги
     for tag in new_tags:
         if tag not in hints:
             hints.append(tag)
-
     return added
 
 
@@ -210,6 +268,7 @@ def main(
     no_progress: bool = False,
     verbose: bool = False,
     workers: int = 1,
+    batch: int = 1,
 ) -> None:
     """
     model            — имя модели Ollama; если None — интерактивный выбор
@@ -217,6 +276,8 @@ def main(
     list_models_flag — показать список моделей и выйти
     no_progress      — plain вывод без rich progress bar
     verbose          — показывать присвоенные теги по каждому URL
+    workers          — кол-во параллельных потоков к Ollama
+    batch            — кол-во URL в одном запросе к модели (батчинг)
     """
     console.print(Panel("[bold cyan]Step 3 — Классификация через Ollama LLM[/bold cyan]"))
 
@@ -290,88 +351,207 @@ def main(
         )
         return
 
-    console.print(f"\nК классификации: [bold yellow]{len(rows)}[/bold yellow] URL\n")
+    total_urls = len(rows)
+    mode_parts = []
+    if workers > 1:
+        mode_parts.append(f"{workers} потока")
+    if batch > 1:
+        mode_parts.append(f"пакет {batch} URL/запрос")
+    mode_str = f" [dim]({', '.join(mode_parts)})[/dim]" if mode_parts else ""
+    console.print(f"\nК классификации: [bold yellow]{total_urls}[/bold yellow] URL{mode_str}\n")
+
+    # ── Вспомогательная: разбивка на куски ────────────────────────────────────
+    def _iter_chunks(lst: list, n: int):
+        for i in range(0, len(lst), n):
+            yield lst[i : i + n]
 
     # ── Обработка ─────────────────────────────────────────────────────────────
-    done_count = 0
+    done_count  = 0
     error_count = 0
-    aborted    = False
+    aborted     = False
 
     if workers > 1:
         # ── Параллельный режим (ThreadPoolExecutor) ────────────────────────────
         _abort  = threading.Event()
-        _h_lock = threading.Lock()   # для _update_hints (пишет в hints и DB)
-        _ce_cnt = [0]                # счётчик ошибок соединения (мутабельный ref)
+        _h_lock = threading.Lock()
+        _ce_cnt = [0]
         _ce_lk  = threading.Lock()
 
-        def _worker(row: dict):
-            if _abort.is_set():
-                return "skip", row["url"], None
-            url, title = row["url"], row["title"] or ""
-            try:
-                # list(hints) — snapshot, чтобы не ловить гонку на чтении
-                cat = classify_url(client, model, url, title, list(hints))
-                set_category(url, cat, model=model)
-                with _h_lock:
-                    _update_hints(cat, hints)
+        if batch > 1:
+            # ── Параллельный пакетный режим ───────────────────────────────────
+            def _worker_batch(chunk: list[dict]):
+                if _abort.is_set():
+                    return "skip", chunk, []
+                hints_snap = list(hints)
+                try:
+                    cats = classify_batch(client, model, chunk, hints_snap)
+                except Exception as exc:
+                    with _ce_lk:
+                        _ce_cnt[0] += 1
+                        if _ce_cnt[0] >= MAX_CONSECUTIVE_CONN_ERRORS:
+                            _abort.set()
+                    return "conn_err", chunk, str(exc)
+
+                results = []
+                for row, cat in zip(chunk, cats):
+                    if cat is None:
+                        # Fallback: одиночный запрос для этого URL
+                        try:
+                            cat = classify_url(
+                                client, model, row["url"], row["title"] or "", hints_snap
+                            )
+                        except Exception:
+                            results.append((row["url"], None))
+                            continue
+                    set_category(row["url"], cat, model=model)
+                    with _h_lock:
+                        _update_hints(cat, hints)
+                    results.append((row["url"], cat))
                 with _ce_lk:
                     _ce_cnt[0] = 0
-                return "ok", url, cat
-            except ollama.ResponseError as exc:
-                return "api_err", url, f"ResponseError [{exc.status_code}]: {exc.error}"
-            except ValueError as exc:
-                return "empty", url, str(exc)
-            except Exception as exc:
-                with _ce_lk:
-                    _ce_cnt[0] += 1
-                    if _ce_cnt[0] >= MAX_CONSECUTIVE_CONN_ERRORS:
-                        _abort.set()
-                return "conn_err", url, str(exc)
+                return "ok", chunk, results
 
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            futs = [pool.submit(_worker, r) for r in rows]
+            chunks = list(_iter_chunks(rows, batch))
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futs = [pool.submit(_worker_batch, c) for c in chunks]
+                total_chunks = len(futs)
 
-            if no_progress:
-                total = len(futs)
-                for i, fut in enumerate(as_completed(futs), 1):
-                    status, url, data = fut.result()
-                    short = url[:70]
-                    if status == "ok":
-                        done_count += 1
-                        line = f"[{i}/{total}] OK  {short}"
-                        if verbose:
-                            line += f"\n  {data}"
-                        print(line, flush=True)
-                    elif status != "skip":
-                        error_count += 1
-                        print(f"[{i}/{total}] ERR [{status}] {short}\n  {data}", flush=True)
-            else:
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    BarColumn(),
-                    MofNCompleteColumn(),
-                    TaskProgressColumn(),
-                    TimeElapsedColumn(),
-                    console=console,
-                    transient=False,
-                ) as progress:
-                    task = progress.add_task(
-                        f"[dim]workers={workers}[/dim]", total=len(rows)
-                    )
-                    for fut in as_completed(futs):
-                        status, url, data = fut.result()
-                        if status == "ok":
-                            done_count += 1
-                            if verbose:
-                                console.log(f"[green]OK[/green] {data}")
-                        elif status != "skip":
-                            error_count += 1
-                            if verbose:
-                                console.log(f"[red]ERR[/red] [{status}] {data}")
-                        progress.advance(task)
+                try:
+                    if no_progress:
+                        for i, fut in enumerate(as_completed(futs), 1):
+                            status, chunk, data = fut.result()
+                            n = len(chunk)
+                            if status == "ok":
+                                ok_n = sum(1 for _, c in data if c)
+                                done_count  += ok_n
+                                error_count += n - ok_n
+                                print(
+                                    f"[batch {i}/{total_chunks}] OK:{ok_n} ERR:{n - ok_n}",
+                                    flush=True,
+                                )
+                                if verbose:
+                                    for url, cat in data:
+                                        status_str = "OK " if cat else "ERR"
+                                        print(f"  {status_str} {url[:60]}" + (f"\n  {cat}" if cat else ""))
+                            elif status != "skip":
+                                error_count += n
+                                print(f"[batch {i}/{total_chunks}] ERR [{status}] {data}", flush=True)
+                    else:
+                        with Progress(
+                            SpinnerColumn(),
+                            TextColumn("[progress.description]{task.description}"),
+                            BarColumn(),
+                            MofNCompleteColumn(),
+                            TaskProgressColumn(),
+                            TimeElapsedColumn(),
+                            console=console,
+                            transient=False,
+                        ) as progress:
+                            task = progress.add_task(
+                                f"[dim]workers={workers} batch={batch}[/dim]",
+                                total=total_urls,
+                            )
+                            for fut in as_completed(futs):
+                                status, chunk, data = fut.result()
+                                n = len(chunk)
+                                if status == "ok":
+                                    ok_n = sum(1 for _, c in data if c)
+                                    done_count  += ok_n
+                                    error_count += n - ok_n
+                                    if verbose:
+                                        for url, cat in data:
+                                            if cat:
+                                                console.log(f"[green]OK[/green] {cat}")
+                                            else:
+                                                console.log(f"[red]ERR[/red] parse failed: {url[:50]}")
+                                elif status != "skip":
+                                    error_count += n
+                                    if verbose:
+                                        console.log(f"[red]ERR[/red] [{status}] {data}")
+                                progress.advance(task, n)
+                except KeyboardInterrupt:
+                    _abort.set()
+                    for f in futs:
+                        f.cancel()
+                    console.print("\n[yellow]Прерывание по Ctrl+C — ожидаем текущих запросов...[/yellow]")
+                    aborted = True
 
-        aborted = _abort.is_set()
+        else:
+            # ── Параллельный одиночный режим ──────────────────────────────────
+            def _worker(row: dict):
+                if _abort.is_set():
+                    return "skip", row["url"], None
+                url, title = row["url"], row["title"] or ""
+                try:
+                    cat = classify_url(client, model, url, title, list(hints))
+                    set_category(url, cat, model=model)
+                    with _h_lock:
+                        _update_hints(cat, hints)
+                    with _ce_lk:
+                        _ce_cnt[0] = 0
+                    return "ok", url, cat
+                except ollama.ResponseError as exc:
+                    return "api_err", url, f"ResponseError [{exc.status_code}]: {exc.error}"
+                except ValueError as exc:
+                    return "empty", url, str(exc)
+                except Exception as exc:
+                    with _ce_lk:
+                        _ce_cnt[0] += 1
+                        if _ce_cnt[0] >= MAX_CONSECUTIVE_CONN_ERRORS:
+                            _abort.set()
+                    return "conn_err", url, str(exc)
+
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futs = [pool.submit(_worker, r) for r in rows]
+
+                try:
+                    if no_progress:
+                        total = len(futs)
+                        for i, fut in enumerate(as_completed(futs), 1):
+                            status, url, data = fut.result()
+                            short = url[:70]
+                            if status == "ok":
+                                done_count += 1
+                                line = f"[{i}/{total}] OK  {short}"
+                                if verbose:
+                                    line += f"\n  {data}"
+                                print(line, flush=True)
+                            elif status != "skip":
+                                error_count += 1
+                                print(f"[{i}/{total}] ERR [{status}] {short}\n  {data}", flush=True)
+                    else:
+                        with Progress(
+                            SpinnerColumn(),
+                            TextColumn("[progress.description]{task.description}"),
+                            BarColumn(),
+                            MofNCompleteColumn(),
+                            TaskProgressColumn(),
+                            TimeElapsedColumn(),
+                            console=console,
+                            transient=False,
+                        ) as progress:
+                            task = progress.add_task(
+                                f"[dim]workers={workers}[/dim]", total=len(rows)
+                            )
+                            for fut in as_completed(futs):
+                                status, url, data = fut.result()
+                                if status == "ok":
+                                    done_count += 1
+                                    if verbose:
+                                        console.log(f"[green]OK[/green] {data}")
+                                elif status != "skip":
+                                    error_count += 1
+                                    if verbose:
+                                        console.log(f"[red]ERR[/red] [{status}] {data}")
+                                progress.advance(task)
+                except KeyboardInterrupt:
+                    _abort.set()
+                    for f in futs:
+                        f.cancel()
+                    console.print("\n[yellow]Прерывание по Ctrl+C — ожидаем текущих запросов...[/yellow]")
+                    aborted = True
+
+        aborted = aborted or _abort.is_set()
         if aborted:
             console.print("[bold red]Прерывание:[/bold red] Ollama недоступна")
 
@@ -387,45 +567,151 @@ def main(
             elif verbose:
                 console.log(f"[red]ERR[/red] {err_msg}")
 
-        if no_progress:
-            total = len(rows)
-            for i, row in enumerate(rows, 1):
-                url, title = row["url"], row["title"] or ""
-                print(f"[{i}/{total}] {url}", flush=True)
-                try:
-                    category, conn_errors = _process_one(
-                        client, model, url, title, hints, conn_errors
-                    )
-                    set_category(url, category, model=model)
-                    new_in_dict = _update_hints(category, hints)
-                    done_count += 1
-                    if verbose:
-                        suffix = f" (+{new_in_dict} в справочник)" if new_in_dict else ""
-                        print(f"  Tags: {category}{suffix}")
-                except _OllamaDown as exc:
-                    console.print(f"\n[bold red]Прерывание:[/bold red] {exc}")
-                    aborted = True
-                    break
-                except Exception as exc:
-                    _handle_error(str(exc), is_plain=True)
+        if batch > 1:
+            # ── Последовательный пакетный режим ──────────────────────────────
+            chunks = list(_iter_chunks(rows, batch))
+            total_chunks = len(chunks)
+
+            if no_progress:
+                for ci, chunk in enumerate(chunks, 1):
+                    print(f"[batch {ci}/{total_chunks}, {len(chunk)} URL]", flush=True)
+                    try:
+                        cats = classify_batch(client, model, chunk, hints)
+                        for row, cat in zip(chunk, cats):
+                            url, title = row["url"], row["title"] or ""
+                            if cat is None:
+                                # Fallback: одиночный запрос
+                                try:
+                                    cat, conn_errors = _process_one(
+                                        client, model, url, title, hints, conn_errors
+                                    )
+                                    set_category(url, cat, model=model)
+                                    _update_hints(cat, hints)
+                                    done_count += 1
+                                    if verbose:
+                                        print(f"  OK(fb) {url[:60]}\n    {cat}")
+                                except _OllamaDown as exc:
+                                    console.print(f"\n[bold red]Прерывание:[/bold red] {exc}")
+                                    aborted = True
+                                    break
+                                except Exception as exc:
+                                    _handle_error(str(exc), is_plain=True)
+                            else:
+                                set_category(url, cat, model=model)
+                                _update_hints(cat, hints)
+                                done_count += 1
+                                if verbose:
+                                    print(f"  OK  {url[:60]}\n    {cat}")
+                        if aborted:
+                            break
+                    except _OllamaDown as exc:
+                        console.print(f"\n[bold red]Прерывание:[/bold red] {exc}")
+                        aborted = True
+                        break
+                    except Exception as exc:
+                        # Весь батч упал — fallback на одиночные запросы
+                        print(f"  BATCH ERR: {exc} → fallback", flush=True)
+                        for row in chunk:
+                            url, title = row["url"], row["title"] or ""
+                            try:
+                                cat, conn_errors = _process_one(
+                                    client, model, url, title, hints, conn_errors
+                                )
+                                set_category(url, cat, model=model)
+                                _update_hints(cat, hints)
+                                done_count += 1
+                                if verbose:
+                                    print(f"  OK  {url[:60]}\n    {cat}")
+                            except _OllamaDown as exc2:
+                                console.print(f"\n[bold red]Прерывание:[/bold red] {exc2}")
+                                aborted = True
+                                break
+                            except Exception as exc2:
+                                _handle_error(str(exc2), is_plain=True)
+                        if aborted:
+                            break
+            else:
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    MofNCompleteColumn(),
+                    TaskProgressColumn(),
+                    TimeElapsedColumn(),
+                    console=console,
+                    transient=False,
+                ) as progress:
+                    task = progress.add_task("Классификация...", total=total_urls)
+
+                    for ci, chunk in enumerate(chunks, 1):
+                        progress.update(
+                            task, description=f"[dim]batch {ci}/{total_chunks}[/dim]"
+                        )
+                        try:
+                            cats = classify_batch(client, model, chunk, hints)
+                            for row, cat in zip(chunk, cats):
+                                url, title = row["url"], row["title"] or ""
+                                if cat is None:
+                                    try:
+                                        cat, conn_errors = _process_one(
+                                            client, model, url, title, hints, conn_errors
+                                        )
+                                        set_category(url, cat, model=model)
+                                        _update_hints(cat, hints)
+                                        done_count += 1
+                                        if verbose:
+                                            console.log(f"[green]OK(fb)[/green] {cat}")
+                                    except _OllamaDown as exc:
+                                        console.log(f"[bold red]Прерывание:[/bold red] {exc}")
+                                        aborted = True
+                                        break
+                                    except Exception as exc:
+                                        _handle_error(str(exc), is_plain=False)
+                                else:
+                                    set_category(url, cat, model=model)
+                                    _update_hints(cat, hints)
+                                    done_count += 1
+                                    if verbose:
+                                        console.log(f"[green]OK[/green] {cat}")
+                                progress.advance(task)
+                            if aborted:
+                                break
+                        except _OllamaDown as exc:
+                            console.log(f"[bold red]Прерывание:[/bold red] {exc}")
+                            aborted = True
+                            break
+                        except Exception as exc:
+                            # Весь батч упал — fallback на одиночные запросы
+                            if verbose:
+                                console.log(f"[yellow]BATCH ERR[/yellow] {exc} → fallback")
+                            for row in chunk:
+                                url, title = row["url"], row["title"] or ""
+                                try:
+                                    cat, conn_errors = _process_one(
+                                        client, model, url, title, hints, conn_errors
+                                    )
+                                    set_category(url, cat, model=model)
+                                    _update_hints(cat, hints)
+                                    done_count += 1
+                                    if verbose:
+                                        console.log(f"[green]OK(fb)[/green] {cat}")
+                                except _OllamaDown as exc2:
+                                    console.log(f"[bold red]Прерывание:[/bold red] {exc2}")
+                                    aborted = True
+                                    break
+                                except Exception as exc2:
+                                    _handle_error(str(exc2), is_plain=False)
+                                progress.advance(task)
+                            if aborted:
+                                break
+
         else:
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                MofNCompleteColumn(),
-                TaskProgressColumn(),
-                TimeElapsedColumn(),
-                console=console,
-                transient=False,
-            ) as progress:
-                task = progress.add_task("Классификация...", total=len(rows))
-
-                for row in rows:
+            # ── Последовательный одиночный режим ─────────────────────────────
+            if no_progress:
+                total = len(rows)
+                for i, row in enumerate(rows, 1):
                     url, title = row["url"], row["title"] or ""
-                    short_url = url[:60] + "…" if len(url) > 60 else url
-                    progress.update(task, description=f"[dim]{short_url}[/dim]")
-
+                    print(f"[{i}/{total}] {url}", flush=True)
                     try:
                         category, conn_errors = _process_one(
                             client, model, url, title, hints, conn_errors
@@ -434,16 +720,54 @@ def main(
                         new_in_dict = _update_hints(category, hints)
                         done_count += 1
                         if verbose:
-                            suffix = f" [dim](+{new_in_dict} в справочник)[/dim]" if new_in_dict else ""
-                            console.log(f"[green]OK[/green] {category}{suffix}")
+                            suffix = f" (+{new_in_dict} в справочник)" if new_in_dict else ""
+                            print(f"  Tags: {category}{suffix}")
                     except _OllamaDown as exc:
-                        console.log(f"[bold red]Прерывание:[/bold red] {exc}")
+                        console.print(f"\n[bold red]Прерывание:[/bold red] {exc}")
                         aborted = True
                         break
                     except Exception as exc:
-                        _handle_error(str(exc), is_plain=False)
+                        _handle_error(str(exc), is_plain=True)
+            else:
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    MofNCompleteColumn(),
+                    TaskProgressColumn(),
+                    TimeElapsedColumn(),
+                    console=console,
+                    transient=False,
+                ) as progress:
+                    task = progress.add_task("Классификация...", total=len(rows))
 
-                    progress.advance(task)
+                    for row in rows:
+                        url, title = row["url"], row["title"] or ""
+                        short_url = url[:60] + "…" if len(url) > 60 else url
+                        progress.update(task, description=f"[dim]{short_url}[/dim]")
+
+                        try:
+                            category, conn_errors = _process_one(
+                                client, model, url, title, hints, conn_errors
+                            )
+                            set_category(url, category, model=model)
+                            new_in_dict = _update_hints(category, hints)
+                            done_count += 1
+                            if verbose:
+                                suffix = (
+                                    f" [dim](+{new_in_dict} в справочник)[/dim]"
+                                    if new_in_dict
+                                    else ""
+                                )
+                                console.log(f"[green]OK[/green] {category}{suffix}")
+                        except _OllamaDown as exc:
+                            console.log(f"[bold red]Прерывание:[/bold red] {exc}")
+                            aborted = True
+                            break
+                        except Exception as exc:
+                            _handle_error(str(exc), is_plain=False)
+
+                        progress.advance(task)
 
     # ── Итоги ─────────────────────────────────────────────────────────────────
     _print_summary(done_count, error_count, aborted=aborted)
@@ -452,7 +776,9 @@ def main(
             "[dim]Запустите снова когда Ollama будет доступна — "
             "уже классифицированные URL будут пропущены.[/dim]"
         )
-    console.print(Panel("[green]Готово.[/green]" if not aborted else "[yellow]Завершено с ошибками.[/yellow]"))
+    console.print(
+        Panel("[green]Готово.[/green]" if not aborted else "[yellow]Завершено с ошибками.[/yellow]")
+    )
 
 
 if __name__ == "__main__":

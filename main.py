@@ -47,6 +47,8 @@ def parse_args() -> argparse.Namespace:
   python main.py --url https://example.com               обработать один URL
   python main.py --input links.txt                       другой входной файл
   python main.py --no-progress -v                        plain вывод + детали
+  python main.py --only-classify --batch 10              пакетная классификация (10 URL/запрос)
+  python main.py --only-classify --batch 10 --workers 4  батчинг + параллельность
   python main.py --domain habr.com                       только URL с habr.com
   python main.py --domain habr.com --retry-failed        повторить ошибки для домена
   python main.py --compare-models llama3 mistral          сравнить две модели (через пробел)
@@ -213,14 +215,66 @@ def parse_args() -> argparse.Namespace:
         help="кол-во параллельных запросов к Ollama (по умолчанию: 1). "
              "Для реального параллелизма также установите OLLAMA_NUM_PARALLEL=N перед ollama serve",
     )
+    parser.add_argument(
+        "--batch",
+        type=int,
+        metavar="N",
+        default=1,
+        help="кол-во URL в одном запросе к модели — батчинг (по умолчанию: 1). "
+             "Увеличьте до 5–20 для лучшей утилизации GPU. "
+             "Пример: --batch 10 --workers 4",
+    )
 
     return parser.parse_args()
+
+
+def _check_conflicts(args: argparse.Namespace) -> None:
+    """Останавливает программу при конфликтующих или бессмысленных флагах."""
+    import sys
+
+    errors: list[tuple[str, str]] = []  # (проблема, подсказка)
+
+    if args.compare_models:
+        for flag, name in [
+            (args.only_classify, "--only-classify"),
+            (args.only_parse,    "--only-parse"),
+            (args.only_import,   "--only-import"),
+            (args.re_tag,        "--re-tag"),
+        ]:
+            if flag:
+                errors.append((
+                    f"--compare-models и {name} несовместимы",
+                    f"Уберите {name} — сравнение моделей запускает собственную классификацию",
+                ))
+
+    step3_runs = args.only_classify or args.re_tag or bool(args.compare_models)
+    if args.batch > 1 and not step3_runs:
+        errors.append((
+            "--batch требует запуска step3, но он не включён",
+            "Добавьте --only-classify  (или --re-tag / --compare-models)",
+        ))
+    if args.workers > 1 and not step3_runs:
+        errors.append((
+            "--workers требует запуска step3, но он не включён",
+            "Добавьте --only-classify  (или --re-tag / --compare-models)",
+        ))
+
+    if not errors:
+        return
+
+    for problem, hint in errors:
+        console.print(f"[bold red]Ошибка:[/bold red] {problem}")
+        console.print(f"  [dim]→ {hint}[/dim]")
+    console.print()
+    sys.exit(1)
 
 
 def main() -> None:
     args = parse_args()
 
     console.print(Rule("[bold cyan]URL Parser Pipeline[/bold cyan]"))
+
+    _check_conflicts(args)
 
     init_db()
     init_tags_schema()
@@ -307,6 +361,7 @@ def main() -> None:
             no_progress=args.no_progress,
             verbose=args.verbose,
             workers=args.workers,
+            batch=args.batch,
         )
         console.print()
         console.print(Rule("[bold green]Pipeline завершён[/bold green]", style="green"))
@@ -376,6 +431,7 @@ def main() -> None:
             no_progress=args.no_progress,
             verbose=args.verbose,
             workers=args.workers,
+            batch=args.batch,
         )
 
     console.print()

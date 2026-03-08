@@ -234,43 +234,50 @@ def run_compare_models(
             with ThreadPoolExecutor(max_workers=workers) as pool:
                 futs = [pool.submit(_worker, r) for r in rows]
 
-                if no_progress:
-                    total = len(futs)
-                    for i, fut in enumerate(as_completed(futs), 1):
-                        status, url, data = fut.result()
-                        if status == "ok":
-                            done_count += 1
-                            print(f"[{i}/{total}] OK  {url[:70]}" + (f"\n  {data}" if verbose else ""), flush=True)
-                        elif status != "skip":
-                            error_count += 1
-                            print(f"[{i}/{total}] ERR [{status}] {url[:70]}\n  {data}", flush=True)
-                else:
-                    with Progress(
-                        SpinnerColumn(),
-                        TextColumn("[progress.description]{task.description}"),
-                        BarColumn(),
-                        MofNCompleteColumn(),
-                        TaskProgressColumn(),
-                        TimeElapsedColumn(),
-                        console=console,
-                        transient=False,
-                    ) as progress:
-                        task = progress.add_task(
-                            f"{model.split(':')[0]} [dim]×{workers}[/dim]", total=len(rows)
-                        )
-                        for fut in as_completed(futs):
+                try:
+                    if no_progress:
+                        total = len(futs)
+                        for i, fut in enumerate(as_completed(futs), 1):
                             status, url, data = fut.result()
                             if status == "ok":
                                 done_count += 1
-                                if verbose:
-                                    console.log(f"[green]OK[/green] {data}")
+                                print(f"[{i}/{total}] OK  {url[:70]}" + (f"\n  {data}" if verbose else ""), flush=True)
                             elif status != "skip":
                                 error_count += 1
-                                if verbose:
-                                    console.log(f"[red]ERR[/red] [{status}] {data}")
-                            progress.advance(task)
+                                print(f"[{i}/{total}] ERR [{status}] {url[:70]}\n  {data}", flush=True)
+                    else:
+                        with Progress(
+                            SpinnerColumn(),
+                            TextColumn("[progress.description]{task.description}"),
+                            BarColumn(),
+                            MofNCompleteColumn(),
+                            TaskProgressColumn(),
+                            TimeElapsedColumn(),
+                            console=console,
+                            transient=False,
+                        ) as progress:
+                            task = progress.add_task(
+                                f"{model.split(':')[0]} [dim]×{workers}[/dim]", total=len(rows)
+                            )
+                            for fut in as_completed(futs):
+                                status, url, data = fut.result()
+                                if status == "ok":
+                                    done_count += 1
+                                    if verbose:
+                                        console.log(f"[green]OK[/green] {data}")
+                                elif status != "skip":
+                                    error_count += 1
+                                    if verbose:
+                                        console.log(f"[red]ERR[/red] [{status}] {data}")
+                                progress.advance(task)
+                except KeyboardInterrupt:
+                    _abort.set()
+                    for f in futs:
+                        f.cancel()
+                    console.print("\n[yellow]Прерывание по Ctrl+C — ожидаем текущих запросов...[/yellow]")
+                    aborted = True
 
-            aborted = _abort.is_set()
+            aborted = aborted or _abort.is_set()
 
         else:
             # ── Последовательный режим ────────────────────────────────────────
