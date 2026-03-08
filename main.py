@@ -12,12 +12,14 @@ from db import (
     add_tags,
     clear_model_results,
     clear_tags,
+    get_full_stats,
     init_compare_schema,
     init_db,
     init_tags_schema,
     insert_urls,
     reset_all_to_pending,
     reset_categories,
+    reset_categories_by_domain,
     reset_errors_to_pending,
     set_url_pending,
     sync_tags_from_categories,
@@ -112,6 +114,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         dest="list_models",
         help="показать список доступных моделей Ollama и выйти",
+    )
+    parser.add_argument(
+        "--stats",
+        action="store_true",
+        help="показать статистику БД и выйти",
     )
     parser.add_argument(
         "--add-tags",
@@ -279,6 +286,40 @@ def _check_conflicts(args: argparse.Namespace) -> None:
     sys.exit(1)
 
 
+def _show_stats() -> None:
+    from rich.panel import Panel
+    from rich.table import Table
+
+    s = get_full_stats()
+
+    t = Table.grid(padding=(0, 2))
+    t.add_column(style="dim", min_width=28)
+    t.add_column(justify="right", style="bold", min_width=6)
+
+    t.add_row("Всего URL:", str(s["total"]))
+    t.add_row("", "")
+    t.add_row("[yellow]Ожидает (pending):[/yellow]",    f"[yellow]{s['pending']}[/yellow]")
+    t.add_row("[green]Обработано (done):[/green]",      f"[green]{s['done']}[/green]")
+    t.add_row("[red]Ошибок (error):[/red]",             f"[red]{s['error']}[/red]")
+
+    if s["done"]:
+        pct = s["classified"] * 100 // s["done"] if s["done"] else 0
+        t.add_row("", "")
+        t.add_row(
+            "[cyan]Классифицировано:[/cyan]",
+            f"[cyan]{s['classified']}[/cyan]  [dim]{pct}%[/dim]",
+        )
+        t.add_row("[dim]Без категории:[/dim]", f"[dim]{s['unclassified']}[/dim]")
+
+    t.add_row("", "")
+    t.add_row("Тегов в справочнике:", str(s["tags"]))
+
+    if s["compared"]:
+        t.add_row("URL в model_results:", str(s["compared"]))
+
+    console.print(Panel(t, title="[bold cyan]Статистика БД[/bold cyan]", expand=False))
+
+
 def main() -> None:
     args = parse_args()
 
@@ -289,6 +330,11 @@ def main() -> None:
     init_db()
     init_tags_schema()
     init_compare_schema()
+
+    # ── --stats ────────────────────────────────────────────────────────────────
+    if args.stats:
+        _show_stats()
+        return
 
     # ── --compare-models ───────────────────────────────────────────────────────
     if args.compare_models:
@@ -358,11 +404,18 @@ def main() -> None:
 
     # ── --re-tag ───────────────────────────────────────────────────────────────
     if args.re_tag:
-        n = reset_categories()
-        console.print(
-            f"[yellow]--re-tag:[/yellow] сброшено категорий: [bold]{n}[/bold] "
-            f"[dim](справочник тегов сохранён как подсказки)[/dim]"
-        )
+        if args.domain:
+            n = reset_categories_by_domain(args.domain)
+            console.print(
+                f"[yellow]--re-tag:[/yellow] сброшено категорий: [bold]{n}[/bold] "
+                f"[dim](домен: {args.domain}, справочник тегов сохранён)[/dim]"
+            )
+        else:
+            n = reset_categories()
+            console.print(
+                f"[yellow]--re-tag:[/yellow] сброшено категорий: [bold]{n}[/bold] "
+                f"[dim](справочник тегов сохранён как подсказки)[/dim]"
+            )
         # Сразу запускаем step3 с теми же параметрами
         console.print()
         console.print(Rule("[dim]Step 3 — Классификация[/dim]", style="dim"))

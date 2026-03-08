@@ -90,6 +90,37 @@ def get_stats() -> dict[str, int]:
     return stats
 
 
+def get_full_stats() -> dict:
+    """Расширенная статистика: статусы + классификация + теги + сравнение."""
+    stats = get_stats()
+    with get_conn() as conn:
+        # Классифицировано среди done
+        row = conn.execute(
+            "SELECT COUNT(*) as cnt FROM urls"
+            " WHERE status = 'done' AND category IS NOT NULL AND category != ''"
+        ).fetchone()
+        stats["classified"] = row["cnt"]
+        stats["unclassified"] = stats["done"] - stats["classified"]
+
+        # Тегов в справочнике
+        try:
+            row = conn.execute("SELECT COUNT(*) as cnt FROM tags").fetchone()
+            stats["tags"] = row["cnt"]
+        except sqlite3.OperationalError:
+            stats["tags"] = 0
+
+        # URL, участвовавших в сравнении моделей
+        try:
+            row = conn.execute(
+                "SELECT COUNT(DISTINCT url_id) as cnt FROM model_results"
+            ).fetchone()
+            stats["compared"] = row["cnt"]
+        except sqlite3.OperationalError:
+            stats["compared"] = 0
+
+    return stats
+
+
 def reset_all_to_pending() -> int:
     """Сбрасывает все записи в pending. Возвращает кол-во затронутых строк."""
     with get_conn() as conn:
@@ -238,6 +269,32 @@ def reset_categories() -> int:
     with get_conn() as conn:
         cur = conn.execute(
             "UPDATE urls SET category = NULL, tagged_by = NULL WHERE status = 'done'"
+        )
+        return cur.rowcount
+
+
+def reset_categories_by_domain(domain: str) -> int:
+    """Сбрасывает category и tagged_by только для done-записей указанного домена.
+    Нечувствителен к www-префиксу и регистру.
+    Возвращает кол-во затронутых строк.
+    """
+    from urllib.parse import urlparse
+
+    domain_norm = domain.lower().removeprefix("www.")
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT url FROM urls WHERE status = 'done'"
+        ).fetchall()
+        urls_in_domain = [
+            row["url"] for row in rows
+            if urlparse(row["url"]).netloc.lower().removeprefix("www.") == domain_norm
+        ]
+        if not urls_in_domain:
+            return 0
+        placeholders = ",".join("?" * len(urls_in_domain))
+        cur = conn.execute(
+            f"UPDATE urls SET category = NULL, tagged_by = NULL WHERE url IN ({placeholders})",
+            urls_in_domain,
         )
         return cur.rowcount
 

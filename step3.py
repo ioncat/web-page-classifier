@@ -89,17 +89,18 @@ def _select_model_interactively(available: list[str]) -> str:
 # ── Промпт и классификация ────────────────────────────────────────────────────
 def _build_prompt(title: str, url: str, hints: list[str]) -> str:
     hints_part = (
-        f"Tag suggestions (use them if they fit, or create your own): {', '.join(hints)}\n"
+        f"Category suggestions (use one if it fits, or create your own): {', '.join(hints)}\n"
         if hints
-        else "No tag suggestions provided — create appropriate tags yourself.\n"
+        else "No category suggestions provided — create an appropriate one yourself.\n"
     )
     return (
-        "Classify the following web page by assigning 1 to 3 short topic tags.\n"
+        "Assign exactly ONE category to the following web page.\n"
         "Rules:\n"
-        "- Tags must be in the same language as the title (Russian or English).\n"
-        "- You may use the suggested tags OR invent your own — pick whatever fits best.\n"
-        "- Respond with ONLY a comma-separated list of tags, nothing else.\n"
-        "- Example response: python, tutorial, beginner\n\n"
+        "- The category must be in the same language as the title (Russian or English).\n"
+        "- It can be 1 word or a short phrase (up to 3 words).\n"
+        "- You may use a suggested category OR invent your own — pick whatever fits best.\n"
+        "- Respond with ONLY the category, nothing else.\n"
+        "- Example response: machine learning\n\n"
         f"{hints_part}"
         f"\nURL: {url}\n"
         f"Title: {title or '(no title)'}\n"
@@ -109,16 +110,17 @@ def _build_prompt(title: str, url: str, hints: list[str]) -> str:
 def _build_batch_prompt(items: list[dict], hints: list[str]) -> str:
     """Промпт для пакетной классификации N URL за один запрос к модели."""
     hints_part = (
-        f"Tag suggestions (use them if they fit, or invent your own): {', '.join(hints)}\n"
+        f"Category suggestions (use one if it fits, or invent your own): {', '.join(hints)}\n"
         if hints
-        else "No tag suggestions provided — invent appropriate tags yourself.\n"
+        else "No category suggestions provided — invent an appropriate one yourself.\n"
     )
     lines = [
-        "Classify each web page below with 1–3 short topic tags.",
+        "Assign exactly ONE category to each web page below.",
         "Rules:",
-        "- Tags must be in the same language as the title (Russian or English).",
+        "- The category must be in the same language as the title (Russian or English).",
+        "- It can be 1 word or a short phrase (up to 3 words).",
         "- Respond with ONLY a numbered list — one line per item, nothing else.",
-        "- Format exactly: 1. tag1, tag2, tag3",
+        "- Format exactly: 1. category name",
         "",
         hints_part,
     ]
@@ -155,8 +157,9 @@ def classify_url(
     raw = resp.message.content.strip()
 
     first_line = next((ln for ln in raw.splitlines() if ln.strip()), "")
-    tags = [t.strip().strip("\"'.,;:-") for t in first_line.split(",")]
-    tags = [t for t in tags if t][:5]
+    # Берём всю строку как одну категорию (убираем кавычки/пунктуацию по краям)
+    tag = first_line.strip().strip("\"'.,;:-")
+    tags = [tag] if tag else []
 
     if not tags:
         raise ValueError(f"Модель вернула пустой ответ: {raw!r}")
@@ -194,10 +197,9 @@ def classify_batch(
         if m:
             idx = int(m.group(1)) - 1
             if 0 <= idx < len(items):
-                tags = [t.strip().strip("\"'.,;:-") for t in m.group(2).split(",")]
-                tags = [t for t in tags if t][:5]
-                if tags:
-                    results[idx] = ", ".join(tags)
+                tag = m.group(2).strip().strip("\"'.,;:-")
+                if tag:
+                    results[idx] = tag
     return results
 
 
