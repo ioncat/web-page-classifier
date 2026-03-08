@@ -16,9 +16,13 @@ benchmark.py — Поиск оптимальной комбинации --batch 
 
 import argparse
 import csv
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
+
+# Позволяет запускать из любой директории: python benchmark/benchmark.py
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from rich.console import Console
 from rich.panel import Panel

@@ -12,7 +12,9 @@ url-parser/
 ├── step2.py         # парсинг <title> для каждого URL
 ├── step3.py         # классификация через локальный Ollama LLM
 ├── compare.py       # сравнение нескольких моделей side-by-side
-├── benchmark.py     # поиск оптимального batch/workers
+├── benchmark/
+│   ├── benchmark.py     # поиск оптимального batch/workers
+│   └── benchmark_log.csv  # лог результатов (создаётся автоматически)
 ├── db.py            # работа с SQLite
 ├── requirements.txt
 ├── raw_links.txt    # входной файл со ссылками
@@ -353,17 +355,18 @@ OLLAMA_NUM_PARALLEL=4 ollama serve
 | 10 | 4 | 4 | ~80–90% ✓ |
 | 20 | 4 | 4 | ~85–95% |
 
-> **Рекомендация:** начните с `--batch 10 --workers 4`. Для подбора оптимума используйте `benchmark.py`.
+> **Рекомендация:** начните с `--batch 10 --workers 4`. Для подбора оптимума используйте `benchmark/benchmark.py`.
 
 ### Поиск оптимальных параметров
 
-`benchmark.py` автоматически прогоняет несколько конфигураций на одном наборе URL и выводит сравнительную таблицу URL/с:
+`benchmark/benchmark.py` автоматически прогоняет несколько конфигураций на одном наборе URL и выводит сравнительную таблицу URL/с. Результат каждого полного прогона дописывается в `benchmark/benchmark_log.csv`.
 
 ```bash
-python benchmark.py                     # 50 URL × 10 конфигов
-python benchmark.py --limit 30          # быстрее, меньше URL
-python benchmark.py --no-warmup         # модель уже в VRAM
-python benchmark.py --only 0 4 6 7     # только конкретные конфиги
+python benchmark/benchmark.py                     # 50 URL × 10 конфигов
+python benchmark/benchmark.py --limit 30          # быстрее, меньше URL
+python benchmark/benchmark.py --no-warmup         # модель уже в VRAM
+python benchmark/benchmark.py --only 0 4 6 7     # только конкретные конфиги
+python benchmark/benchmark.py --model NextAgent/Convo:latest --limit 30
 ```
 
 Пример вывода:

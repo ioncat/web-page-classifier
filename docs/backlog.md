@@ -64,7 +64,7 @@
 | 33 | **HTTP timeout** — `OLLAMA_REQUEST_TIMEOUT = 120s` на клиенте — защита от зависшего запроса | `step3.py` |
 | 34 | **Ctrl+C в параллельном режиме** — `try/except KeyboardInterrupt` внутри `as_completed`, `f.cancel()` для очереди, корректный выход | `step3.py`, `compare.py` |
 | 35 | **`_check_conflicts()`** — останавливает программу с объяснением при несовместимых флагах (`--compare-models` + pipeline, `--batch/--workers` без step3) | `main.py` |
-| 36 | **`benchmark.py`** — автоматический поиск оптимального `batch×workers`: 10 конфигов, фиксированный набор URL, измерение URL/с, Rich-таблица с победителем | `benchmark.py` |
+| 36 | **`benchmark/benchmark.py`** — автоматический поиск оптимального `batch×workers`: 10 конфигов, фиксированный набор URL, измерение URL/с, Rich-таблица с победителем, лог в `benchmark_log.csv` | `benchmark/benchmark.py` |
 
 ---
 
@@ -73,7 +73,7 @@
 | Показатель | Значение |
 |---|---|
 | Всего фич | **36** |
-| Файлов в проекте | 9 (`main.py`, `step1–3.py`, `compare.py`, `benchmark.py`, `db.py`, `README.md`, `docs/`) |
+| Файлов в проекте | 9 (`main.py`, `step1–3.py`, `compare.py`, `benchmark/benchmark.py`, `db.py`, `README.md`, `docs/`) |
 | GPU утилизация: старт → финал | 5–10% → **80–90%** |
 | Сессий | 4 (2 дня) |
 | Коммитов | 15 |
