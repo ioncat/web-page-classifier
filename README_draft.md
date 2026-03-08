@@ -115,6 +115,15 @@ python benchmark/benchmark.py         # найти оптимальный batch/
 | `--force` | сбросить все записи в `pending` и начать заново |
 | `--retry-failed` | повторить только URL со статусом `error` |
 
+### Параллельность
+
+| Флаг | Что делает | По умолчанию |
+|---|---|---|
+| `--workers N` | кол-во параллельных потоков | 1 |
+
+- **Step2:** воркеры распределяются по доменам round-robin — одновременно идут только разные домены, снижая риск бана
+- **Step3:** параллельные запросы к Ollama (для GPU-параллелизма также нужен `OLLAMA_NUM_PARALLEL=N`)
+
 ### Классификация (step3 / Ollama)
 
 | Флаг | Что делает | По умолчанию |
@@ -122,10 +131,9 @@ python benchmark/benchmark.py         # найти оптимальный batch/
 | `--model MODEL` | модель Ollama | первая доступная |
 | `--list-models` | показать список доступных моделей и выйти | — |
 | `--batch N` | кол-во URL в одном запросе к модели (батчинг) | 1 |
-| `--workers N` | кол-во параллельных потоков к Ollama | 1 |
 | `--no-think` | отключить thinking-режим модели (`think: false`) | выкл. |
 
-> `--no-think` нужен для thinking-моделей: `qwen3`, `deepseek-r1` и др.
+> `--no-think` нужен для thinking-моделей: `qwen3`, `deepseek-r1`, `minimax-m2` и др.
 > Для обычных моделей флаг не нужен и не влияет на результат.
 
 ### Управление тегами-подсказками
@@ -177,6 +185,9 @@ python main.py --retry-failed
 
 # Сбросить всё и начать заново
 python main.py --force
+
+# Параллельный парсинг — 4 потока, разные домены одновременно
+python main.py --only-parse --workers 4
 ```
 
 ### Классификация
@@ -188,8 +199,9 @@ python main.py --list-models
 # Классифицировать конкретной моделью
 python main.py --only-classify --model mistral
 
-# Thinking-модели — обязательно с --no-think
+# Thinking-модели (qwen3, deepseek-r1, minimax-m2) — обязательно с --no-think
 python main.py --only-classify --model qwen3:8b --no-think
+python main.py --only-classify --model minimax-m2:cloud --no-think
 
 # Батчинг + параллельность (быстрее на больших объёмах)
 python main.py --only-classify --batch 10 --workers 4
@@ -244,7 +256,11 @@ python main.py --no-progress > run.log
 
 ## Производительность
 
-По умолчанию step3 отправляет по одному URL последовательно.
+`--workers N` ускоряет оба шага:
+- **Step2** (парсинг): 4 воркера ≈ 4× быстрее, разные домены параллельно
+- **Step3** (классификация): параллельные запросы к Ollama + батчинг
+
+По умолчанию оба шага работают последовательно (`workers=1`).
 `--batch` и `--workers` позволяют существенно ускорить классификацию.
 
 | `--batch` | `--workers` | `OLLAMA_NUM_PARALLEL` | Утилизация GPU |
