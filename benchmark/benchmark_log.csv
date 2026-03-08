@@ -1,3 +1,4 @@
 date,model,url_per_sec,config
 2026-03-08 14:57,NextAgent/Convo:latest,1.1,batch=1 workers=4
 2026-03-08 15:55,rouge/phi-3.5-mini-4k-instruct:Q8,0.4,batch=1 workers=2
+2026-03-08 16:25,rouge/phi-3.5-mini-4k-instruct:Q8,0.4,batch=1 workers=4
