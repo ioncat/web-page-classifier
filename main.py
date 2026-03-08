@@ -48,6 +48,7 @@ def parse_args() -> argparse.Namespace:
   python main.py --input links.txt                       другой входной файл
   python main.py --no-progress -v                        plain вывод + детали
   python main.py --only-classify --batch 10              пакетная классификация (10 URL/запрос)
+  python main.py --only-parse --workers 4                параллельный парсинг (разные домены)
   python main.py --only-classify --batch 10 --workers 4  батчинг + параллельность
   python main.py --domain habr.com                       только URL с habr.com
   python main.py --domain habr.com --retry-failed        повторить ошибки для домена
@@ -212,8 +213,9 @@ def parse_args() -> argparse.Namespace:
         type=int,
         metavar="N",
         default=1,
-        help="кол-во параллельных запросов к Ollama (по умолчанию: 1). "
-             "Для реального параллелизма также установите OLLAMA_NUM_PARALLEL=N перед ollama serve",
+        help="кол-во параллельных потоков (по умолчанию: 1). "
+             "Step2: разные домены параллельно. "
+             "Step3: параллельные запросы к Ollama (также установите OLLAMA_NUM_PARALLEL=N).",
     )
     parser.add_argument(
         "--batch",
@@ -261,10 +263,10 @@ def _check_conflicts(args: argparse.Namespace) -> None:
             "--batch требует запуска step3, но он не включён",
             "Добавьте --only-classify  (или --re-tag / --compare-models)",
         ))
-    if args.workers > 1 and not step3_runs:
+    if args.workers > 1 and args.only_import:
         errors.append((
-            "--workers требует запуска step3, но он не включён",
-            "Добавьте --only-classify  (или --re-tag / --compare-models)",
+            "--workers при --only-import не применяется (step1 не использует параллельность)",
+            "Уберите --workers или замените --only-import на --only-parse / --only-classify",
         ))
 
     if not errors:
@@ -430,6 +432,7 @@ def main() -> None:
             no_progress=args.no_progress,
             verbose=args.verbose,
             domain=args.domain,
+            workers=args.workers,
         )
 
     if run_classify:

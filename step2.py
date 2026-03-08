@@ -1,5 +1,8 @@
 import random
 import time
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlparse as _urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -21,11 +24,11 @@ from rich.table import Table
 from db import get_errors, get_pending, get_pending_by_domain, get_stats, init_db, update_url
 
 # ── Параметры краулера ────────────────────────────────────────────────────────
-REQUEST_TIMEOUT   = (10, 30)   # (connect, read) в секундах
+REQUEST_TIMEOUT   = (5, 10)   # (connect, read) в секундах
 DELAY_MIN         = 2.0        # минимальная пауза между запросами (сек)
-DELAY_MAX         = 5.0        # максимальная пауза
-MAX_RETRIES       = 3          # попыток на URL
-RETRY_BACKOFF     = 2          # множитель backoff: 2^1=2s, 2^2=4s, 2^3=8s
+DELAY_MAX         = 3.0        # максимальная пауза
+MAX_RETRIES       = 0          # попыток на URL
+RETRY_BACKOFF     = 0          # множитель backoff: 2^1=2s, 2^2=4s, 2^3=8s
 
 USER_AGENTS = [
     # Chrome / Windows
@@ -116,6 +119,102 @@ def fetch_title(url: str) -> str | None:
 
         except requests.exceptions.RequestException:
             raise  # HTTP-ошибки — не ретраим вручную (urllib3 уже обработал)
+
+
+# ── Вспомогательные функции параллельного режима ─────────────────────────────
+def _interleave_by_domain(urls: list[str]) -> list[str]:
+    """Round-robin по доменам: habr1, github1, medium1, habr2, github2, ...
+    Гарантирует что два воркера никогда не стартуют с одного домена одновременно.
+    """
+    groups: dict[str, list[str]] = defaultdict(list)
+    for url in urls:
+        domain = _urlparse(url).netloc.lower().removeprefix("www.")
+        groups[domain].append(url)
+    result: list[str] = []
+    queues = list(groups.values())
+    while any(queues):
+        for q in queues:
+            if q:
+                result.append(q.pop(0))
+    return result
+
+
+def _fetch_one(url: str) -> tuple[str, str | None, str | None]:
+    """Загружает один URL. Возвращает (url, title, error_msg)."""
+    try:
+        return url, fetch_title(url), None
+    except Exception as exc:
+        return url, None, str(exc)
+
+
+def _process_parallel(pending: list[str], workers: int, verbose: bool) -> tuple[int, int]:
+    """Параллельная обработка с round-robin по доменам, Rich progress."""
+    ordered = _interleave_by_domain(pending)
+    done_count = 0
+    error_count = 0
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        console=console,
+        transient=False,
+    ) as progress:
+        task = progress.add_task("Обработка...", total=len(ordered))
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futs = {executor.submit(_fetch_one, url): url for url in ordered}
+            try:
+                for fut in as_completed(futs):
+                    url, title, error = fut.result()
+                    if error:
+                        update_url(url, status="error", error=error)
+                        error_count += 1
+                        if verbose:
+                            console.log(f"[red]ERR[/red] {error}")
+                    else:
+                        update_url(url, status="done", title=title)
+                        done_count += 1
+                        if verbose:
+                            console.log(f"[green]OK[/green] {title or '—'}")
+                    progress.advance(task)
+            except KeyboardInterrupt:
+                console.print("\n[yellow]Прерывание по Ctrl+C...[/yellow]")
+
+    return done_count, error_count
+
+
+def _process_parallel_plain(pending: list[str], workers: int, verbose: bool) -> tuple[int, int]:
+    """Параллельная обработка без Rich progress (--no-progress)."""
+    ordered = _interleave_by_domain(pending)
+    done_count = 0
+    error_count = 0
+    total = len(ordered)
+    completed = 0
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futs = {executor.submit(_fetch_one, url): url for url in ordered}
+        try:
+            for fut in as_completed(futs):
+                url, title, error = fut.result()
+                completed += 1
+                if error:
+                    update_url(url, status="error", error=error)
+                    error_count += 1
+                    print(f"[{completed}/{total}] ERR {url}: {error}", flush=True)
+                else:
+                    update_url(url, status="done", title=title)
+                    done_count += 1
+                    if verbose:
+                        print(f"[{completed}/{total}] OK {title or '—'}", flush=True)
+                    else:
+                        print(f"[{completed}/{total}] {url}", flush=True)
+        except KeyboardInterrupt:
+            print("\nПрерывание по Ctrl+C...")
+
+    return done_count, error_count
 
 
 # ── Вывод статистики БД ───────────────────────────────────────────────────────
@@ -238,6 +337,7 @@ def main(
     verbose: bool = False,
     urls: list[str] | None = None,
     domain: str | None = None,
+    workers: int = 1,
 ) -> None:
     """
     limit       — обработать не более N URL
@@ -245,6 +345,7 @@ def main(
     verbose     — показывать заголовок / ошибку по каждому URL
     urls        — список конкретных URL (если None — берёт pending из БД)
     domain      — фильтровать только URL указанного домена
+    workers     — кол-во параллельных потоков (round-robin по доменам)
     """
     console.print(Panel("[bold cyan]Step 2 — Парсинг заголовков страниц[/bold cyan]"))
 
@@ -271,7 +372,12 @@ def main(
 
     console.print(f"К обработке: [bold yellow]{len(pending)}[/bold yellow] URL\n")
 
-    if no_progress:
+    if workers > 1:
+        if no_progress:
+            done_count, error_count = _process_parallel_plain(pending, workers, verbose)
+        else:
+            done_count, error_count = _process_parallel(pending, workers, verbose)
+    elif no_progress:
         done_count, error_count = _process_plain(pending, verbose)
     else:
         done_count, error_count = _process_rich(pending, verbose)
