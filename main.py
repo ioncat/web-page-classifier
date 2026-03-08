@@ -224,6 +224,14 @@ def parse_args() -> argparse.Namespace:
              "Увеличьте до 5–20 для лучшей утилизации GPU. "
              "Пример: --batch 10 --workers 4",
     )
+    parser.add_argument(
+        "--no-think",
+        action="store_true",
+        dest="no_think",
+        help="отключить thinking-режим модели: передаёт {think: false} в Ollama. "
+             "Необходимо для qwen3, deepseek-r1 и других thinking-моделей — "
+             "без этого флага они тратят все токены на рассуждения и возвращают пустой ответ.",
+    )
 
     return parser.parse_args()
 
@@ -293,6 +301,7 @@ def main() -> None:
             verbose=args.verbose,
             domain=args.domain,
             workers=args.workers,
+            no_think=args.no_think,
         )
         return
 
@@ -362,6 +371,7 @@ def main() -> None:
             verbose=args.verbose,
             workers=args.workers,
             batch=args.batch,
+            no_think=args.no_think,
         )
         console.print()
         console.print(Rule("[bold green]Pipeline завершён[/bold green]", style="green"))
@@ -432,6 +442,7 @@ def main() -> None:
             verbose=args.verbose,
             workers=args.workers,
             batch=args.batch,
+            no_think=args.no_think,
         )
 
     console.print()

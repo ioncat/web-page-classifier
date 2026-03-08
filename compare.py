@@ -137,6 +137,7 @@ def run_compare_models(
     verbose: bool = False,
     domain: str | None = None,
     workers: int = 1,
+    no_think: bool = False,
 ) -> None:
     """Прогоняет каждую модель через все done-URL и сохраняет в model_results.
 
@@ -215,7 +216,7 @@ def run_compare_models(
                     return "skip", row["url"], None
                 url, title, uid = row["url"], row["title"] or "", row["id"]
                 try:
-                    cat = classify_url(client, model, url, title, hints)
+                    cat = classify_url(client, model, url, title, hints, no_think=no_think)
                     save_model_result(uid, model, cat)
                     with _ce_lk:
                         _ce[0] = 0
@@ -289,7 +290,7 @@ def run_compare_models(
                     url, title, uid = row["url"], row["title"] or "", row["id"]
                     print(f"[{i}/{total}] {url}", flush=True)
                     try:
-                        category = classify_url(client, model, url, title, hints)
+                        category = classify_url(client, model, url, title, hints, no_think=no_think)
                         save_model_result(uid, model, category)
                         done_count  += 1
                         conn_errors  = 0
@@ -331,7 +332,7 @@ def run_compare_models(
                         progress.update(task, description=f"[dim]{short}[/dim]")
 
                         try:
-                            category = classify_url(client, model, url, title, hints)
+                            category = classify_url(client, model, url, title, hints, no_think=no_think)
                             save_model_result(uid, model, category)
                             done_count  += 1
                             conn_errors  = 0

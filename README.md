@@ -100,6 +100,7 @@ python main.py --only-classify
 | `--compare-clear` | очистить таблицу `model_results` |
 | `--workers N` | кол-во параллельных потоков к Ollama (по умолчанию: 1) |
 | `--batch N` | кол-во URL в одном запросе к модели — батчинг (по умолчанию: 1, рекомендуется 5–20) |
+| `--no-think` | отключить thinking-режим модели (`think: false` в Ollama) — обязательно для `qwen3`, `deepseek-r1` и других thinking-моделей |
 | `--no-progress` | отключить progress bar, plain вывод в консоль |
 | `-v, --verbose` | показывать заголовок / теги / ошибку по каждому URL |
 
@@ -141,6 +142,9 @@ python main.py --list-models
 
 # Классифицировать с конкретной моделью
 python main.py --only-classify --model mistral
+
+# Thinking-модели (qwen3, deepseek-r1) — обязательно --no-think
+python main.py --only-classify --model qwen3:8b --no-think
 
 # Добавить подсказки для классификации
 python main.py --add-tags "python,ai,tutorial,data science,devops"

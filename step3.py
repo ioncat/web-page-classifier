@@ -134,6 +134,7 @@ def classify_url(
     url: str,
     title: str,
     hints: list[str],
+    no_think: bool = False,
 ) -> str:
     """Запрашивает у Ollama теги для одного URL. Возвращает строку тегов через запятую.
 
@@ -143,10 +144,13 @@ def classify_url(
         Exception             — ошибка соединения (Ollama недоступна)
     """
     prompt = _build_prompt(title or "", url, hints)
+    options: dict = {"num_predict": NUM_PREDICT_SINGLE}
+    if no_think:
+        options["think"] = False
     resp = client.chat(
         model=model,
         messages=[{"role": "user", "content": prompt}],
-        options={"num_predict": NUM_PREDICT_SINGLE},
+        options=options,
     )
     raw = resp.message.content.strip()
 
@@ -165,6 +169,7 @@ def classify_batch(
     model: str,
     items: list[dict],   # каждый: {"url": str, "title": str | None}
     hints: list[str],
+    no_think: bool = False,
 ) -> list[str | None]:
     """Классифицирует пакет URL за один запрос к модели.
 
@@ -173,10 +178,13 @@ def classify_batch(
     на classify_url.
     """
     prompt = _build_batch_prompt(items, hints)
+    options: dict = {"num_predict": len(items) * NUM_PREDICT_PER_URL}
+    if no_think:
+        options["think"] = False
     resp = client.chat(
         model=model,
         messages=[{"role": "user", "content": prompt}],
-        options={"num_predict": len(items) * NUM_PREDICT_PER_URL},
+        options=options,
     )
     raw = resp.message.content.strip()
 
@@ -205,13 +213,14 @@ def _process_one(
     title: str,
     hints: list[str],
     consecutive_conn_errors: int,
+    no_think: bool = False,
 ) -> tuple[str | None, int]:
     """Классифицирует один URL. Возвращает (category, новый consecutive_conn_errors).
 
     Поднимает _OllamaDown, если достигнут лимит подряд идущих ошибок соединения.
     """
     try:
-        category = classify_url(client, model, url, title, hints)
+        category = classify_url(client, model, url, title, hints, no_think=no_think)
         return category, 0
 
     except ollama.ResponseError as exc:
@@ -269,6 +278,7 @@ def main(
     verbose: bool = False,
     workers: int = 1,
     batch: int = 1,
+    no_think: bool = False,
 ) -> None:
     """
     model            — имя модели Ollama; если None — интерактивный выбор
@@ -278,6 +288,7 @@ def main(
     verbose          — показывать присвоенные теги по каждому URL
     workers          — кол-во параллельных потоков к Ollama
     batch            — кол-во URL в одном запросе к модели (батчинг)
+    no_think         — отключить thinking-режим (для qwen3, deepseek-r1 и др.)
     """
     console.print(Panel("[bold cyan]Step 3 — Классификация через Ollama LLM[/bold cyan]"))
 
@@ -384,7 +395,7 @@ def main(
                     return "skip", chunk, []
                 hints_snap = list(hints)
                 try:
-                    cats = classify_batch(client, model, chunk, hints_snap)
+                    cats = classify_batch(client, model, chunk, hints_snap, no_think=no_think)
                 except Exception as exc:
                     with _ce_lk:
                         _ce_cnt[0] += 1
@@ -398,7 +409,8 @@ def main(
                         # Fallback: одиночный запрос для этого URL
                         try:
                             cat = classify_url(
-                                client, model, row["url"], row["title"] or "", hints_snap
+                                client, model, row["url"], row["title"] or "", hints_snap,
+                                no_think=no_think,
                             )
                         except Exception:
                             results.append((row["url"], None))
@@ -483,7 +495,7 @@ def main(
                     return "skip", row["url"], None
                 url, title = row["url"], row["title"] or ""
                 try:
-                    cat = classify_url(client, model, url, title, list(hints))
+                    cat = classify_url(client, model, url, title, list(hints), no_think=no_think)
                     set_category(url, cat, model=model)
                     with _h_lock:
                         _update_hints(cat, hints)
@@ -576,14 +588,15 @@ def main(
                 for ci, chunk in enumerate(chunks, 1):
                     print(f"[batch {ci}/{total_chunks}, {len(chunk)} URL]", flush=True)
                     try:
-                        cats = classify_batch(client, model, chunk, hints)
+                        cats = classify_batch(client, model, chunk, hints, no_think=no_think)
                         for row, cat in zip(chunk, cats):
                             url, title = row["url"], row["title"] or ""
                             if cat is None:
                                 # Fallback: одиночный запрос
                                 try:
                                     cat, conn_errors = _process_one(
-                                        client, model, url, title, hints, conn_errors
+                                        client, model, url, title, hints, conn_errors,
+                                        no_think=no_think,
                                     )
                                     set_category(url, cat, model=model)
                                     _update_hints(cat, hints)
@@ -615,7 +628,8 @@ def main(
                             url, title = row["url"], row["title"] or ""
                             try:
                                 cat, conn_errors = _process_one(
-                                    client, model, url, title, hints, conn_errors
+                                    client, model, url, title, hints, conn_errors,
+                                    no_think=no_think,
                                 )
                                 set_category(url, cat, model=model)
                                 _update_hints(cat, hints)
@@ -648,13 +662,14 @@ def main(
                             task, description=f"[dim]batch {ci}/{total_chunks}[/dim]"
                         )
                         try:
-                            cats = classify_batch(client, model, chunk, hints)
+                            cats = classify_batch(client, model, chunk, hints, no_think=no_think)
                             for row, cat in zip(chunk, cats):
                                 url, title = row["url"], row["title"] or ""
                                 if cat is None:
                                     try:
                                         cat, conn_errors = _process_one(
-                                            client, model, url, title, hints, conn_errors
+                                            client, model, url, title, hints, conn_errors,
+                                            no_think=no_think,
                                         )
                                         set_category(url, cat, model=model)
                                         _update_hints(cat, hints)
@@ -688,7 +703,8 @@ def main(
                                 url, title = row["url"], row["title"] or ""
                                 try:
                                     cat, conn_errors = _process_one(
-                                        client, model, url, title, hints, conn_errors
+                                        client, model, url, title, hints, conn_errors,
+                                        no_think=no_think,
                                     )
                                     set_category(url, cat, model=model)
                                     _update_hints(cat, hints)
@@ -714,7 +730,8 @@ def main(
                     print(f"[{i}/{total}] {url}", flush=True)
                     try:
                         category, conn_errors = _process_one(
-                            client, model, url, title, hints, conn_errors
+                            client, model, url, title, hints, conn_errors,
+                            no_think=no_think,
                         )
                         set_category(url, category, model=model)
                         new_in_dict = _update_hints(category, hints)
@@ -748,7 +765,8 @@ def main(
 
                         try:
                             category, conn_errors = _process_one(
-                                client, model, url, title, hints, conn_errors
+                                client, model, url, title, hints, conn_errors,
+                                no_think=no_think,
                             )
                             set_category(url, category, model=model)
                             new_in_dict = _update_hints(category, hints)
