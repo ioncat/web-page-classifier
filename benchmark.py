@@ -15,7 +15,10 @@ benchmark.py — Поиск оптимальной комбинации --batch 
 """
 
 import argparse
+import csv
 import time
+from datetime import datetime
+from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
@@ -26,6 +29,9 @@ import step3
 from db import DB_PATH, get_conn, init_db, init_tags_schema
 
 console = Console()
+
+LOG_PATH = Path(__file__).parent / "benchmark_log.csv"
+LOG_FIELDS = ["date", "model", "url_per_sec", "config"]
 
 # ── Конфигурации для сравнения ─────────────────────────────────────────────────
 CONFIGS: list[dict] = [
@@ -76,6 +82,23 @@ def _count_classified(url_ids: list[int]) -> int:
             url_ids,
         ).fetchone()
     return row[0] if row else 0
+
+
+# ── Лог результатов ───────────────────────────────────────────────────────────
+def _append_log(model: str | None, best: dict) -> None:
+    """Дописывает строку победителя в benchmark_log.csv."""
+    write_header = not LOG_PATH.exists()
+    with LOG_PATH.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=LOG_FIELDS)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({
+            "date":        datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "model":       model or "auto",
+            "url_per_sec": f"{best['rps']:.1f}",
+            "config":      f"batch={best['batch']} workers={best['workers']}",
+        })
+    console.print(f"[dim]Лог записан → {LOG_PATH.name}[/dim]")
 
 
 # ── Аргументы ─────────────────────────────────────────────────────────────────
@@ -227,6 +250,10 @@ def main() -> None:
         f"[bold]python main.py --only-classify "
         f"--batch {best['batch']} --workers {best['workers']}[/bold]"
     )
+
+    # Лог пишем только при полном прогоне (не --only)
+    if not args.only:
+        _append_log(args.model, best)
 
 
 if __name__ == "__main__":
