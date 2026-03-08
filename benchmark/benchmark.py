@@ -12,6 +12,7 @@ benchmark.py — Поиск оптимальной комбинации --batch 
   python benchmark.py
   python benchmark.py --model llama3 --limit 60
   python benchmark.py --limit 30 --no-warmup
+  python benchmark.py --model qwen3:8b --no-think
 """
 
 import argparse
@@ -127,6 +128,10 @@ def parse_args() -> argparse.Namespace:
         "--only", nargs="+", type=int, metavar="I", dest="only",
         help="запустить только конфигурации с этими индексами (0-based)",
     )
+    p.add_argument(
+        "--no-think", action="store_true", dest="no_think",
+        help="отключить thinking-режим (для qwen3, deepseek-r1 и др.)",
+    )
     return p.parse_args()
 
 
@@ -168,6 +173,7 @@ def main() -> None:
             model=args.model, limit=1,
             no_progress=True, verbose=False,
             workers=1, batch=1,
+            no_think=args.no_think,
         )
         console.print("[dim]Прогрев завершён.[/dim]\n")
 
@@ -188,6 +194,7 @@ def main() -> None:
             verbose=False,
             workers=cfg["workers"],
             batch=cfg["batch"],
+            no_think=args.no_think,
         )
         elapsed = time.perf_counter() - t0
 
@@ -249,10 +256,11 @@ def main() -> None:
     console.print(table)
 
     best = max(results, key=lambda x: x["rps"])
+    no_think_flag = " --no-think" if args.no_think else ""
     console.print(
         f"\n[dim]Запустить победителя:[/dim] "
         f"[bold]python main.py --only-classify "
-        f"--batch {best['batch']} --workers {best['workers']}[/bold]"
+        f"--batch {best['batch']} --workers {best['workers']}{no_think_flag}[/bold]"
     )
 
     # Лог пишем только при полном прогоне (не --only)
