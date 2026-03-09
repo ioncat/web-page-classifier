@@ -21,6 +21,8 @@ results*.xlsx
 results*.csv
 dataset*.jsonl
 benchmark/dryrun_log.csv
+google_searches.csv
+*_searches.csv
 
 # Временные файлы Office
 ~$*
