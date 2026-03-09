@@ -16,6 +16,18 @@ raw_links.txt
 input.csv
 output.csv
 
+# Результаты работы скриптов
+results*.xlsx
+results*.csv
+dataset*.jsonl
+benchmark/dryrun_log.csv
+
+# Временные файлы Office
+~$*
+
+# Модели (ML-классификатор)
+models/
+
 # IDE / Claude
 .claude/
 .idea/
