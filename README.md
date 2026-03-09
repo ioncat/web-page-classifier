@@ -45,13 +45,41 @@ raw_links.txt
       ▼
   [step3] Классификация через Ollama
   Берёт done-URL без category, отправляет title в LLM,
-  получает 1–3 тега, пишет в category + tagged_by.
+  получает 1 категорию (1–3 слова), пишет в category + tagged_by.
       │
       ▼
    urls.db  ←  все результаты
 ```
 
 Каждый шаг можно запускать отдельно. Полный прогон — `python main.py` без флагов.
+
+---
+
+## Конфигурация
+
+Все пользовательские настройки вынесены в папку `config/` — редактируй эти файлы, не трогая код:
+
+| Файл | Что настраивается |
+|---|---|
+| `config/settings.py` | путь к БД, задержки краулера, таймауты Ollama, токены, фильтры тегов |
+| `config/prompts.py` | шаблоны промптов классификации (одиночный и батч) |
+
+**Наиболее часто меняемые параметры** (`config/settings.py`):
+
+```python
+DELAY_MIN / DELAY_MAX          # пауза между HTTP-запросами (step2)
+OLLAMA_HOST                    # адрес Ollama (по умолчанию localhost:11434)
+OLLAMA_TEMPERATURE             # температура генерации (0.0 = детерминированный вывод)
+NUM_PREDICT_SINGLE             # макс. токенов ответа на один URL (по умолчанию 80)
+NUM_PREDICT_PER_URL            # то же для батча (по умолчанию 30 × кол-во URL)
+MAX_CONSECUTIVE_CONN_ERRORS    # подряд ошибок Ollama → остановить (по умолчанию 3)
+```
+
+**Промпты** (`config/prompts.py`) — плейсхолдеры:
+- `SINGLE` → `{title}`, `{hints_line}`
+- `BATCH_HEADER` → `{hints_line}`
+- `BATCH_ITEM` → `{i}`, `{title}`
+- `HINTS_LINE` → `{hints}` (список категорий через запятую)
 
 ---
 
@@ -113,7 +141,8 @@ python benchmark/benchmark.py         # найти оптимальный batch/
 | `--domain DOMAIN` | обрабатывать только URL этого домена (нечувствительно к `www.` и регистру) |
 | `--limit N` | обработать не более N URL за один запуск |
 | `--force` | сбросить все записи в `pending` и начать заново |
-| `--retry-failed` | повторить только URL со статусом `error` |
+| `--retry-failed` | повторить все URL со статусом `error` |
+| `--retry-transient` | повторить только временные ошибки (5xx, 429, сетевые); пропустить постоянные (404, 403, 410) |
 
 ### Параллельность
 
@@ -136,6 +165,9 @@ python benchmark/benchmark.py         # найти оптимальный batch/
 > `--no-think` нужен для thinking-моделей: `qwen3`, `deepseek-r1`, `minimax-m2` и др.
 > Для обычных моделей флаг не нужен и не влияет на результат.
 
+> `--batch` работает **только** со step3 (`--only-classify` / `--re-tag`).
+> В режиме `--compare-models` батчинг не поддерживается — каждый URL обрабатывается отдельным запросом.
+
 ### Управление тегами-подсказками
 
 | Флаг | Что делает |
@@ -149,17 +181,21 @@ python benchmark/benchmark.py         # найти оптимальный batch/
 | Флаг | Что делает |
 |---|---|
 | `--compare-models M1 M2 …` | прогнать несколько моделей, результаты → `model_results` (не трогает `urls.category`) |
+| `--compare-models … --workers N` | ускорить — N параллельных запросов внутри каждой модели (`--batch` не поддерживается) |
 | `--compare` | показать side-by-side таблицу результатов в терминале |
 | `--compare --export FILE.csv` | то же + экспорт в CSV |
+| `--compare --export-xlsx FILE.xlsx` | то же + экспорт в XLSX (жёлтые строки = расхождения между моделями) |
 | `--accept-model MODEL` | скопировать результаты модели в `urls.category` (финальный выбор) |
 | `--compare-clear` | очистить таблицу `model_results` |
 
-### Вывод
+### Диагностика и отладка
 
 | Флаг | Что делает |
 |---|---|
+| `--stats` | показать статистику БД (total / pending / done / error / classified) и выйти |
+| `--dry-run` | запустить step3 без записи в БД — вывести категории в консоль; автоматически логирует в `benchmark/dryrun_log.csv` |
 | `--no-progress` | отключить progress bar, plain вывод (удобно для логов) |
-| `-v, --verbose` | показывать заголовок / теги / ошибку по каждому URL |
+| `-v, --verbose` | показывать заголовок / категорию / ошибку по каждому URL |
 
 ---
 
@@ -180,8 +216,11 @@ python main.py --url https://habr.com/ru/articles/805105/
 # Только habr.com
 python main.py --domain habr.com
 
-# Повторить ошибки
+# Повторить все ошибки
 python main.py --retry-failed
+
+# Повторить только временные ошибки (5xx/429/сетевые), пропустить 404/403/410
+python main.py --retry-transient --workers 5
 
 # Сбросить всё и начать заново
 python main.py --force
@@ -238,8 +277,24 @@ python main.py --compare
 # Экспортировать в CSV
 python main.py --compare --export compare_results.csv
 
+# Экспортировать в XLSX (жёлтые строки = расхождения, синяя шапка)
+python main.py --compare --export-xlsx compare_results.xlsx
+
 # Применить лучшую модель
 python main.py --accept-model mistral
+```
+
+### Диагностика и отладка
+
+```bash
+# Статистика БД — быстро проверить состояние
+python main.py --stats
+
+# Проверить промпт на 20 URL без записи в БД
+python main.py --only-classify --dry-run --limit 20
+
+# Dry-run по конкретному домену
+python main.py --only-classify --dry-run --domain habr.com --limit 50
 ```
 
 ### Вывод и логи
@@ -309,6 +364,7 @@ python benchmark/benchmark.py --only 0 4 6               # только нужн
 | `status` | TEXT | `pending` / `done` / `error` |
 | `title` | TEXT | содержимое тега `<title>` |
 | `error` | TEXT | текст ошибки при статусе `error` |
+| `error_code` | INTEGER | HTTP-код ошибки (404, 503 и т.п.); `NULL` для сетевых ошибок / таймаутов |
 | `added_at` | TEXT | дата добавления |
 | `processed_at` | TEXT | дата обработки |
 | `category` | TEXT | теги, присвоенные моделью |
@@ -335,8 +391,14 @@ python benchmark/benchmark.py --only 0 4 6               # только нужн
 -- Статистика по статусам
 SELECT status, COUNT(*) FROM urls GROUP BY status;
 
--- Все ошибки
-SELECT url, error FROM urls WHERE status = 'error';
+-- Все ошибки с кодами
+SELECT url, error_code, error FROM urls WHERE status = 'error' ORDER BY error_code;
+
+-- Только постоянные ошибки (404/403/410) — не стоит ретраить
+SELECT url, error_code FROM urls WHERE status = 'error' AND error_code IN (404, 403, 410, 451);
+
+-- Только временные (5xx/429/сетевые) — можно ретраить
+SELECT url, error_code FROM urls WHERE status = 'error' AND (error_code IS NULL OR error_code IN (429, 500, 502, 503, 504));
 
 -- URL с присвоенными тегами
 SELECT url, title, category, tagged_by FROM urls WHERE category IS NOT NULL;
@@ -360,10 +422,15 @@ url-parser/
 ├── step3.py         # классификация через Ollama
 ├── compare.py       # сравнение моделей side-by-side
 ├── db.py            # работа с SQLite
+├── config/
+│   ├── settings.py  # все пользовательские настройки
+│   └── prompts.py   # шаблоны промптов классификации
 ├── benchmark/
 │   ├── benchmark.py      # поиск оптимального batch/workers
-│   └── benchmark_log.csv # лог результатов (создаётся автоматически)
+│   ├── benchmark_log.csv # лог бенчмарков (создаётся автоматически)
+│   └── dryrun_log.csv    # лог --dry-run прогонов (создаётся автоматически)
 ├── docs/
+│   ├── ml-plan.md        # план ML-классификатора
 │   ├── models-compare.md # детали режима сравнения
 │   └── backlog.md        # история реализованных фич
 ├── requirements.txt

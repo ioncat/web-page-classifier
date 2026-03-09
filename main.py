@@ -21,6 +21,7 @@ from db import (
     reset_categories,
     reset_categories_by_domain,
     reset_errors_to_pending,
+    reset_transient_errors_to_pending,
     set_url_pending,
     sync_tags_from_categories,
 )
@@ -44,7 +45,8 @@ def parse_args() -> argparse.Namespace:
   python main.py --re-tag --model mistral                то же, другой моделью
   python main.py --clear-tags                            очистить справочник тегов
   python main.py --only-parse --limit 50                 первые 50 pending URL
-  python main.py --retry-failed                          повторить URL с ошибками
+  python main.py --retry-failed                          повторить все URL с ошибками
+  python main.py --retry-transient                       повторить только 5xx/429/сетевые (пропустить 404/403)
   python main.py --force                                 сбросить всё и начать заново
   python main.py --url https://example.com               обработать один URL
   python main.py --input links.txt                       другой входной файл
@@ -57,8 +59,12 @@ def parse_args() -> argparse.Namespace:
   python main.py --compare-models llama3 mistral          сравнить две модели (через пробел)
   python main.py --compare                               side-by-side таблица результатов
   python main.py --compare --export out.csv              + экспорт в CSV
+  python main.py --compare --export-xlsx out.xlsx        + экспорт в XLSX (жёлтые = расхождения)
   python main.py --accept-model mistral                  принять результаты модели как финальные
   python main.py --compare-clear                         очистить таблицу model_results
+  python main.py --only-classify --dry-run               тест классификации без записи в БД
+  python main.py --only-classify --dry-run --limit 20    проверить промпт на 20 URL
+  python main.py --stats                                 статистика БД и выход
 """,
     )
 
@@ -87,7 +93,13 @@ def parse_args() -> argparse.Namespace:
         "--retry-failed",
         action="store_true",
         dest="retry_failed",
-        help="повторить обработку URL с ошибками",
+        help="повторить обработку всех URL с ошибками",
+    )
+    parser.add_argument(
+        "--retry-transient",
+        action="store_true",
+        dest="retry_transient",
+        help="повторить только временные ошибки (5xx, 429, сетевые); пропустить постоянные (404, 403, 410)",
     )
     parser.add_argument(
         "--url",
@@ -169,6 +181,13 @@ def parse_args() -> argparse.Namespace:
         help="экспортировать результаты сравнения в CSV (используется вместе с --compare)",
     )
     parser.add_argument(
+        "--export-xlsx",
+        metavar="FILE",
+        default=None,
+        dest="export_xlsx",
+        help="экспортировать результаты сравнения в XLSX (используется вместе с --compare)",
+    )
+    parser.add_argument(
         "--accept-model",
         metavar="MODEL",
         default=None,
@@ -240,6 +259,12 @@ def parse_args() -> argparse.Namespace:
         help="отключить thinking-режим модели: передаёт {think: false} в Ollama. "
              "Необходимо для qwen3, deepseek-r1 и других thinking-моделей — "
              "без этого флага они тратят все токены на рассуждения и возвращают пустой ответ.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        dest="dry_run",
+        help="классифицировать и показать результаты без записи в БД (для проверки промпта/модели)",
     )
 
     return parser.parse_args()
@@ -355,7 +380,7 @@ def main() -> None:
 
     # ── --compare [--export FILE] ──────────────────────────────────────────────
     if args.compare:
-        compare.show_comparison(limit=args.limit, export=args.export)
+        compare.show_comparison(limit=args.limit, export=args.export, export_xlsx=args.export_xlsx)
         return
 
     # ── --accept-model ─────────────────────────────────────────────────────────
@@ -427,6 +452,7 @@ def main() -> None:
             workers=args.workers,
             batch=args.batch,
             no_think=args.no_think,
+            dry_run=args.dry_run,
         )
         console.print()
         console.print(Rule("[bold green]Pipeline завершён[/bold green]", style="green"))
@@ -466,6 +492,12 @@ def main() -> None:
     elif args.retry_failed:
         n = reset_errors_to_pending()
         console.print(f"[yellow]--retry-failed:[/yellow] сброшено [bold]{n}[/bold] ошибок → pending")
+    elif args.retry_transient:
+        n = reset_transient_errors_to_pending()
+        console.print(
+            f"[yellow]--retry-transient:[/yellow] сброшено [bold]{n}[/bold] "
+            f"временных ошибок → pending (404/403/410 пропущены)"
+        )
 
     # ── Запуск шагов ──────────────────────────────────────────────────────────
     run_import   = not args.only_parse and not args.only_classify
@@ -499,6 +531,7 @@ def main() -> None:
             workers=args.workers,
             batch=args.batch,
             no_think=args.no_think,
+            dry_run=args.dry_run,
         )
 
     console.print()

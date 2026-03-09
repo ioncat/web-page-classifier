@@ -1,13 +1,21 @@
 import sqlite3
 from datetime import datetime
 
-DB_PATH = "urls.db"
+from config.settings import DB_PATH
 
 
 def get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+# HTTP-коды, которые считаются временными (retry имеет смысл).
+# None (сетевая ошибка / таймаут) тоже считается временной.
+TRANSIENT_CODES: frozenset[int] = frozenset({429, 500, 502, 503, 504})
+
+# HTTP-коды, которые считаются постоянными (retry бессмысленен).
+PERMANENT_CODES: frozenset[int] = frozenset({400, 401, 403, 404, 405, 410, 451})
 
 
 def init_db() -> None:
@@ -19,10 +27,16 @@ def init_db() -> None:
                 status       TEXT NOT NULL DEFAULT 'pending',
                 title        TEXT,
                 error        TEXT,
+                error_code   INTEGER,
                 added_at     TEXT DEFAULT (datetime('now', 'localtime')),
                 processed_at TEXT
             )
         """)
+        # Миграция: добавляем error_code если колонки ещё нет (старые БД)
+        try:
+            conn.execute("ALTER TABLE urls ADD COLUMN error_code INTEGER")
+        except sqlite3.OperationalError:
+            pass  # колонка уже существует
 
 
 def insert_urls(urls: list[str]) -> tuple[int, int]:
@@ -60,8 +74,9 @@ def update_url(
     status: str,
     title: str | None = None,
     error: str | None = None,
+    error_code: int | None = None,
 ) -> None:
-    """Обновляет запись: status, title или error, processed_at."""
+    """Обновляет запись: status, title или error, error_code, processed_at."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with get_conn() as conn:
         conn.execute(
@@ -70,10 +85,11 @@ def update_url(
                SET status = ?,
                    title = ?,
                    error = ?,
+                   error_code = ?,
                    processed_at = ?
              WHERE url = ?
             """,
-            (status, title, error, now, url),
+            (status, title, error, error_code, now, url),
         )
 
 
@@ -131,10 +147,28 @@ def reset_all_to_pending() -> int:
 
 
 def reset_errors_to_pending() -> int:
-    """Сбрасывает записи с ошибками в pending. Возвращает кол-во затронутых строк."""
+    """Сбрасывает ВСЕ записи с ошибками в pending. Возвращает кол-во затронутых строк."""
     with get_conn() as conn:
         cur = conn.execute(
-            "UPDATE urls SET status='pending', error=NULL, processed_at=NULL WHERE status='error'"
+            "UPDATE urls SET status='pending', error=NULL, error_code=NULL,"
+            " processed_at=NULL WHERE status='error'"
+        )
+        return cur.rowcount
+
+
+def reset_transient_errors_to_pending() -> int:
+    """Сбрасывает только временные ошибки (5xx, 429, сетевые) в pending.
+    Постоянные ошибки (404, 403, 410 и т.п.) остаются нетронутыми.
+    Возвращает кол-во затронутых строк.
+    """
+    placeholders = ",".join("?" * len(TRANSIENT_CODES))
+    with get_conn() as conn:
+        cur = conn.execute(
+            f"UPDATE urls SET status='pending', error=NULL, error_code=NULL,"
+            f" processed_at=NULL"
+            f" WHERE status='error'"
+            f"   AND (error_code IS NULL OR error_code IN ({placeholders}))",
+            list(TRANSIENT_CODES),
         )
         return cur.rowcount
 
@@ -162,10 +196,10 @@ def get_pending_by_domain(domain: str) -> list[str]:
 
 
 def get_errors() -> list[dict]:
-    """Возвращает список записей с ошибками."""
+    """Возвращает список записей с ошибками (url, error, error_code)."""
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT url, error FROM urls WHERE status = 'error' ORDER BY id"
+            "SELECT url, error, error_code FROM urls WHERE status = 'error' ORDER BY id"
         ).fetchall()
     return [dict(row) for row in rows]
 

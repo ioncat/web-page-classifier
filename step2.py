@@ -21,34 +21,16 @@ from rich.progress import (
 )
 from rich.table import Table
 
-from db import get_errors, get_pending, get_pending_by_domain, get_stats, init_db, update_url
-
-# ── Параметры краулера ────────────────────────────────────────────────────────
-REQUEST_TIMEOUT   = (5, 10)   # (connect, read) в секундах
-DELAY_MIN         = 2.0        # минимальная пауза между запросами (сек)
-DELAY_MAX         = 3.0        # максимальная пауза
-MAX_RETRIES       = 0          # попыток на URL
-RETRY_BACKOFF     = 0          # множитель backoff: 2^1=2s, 2^2=4s, 2^3=8s
-
-USER_AGENTS = [
-    # Chrome / Windows
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    # Safari / macOS
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 "
-    "(KHTML, like Gecko) Version/17.4 Safari/605.1.15",
-    # Firefox / Linux
-    "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
-    # Edge / Windows
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0",
-]
-
-BASE_HEADERS = {
-    "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.7,en;q=0.5",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "DNT": "1",
-}
+from db import get_errors, get_pending, get_pending_by_domain, get_stats, init_db, update_url, TRANSIENT_CODES
+from config.settings import (
+    BASE_HEADERS,
+    DELAY_MAX,
+    DELAY_MIN,
+    MAX_RETRIES,
+    REQUEST_TIMEOUT,
+    RETRY_BACKOFF,
+    USER_AGENTS,
+)
 
 console = Console()
 
@@ -139,12 +121,17 @@ def _interleave_by_domain(urls: list[str]) -> list[str]:
     return result
 
 
-def _fetch_one(url: str) -> tuple[str, str | None, str | None]:
-    """Загружает один URL. Возвращает (url, title, error_msg)."""
+def _fetch_one(url: str) -> tuple[str, str | None, str | None, int | None]:
+    """Загружает один URL. Возвращает (url, title, error_msg, error_code).
+    error_code — HTTP-статус (404, 503 и т.п.) или None для сетевых ошибок.
+    """
     try:
-        return url, fetch_title(url), None
+        return url, fetch_title(url), None, None
+    except requests.exceptions.HTTPError as exc:
+        code = exc.response.status_code if exc.response is not None else None
+        return url, None, str(exc), code
     except Exception as exc:
-        return url, None, str(exc)
+        return url, None, str(exc), None
 
 
 def _process_parallel(pending: list[str], workers: int, verbose: bool) -> tuple[int, int]:
@@ -168,12 +155,13 @@ def _process_parallel(pending: list[str], workers: int, verbose: bool) -> tuple[
             futs = {executor.submit(_fetch_one, url): url for url in ordered}
             try:
                 for fut in as_completed(futs):
-                    url, title, error = fut.result()
+                    url, title, error, error_code = fut.result()
                     if error:
-                        update_url(url, status="error", error=error)
+                        update_url(url, status="error", error=error, error_code=error_code)
                         error_count += 1
                         if verbose:
-                            console.log(f"[red]ERR[/red] {error}")
+                            code_str = f" [HTTP {error_code}]" if error_code else ""
+                            console.log(f"[red]ERR{code_str}[/red] {error}")
                     else:
                         update_url(url, status="done", title=title)
                         done_count += 1
@@ -198,12 +186,13 @@ def _process_parallel_plain(pending: list[str], workers: int, verbose: bool) -> 
         futs = {executor.submit(_fetch_one, url): url for url in ordered}
         try:
             for fut in as_completed(futs):
-                url, title, error = fut.result()
+                url, title, error, error_code = fut.result()
                 completed += 1
                 if error:
-                    update_url(url, status="error", error=error)
+                    update_url(url, status="error", error=error, error_code=error_code)
                     error_count += 1
-                    print(f"[{completed}/{total}] ERR {url}: {error}", flush=True)
+                    code_str = f" [HTTP {error_code}]" if error_code else ""
+                    print(f"[{completed}/{total}] ERR{code_str} {url}: {error}", flush=True)
                 else:
                     update_url(url, status="done", title=title)
                     done_count += 1
@@ -244,9 +233,15 @@ def _process_plain(pending: list[str], verbose: bool) -> tuple[int, int]:
             done_count += 1
             if verbose:
                 print(f"  OK: {title}")
+        except requests.exceptions.HTTPError as e:
+            code = e.response.status_code if e.response is not None else None
+            error_msg = str(e)
+            update_url(url, status="error", error=error_msg, error_code=code)
+            error_count += 1
+            print(f"  ERROR [HTTP {code}]: {error_msg}")
         except Exception as e:
             error_msg = str(e)
-            update_url(url, status="error", error=error_msg)
+            update_url(url, status="error", error=error_msg, error_code=None)
             error_count += 1
             print(f"  ERROR: {error_msg}")
 
@@ -280,9 +275,16 @@ def _process_rich(pending: list[str], verbose: bool) -> tuple[int, int]:
                 done_count += 1
                 if verbose:
                     console.log(f"[green]OK[/green] {title or '—'}")
+            except requests.exceptions.HTTPError as e:
+                code = e.response.status_code if e.response is not None else None
+                error_msg = str(e)
+                update_url(url, status="error", error=error_msg, error_code=code)
+                error_count += 1
+                if verbose:
+                    console.log(f"[red]ERR [HTTP {code}][/red] {error_msg}")
             except Exception as e:
                 error_msg = str(e)
-                update_url(url, status="error", error=error_msg)
+                update_url(url, status="error", error=error_msg, error_code=None)
                 error_count += 1
                 if verbose:
                     console.log(f"[red]ERR[/red] {error_msg}")

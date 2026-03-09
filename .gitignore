@@ -20,3 +20,6 @@ output.csv
 .claude/
 .idea/
 .vscode/
+
+# Личные заметки
+docs/retrospective.md
