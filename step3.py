@@ -1,7 +1,11 @@
+import csv
 import re
 import sys
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+from pathlib import Path
 
 import ollama
 from rich.console import Console
@@ -19,24 +23,21 @@ from rich.prompt import IntPrompt
 from rich.table import Table
 
 from db import add_tags, get_done_unclassified, get_tags, init_db, init_tags_schema, set_category
-
-# ── Параметры ─────────────────────────────────────────────────────────────────
-OLLAMA_HOST = "http://localhost:11434"
-
-# После скольких подряд ошибок соединения прерываем обработку
-MAX_CONSECUTIVE_CONN_ERRORS = 3
-
-# Максимум токенов в ответе на один URL (защита от бесконечной генерации)
-NUM_PREDICT_SINGLE = 80
-# На батч — 30 токенов на URL (например, 10 URL → 300 токенов)
-NUM_PREDICT_PER_URL = 30
+from config.settings import (
+    BAD_TAG_PREFIXES,
+    BAD_TAG_WORDS,
+    DRY_RUN_LOG,
+    MAX_CONSECUTIVE_CONN_ERRORS,
+    NUM_PREDICT_PER_URL,
+    NUM_PREDICT_SINGLE,
+    OLLAMA_HOST,
+    OLLAMA_REQUEST_TIMEOUT,
+    OLLAMA_TEMPERATURE,
+    TAG_MAX_LEN,
+    TAG_MAX_WORDS,
+)
 
 console = Console()
-
-
-# Максимум секунд ожидания ответа от Ollama на один запрос
-# (батч из 20 URL может занять до ~120с; одиночный — обычно до 30с)
-OLLAMA_REQUEST_TIMEOUT = 120.0
 
 # ── Клиент Ollama ─────────────────────────────────────────────────────────────
 def _build_client() -> ollama.Client:
@@ -87,46 +88,20 @@ def _select_model_interactively(available: list[str]) -> str:
 
 
 # ── Промпт и классификация ────────────────────────────────────────────────────
+from config.prompts import BATCH_HEADER, BATCH_ITEM, HINTS_LINE, SINGLE
+
+
 def _build_prompt(title: str, url: str, hints: list[str]) -> str:
-    hints_part = (
-        f"Category suggestions (use one if it fits, or create your own): {', '.join(hints)}\n"
-        if hints
-        else "No category suggestions provided — create an appropriate one yourself.\n"
-    )
-    return (
-        "Assign exactly ONE category to the following web page.\n"
-        "Rules:\n"
-        "- The category must be in the same language as the title (Russian or English).\n"
-        "- It can be 1 word or a short phrase (up to 3 words).\n"
-        "- You may use a suggested category OR invent your own — pick whatever fits best.\n"
-        "- Respond with ONLY the category, nothing else.\n"
-        "- Example response: machine learning\n\n"
-        f"{hints_part}"
-        f"\nURL: {url}\n"
-        f"Title: {title or '(no title)'}\n"
-    )
+    hints_line = HINTS_LINE.format(hints=", ".join(hints)) + "\n" if hints else ""
+    return SINGLE.format(url=url, title=title or "(no title)", hints_line=hints_line)
 
 
 def _build_batch_prompt(items: list[dict], hints: list[str]) -> str:
     """Промпт для пакетной классификации N URL за один запрос к модели."""
-    hints_part = (
-        f"Category suggestions (use one if it fits, or invent your own): {', '.join(hints)}\n"
-        if hints
-        else "No category suggestions provided — invent an appropriate one yourself.\n"
-    )
-    lines = [
-        "Assign exactly ONE category to each web page below.",
-        "Rules:",
-        "- The category must be in the same language as the title (Russian or English).",
-        "- It can be 1 word or a short phrase (up to 3 words).",
-        "- Respond with ONLY a numbered list — one line per item, nothing else.",
-        "- Format exactly: 1. category name",
-        "",
-        hints_part,
-    ]
+    hints_line = HINTS_LINE.format(hints=", ".join(hints)) + "\n\n" if hints else ""
+    lines = [BATCH_HEADER.format(hints_line=hints_line), ""]
     for i, item in enumerate(items, 1):
-        lines.append(f"{i}. URL: {item['url']}")
-        lines.append(f"   Title: {item['title'] or '(no title)'}")
+        lines.append(BATCH_ITEM.format(i=i, url=item["url"], title=item["title"] or "(no title)"))
     return "\n".join(lines)
 
 
@@ -146,7 +121,7 @@ def classify_url(
         Exception             — ошибка соединения (Ollama недоступна)
     """
     prompt = _build_prompt(title or "", url, hints)
-    options: dict = {"num_predict": NUM_PREDICT_SINGLE}
+    options: dict = {"num_predict": NUM_PREDICT_SINGLE, "temperature": OLLAMA_TEMPERATURE}
     if no_think:
         options["think"] = False
     resp = client.chat(
@@ -181,7 +156,7 @@ def classify_batch(
     на classify_url.
     """
     prompt = _build_batch_prompt(items, hints)
-    options: dict = {"num_predict": len(items) * NUM_PREDICT_PER_URL}
+    options: dict = {"num_predict": len(items) * NUM_PREDICT_PER_URL, "temperature": OLLAMA_TEMPERATURE}
     if no_think:
         options["think"] = False
     resp = client.chat(
@@ -242,11 +217,25 @@ def _process_one(
 
 
 # ── Обновление справочника тегов ─────────────────────────────────────────────
+def _is_valid_tag(tag: str) -> bool:
+    """Отфильтровывает мусор: длинные строки, URL, предложения."""
+    if len(tag) > TAG_MAX_LEN:
+        return False
+    low = tag.lower()
+    if any(low.startswith(p) for p in BAD_TAG_PREFIXES):
+        return False
+    if any(w in low for w in BAD_TAG_WORDS):
+        return False
+    if len(tag.split()) > TAG_MAX_WORDS:
+        return False
+    return True
+
+
 def _update_hints(category: str, hints: list[str]) -> int:
     """Добавляет теги из category в справочник и в список hints текущего запуска.
     Возвращает количество новых тегов (не было в справочнике ранее).
     """
-    new_tags = [t.strip() for t in category.split(",") if t.strip()]
+    new_tags = [t.strip() for t in category.split(",") if t.strip() and _is_valid_tag(t.strip())]
     added, _ = add_tags(new_tags)
     for tag in new_tags:
         if tag not in hints:
@@ -255,7 +244,7 @@ def _update_hints(category: str, hints: list[str]) -> int:
 
 
 # ── Вывод итогов ──────────────────────────────────────────────────────────────
-def _print_summary(done_count: int, error_count: int, aborted: bool = False) -> None:
+def _print_summary(done_count: int, error_count: int, aborted: bool = False, elapsed: float = 0.0) -> None:
     summary = Table(
         title="Итоги классификации",
         show_header=True,
@@ -268,7 +257,48 @@ def _print_summary(done_count: int, error_count: int, aborted: bool = False) -> 
     summary.add_row("Итого", str(done_count + error_count))
     if aborted:
         summary.add_row("[yellow]Прервано[/yellow]", "[yellow]Ollama недоступна[/yellow]")
+    if elapsed > 0:
+        mins, secs = divmod(int(elapsed), 60)
+        time_str = f"{mins}м {secs}с" if mins else f"{secs}с"
+        total = done_count + error_count
+        speed = f"  [dim]({total / elapsed:.1f} URL/с)[/dim]" if elapsed > 0 and total > 0 else ""
+        summary.add_row("[dim]Время[/dim]", f"[dim]{time_str}{speed}[/dim]")
     console.print(summary)
+
+
+# ── Dry-run лог ───────────────────────────────────────────────────────────────
+_DRY_RUN_LOG_FIELDS = ["date", "model", "elapsed_sec", "url_per_sec", "processed", "config"]
+
+
+def _append_dryrun_log(
+    model: str,
+    elapsed: float,
+    classified: int,
+    limit: int | None,
+    batch: int,
+    workers: int,
+) -> None:
+    log_path = Path(DRY_RUN_LOG)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    write_header = not log_path.exists()
+    cfg_parts = [f"limit={limit or 'all'}"]
+    if batch > 1:
+        cfg_parts.append(f"batch={batch}")
+    if workers > 1:
+        cfg_parts.append(f"workers={workers}")
+    with log_path.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=_DRY_RUN_LOG_FIELDS)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({
+            "date":        datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "model":       model,
+            "elapsed_sec": f"{elapsed:.1f}",
+            "url_per_sec": f"{classified / elapsed:.2f}" if elapsed > 0 and classified > 0 else "0",
+            "processed":   classified,
+            "config":      " ".join(cfg_parts),
+        })
+    console.print(f"[dim]Dry-run лог → {log_path}[/dim]")
 
 
 # ── Точка входа ───────────────────────────────────────────────────────────────
@@ -281,6 +311,7 @@ def main(
     workers: int = 1,
     batch: int = 1,
     no_think: bool = False,
+    dry_run: bool = False,
 ) -> None:
     """
     model            — имя модели Ollama; если None — интерактивный выбор
@@ -291,8 +322,27 @@ def main(
     workers          — кол-во параллельных потоков к Ollama
     batch            — кол-во URL в одном запросе к модели (батчинг)
     no_think         — отключить thinking-режим (для qwen3, deepseek-r1 и др.)
+    dry_run          — не писать в БД, только показать результаты классификации
     """
+    _t0 = time.perf_counter()
+
     console.print(Panel("[bold cyan]Step 3 — Классификация через Ollama LLM[/bold cyan]"))
+
+    if dry_run:
+        console.print("[yellow bold]⚠ dry-run:[/yellow bold] [dim]классификация без записи в БД[/dim]\n")
+
+    # verbose всегда включён в dry-run — иначе не видно результатов
+    _verbose = verbose or dry_run
+
+    # Wrappers: в dry_run режиме не пишем в БД
+    def _sc(url: str, cat: str) -> None:
+        if not dry_run:
+            set_category(url, cat, model=model)
+
+    def _uh(cat: str, h: list) -> int:
+        if not dry_run:
+            return _update_hints(cat, h)
+        return 0
 
     init_db()
     init_tags_schema()
@@ -417,9 +467,9 @@ def main(
                         except Exception:
                             results.append((row["url"], None))
                             continue
-                    set_category(row["url"], cat, model=model)
+                    _sc(row["url"], cat)
                     with _h_lock:
-                        _update_hints(cat, hints)
+                        _uh(cat, hints)
                     results.append((row["url"], cat))
                 with _ce_lk:
                     _ce_cnt[0] = 0
@@ -443,7 +493,7 @@ def main(
                                     f"[batch {i}/{total_chunks}] OK:{ok_n} ERR:{n - ok_n}",
                                     flush=True,
                                 )
-                                if verbose:
+                                if _verbose:
                                     for url, cat in data:
                                         status_str = "OK " if cat else "ERR"
                                         print(f"  {status_str} {url[:60]}" + (f"\n  {cat}" if cat else ""))
@@ -472,7 +522,7 @@ def main(
                                     ok_n = sum(1 for _, c in data if c)
                                     done_count  += ok_n
                                     error_count += n - ok_n
-                                    if verbose:
+                                    if _verbose:
                                         for url, cat in data:
                                             if cat:
                                                 console.log(f"[green]OK[/green] {cat}")
@@ -480,7 +530,7 @@ def main(
                                                 console.log(f"[red]ERR[/red] parse failed: {url[:50]}")
                                 elif status != "skip":
                                     error_count += n
-                                    if verbose:
+                                    if _verbose:
                                         console.log(f"[red]ERR[/red] [{status}] {data}")
                                 progress.advance(task, n)
                 except KeyboardInterrupt:
@@ -498,9 +548,9 @@ def main(
                 url, title = row["url"], row["title"] or ""
                 try:
                     cat = classify_url(client, model, url, title, list(hints), no_think=no_think)
-                    set_category(url, cat, model=model)
+                    _sc(url, cat)
                     with _h_lock:
-                        _update_hints(cat, hints)
+                        _uh(cat, hints)
                     with _ce_lk:
                         _ce_cnt[0] = 0
                     return "ok", url, cat
@@ -527,7 +577,7 @@ def main(
                             if status == "ok":
                                 done_count += 1
                                 line = f"[{i}/{total}] OK  {short}"
-                                if verbose:
+                                if _verbose:
                                     line += f"\n  {data}"
                                 print(line, flush=True)
                             elif status != "skip":
@@ -551,11 +601,11 @@ def main(
                                 status, url, data = fut.result()
                                 if status == "ok":
                                     done_count += 1
-                                    if verbose:
+                                    if _verbose:
                                         console.log(f"[green]OK[/green] {data}")
                                 elif status != "skip":
                                     error_count += 1
-                                    if verbose:
+                                    if _verbose:
                                         console.log(f"[red]ERR[/red] [{status}] {data}")
                                 progress.advance(task)
                 except KeyboardInterrupt:
@@ -578,7 +628,7 @@ def main(
             error_count += 1
             if is_plain:
                 print(f"  ERROR: {err_msg}")
-            elif verbose:
+            elif _verbose:
                 console.log(f"[red]ERR[/red] {err_msg}")
 
         if batch > 1:
@@ -600,10 +650,10 @@ def main(
                                         client, model, url, title, hints, conn_errors,
                                         no_think=no_think,
                                     )
-                                    set_category(url, cat, model=model)
-                                    _update_hints(cat, hints)
+                                    _sc(url, cat)
+                                    _uh(cat, hints)
                                     done_count += 1
-                                    if verbose:
+                                    if _verbose:
                                         print(f"  OK(fb) {url[:60]}\n    {cat}")
                                 except _OllamaDown as exc:
                                     console.print(f"\n[bold red]Прерывание:[/bold red] {exc}")
@@ -612,10 +662,10 @@ def main(
                                 except Exception as exc:
                                     _handle_error(str(exc), is_plain=True)
                             else:
-                                set_category(url, cat, model=model)
-                                _update_hints(cat, hints)
+                                _sc(url, cat)
+                                _uh(cat, hints)
                                 done_count += 1
-                                if verbose:
+                                if _verbose:
                                     print(f"  OK  {url[:60]}\n    {cat}")
                         if aborted:
                             break
@@ -633,10 +683,10 @@ def main(
                                     client, model, url, title, hints, conn_errors,
                                     no_think=no_think,
                                 )
-                                set_category(url, cat, model=model)
-                                _update_hints(cat, hints)
+                                _sc(url, cat)
+                                _uh(cat, hints)
                                 done_count += 1
-                                if verbose:
+                                if _verbose:
                                     print(f"  OK  {url[:60]}\n    {cat}")
                             except _OllamaDown as exc2:
                                 console.print(f"\n[bold red]Прерывание:[/bold red] {exc2}")
@@ -673,10 +723,10 @@ def main(
                                             client, model, url, title, hints, conn_errors,
                                             no_think=no_think,
                                         )
-                                        set_category(url, cat, model=model)
-                                        _update_hints(cat, hints)
+                                        _sc(url, cat)
+                                        _uh(cat, hints)
                                         done_count += 1
-                                        if verbose:
+                                        if _verbose:
                                             console.log(f"[green]OK(fb)[/green] {cat}")
                                     except _OllamaDown as exc:
                                         console.log(f"[bold red]Прерывание:[/bold red] {exc}")
@@ -685,10 +735,10 @@ def main(
                                     except Exception as exc:
                                         _handle_error(str(exc), is_plain=False)
                                 else:
-                                    set_category(url, cat, model=model)
-                                    _update_hints(cat, hints)
+                                    _sc(url, cat)
+                                    _uh(cat, hints)
                                     done_count += 1
-                                    if verbose:
+                                    if _verbose:
                                         console.log(f"[green]OK[/green] {cat}")
                                 progress.advance(task)
                             if aborted:
@@ -699,7 +749,7 @@ def main(
                             break
                         except Exception as exc:
                             # Весь батч упал — fallback на одиночные запросы
-                            if verbose:
+                            if _verbose:
                                 console.log(f"[yellow]BATCH ERR[/yellow] {exc} → fallback")
                             for row in chunk:
                                 url, title = row["url"], row["title"] or ""
@@ -708,10 +758,10 @@ def main(
                                         client, model, url, title, hints, conn_errors,
                                         no_think=no_think,
                                     )
-                                    set_category(url, cat, model=model)
-                                    _update_hints(cat, hints)
+                                    _sc(url, cat)
+                                    _uh(cat, hints)
                                     done_count += 1
-                                    if verbose:
+                                    if _verbose:
                                         console.log(f"[green]OK(fb)[/green] {cat}")
                                 except _OllamaDown as exc2:
                                     console.log(f"[bold red]Прерывание:[/bold red] {exc2}")
@@ -735,10 +785,10 @@ def main(
                             client, model, url, title, hints, conn_errors,
                             no_think=no_think,
                         )
-                        set_category(url, category, model=model)
-                        new_in_dict = _update_hints(category, hints)
+                        _sc(url, category)
+                        new_in_dict = _uh(category, hints)
                         done_count += 1
-                        if verbose:
+                        if _verbose:
                             suffix = f" (+{new_in_dict} в справочник)" if new_in_dict else ""
                             print(f"  Tags: {category}{suffix}")
                     except _OllamaDown as exc:
@@ -770,10 +820,10 @@ def main(
                                 client, model, url, title, hints, conn_errors,
                                 no_think=no_think,
                             )
-                            set_category(url, category, model=model)
-                            new_in_dict = _update_hints(category, hints)
+                            _sc(url, category)
+                            new_in_dict = _uh(category, hints)
                             done_count += 1
-                            if verbose:
+                            if _verbose:
                                 suffix = (
                                     f" [dim](+{new_in_dict} в справочник)[/dim]"
                                     if new_in_dict
@@ -790,7 +840,10 @@ def main(
                         progress.advance(task)
 
     # ── Итоги ─────────────────────────────────────────────────────────────────
-    _print_summary(done_count, error_count, aborted=aborted)
+    elapsed = time.perf_counter() - _t0
+    _print_summary(done_count, error_count, aborted=aborted, elapsed=elapsed)
+    if dry_run:
+        _append_dryrun_log(model or "auto", elapsed, done_count, limit, batch, workers)
     if aborted:
         console.print(
             "[dim]Запустите снова когда Ollama будет доступна — "

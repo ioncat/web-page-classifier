@@ -6,8 +6,8 @@ from rich.panel import Panel
 from rich.table import Table
 
 from db import init_db, insert_urls
+from config.settings import DEFAULT_INPUT_FILE
 
-DEFAULT_INPUT_FILE = "raw_links.txt"
 LINK_PATTERN = re.compile(r"https?://[^\s|<>\"'`]+")
 TRAILING_JUNK = re.compile(r"[.,;!?)]+$")
 
