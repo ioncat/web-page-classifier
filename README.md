@@ -87,6 +87,24 @@ URL:       https://en.wikipedia.org/wiki/Transformer_(deep_learning)
 
 ---
 
+## Выбор модели
+
+Для классификации протестировано **7 моделей Ollama** на реальном корпусе (250 URL, habr.com).
+
+Каждая модель прогонялась через `--compare-models`, результаты сохранялись в `model_results`. После прогона — side-by-side сравнение классификаций через `--compare` и подсчёт **agreement rate** (доля URL, где тег модели совпал с plurality по всем моделям).
+
+| Модель | Agreement | Скорость |
+|--------|:---------:|:--------:|
+| **mistral-small3.2:24b** | **54.8%** 🥇 | 1.2 с/URL |
+| qwen3-coder-next | 51.6% | 6.1 с/URL |
+| gemma2:9b | 49.2% | 0.16 с/URL |
+| cas/aya-expanse-8b | 43.6% | 0.14 с/URL |
+| mistral | 29.6% ❌ | 0.23 с/URL |
+
+`mistral` дисквалифицирован: использует подчёркивания (`machine_learning`) и смешивает языки. Подробнее: [`docs/models-compare.md`](docs/models-compare.md)
+
+---
+
 ## ML Roadmap
 
 LLM-пайплайн генерирует обучающие данные для быстрого автономного классификатора.
