@@ -474,6 +474,39 @@ def main() -> None:
 
     # ── Режим одного URL ──────────────────────────────────────────────────────
     if args.url:
+        if args.dry_run:
+            # Без записи в БД: fetch title → classify → print
+            console.print(f"[yellow bold]⚠ dry-run[/yellow bold] одного URL: [cyan]{args.url}[/cyan]\n")
+            try:
+                title = step2.fetch_title(args.url)
+            except Exception as exc:
+                title = None
+                console.print(f"[red]Ошибка парсинга:[/red] {exc}")
+
+            console.print(f"[dim]Заголовок:[/dim] {title or '(не получен)'}\n")
+
+            try:
+                client = step3._build_client()
+                available = step3.get_available_models(client)
+                model = args.model or (available[0] if available else None)
+                if not model:
+                    console.print("[red]Нет доступных моделей Ollama[/red]")
+                    return
+                from db import get_tags
+                hints = get_tags()
+                category = step3.classify_url(
+                    client, model, args.url, title or "", hints,
+                    no_think=args.no_think,
+                )
+                console.print(f"[dim]Модель:[/dim]    {model}")
+                console.print(f"[bold green]Категория:[/bold green] {category}")
+            except Exception as exc:
+                console.print(f"[red]Ошибка классификации:[/red] {exc}")
+
+            console.print()
+            console.print(Rule("[bold yellow]dry-run завершён (БД не изменена)[/bold yellow]", style="yellow"))
+            return
+
         console.print(f"[cyan]Режим одного URL:[/cyan] {args.url}")
         insert_urls([args.url])
         set_url_pending(args.url)
