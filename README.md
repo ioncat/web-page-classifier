@@ -23,10 +23,10 @@ flowchart LR
     A([raw_links.txt]) --> B
 
     subgraph pipeline ["Пайплайн"]
-        B[Step 1\nИмпорт]
-        B --> C[Step 2\nПарсинг заголовков]
-        C --> D[Step 3\nLLM-классификация]
-        D --> E[Step 4\nML-классификатор\n🔜]
+        B["Step 1<br/>Импорт"]
+        B --> C["Step 2<br/>Парсинг заголовков"]
+        C --> D["Step 3<br/>LLM-классификация"]
+        D --> E["Step 4<br/>ML-классификатор<br/>🔜"]
     end
 
     pipeline --> F[(urls.db)]
@@ -93,11 +93,11 @@ LLM-пайплайн генерирует обучающие данные для
 
 ```mermaid
 flowchart TD
-    A[LLM-разметка\n~7000 URL] --> B[Фаза 1\nФиксация таксономии\ntaxonomy.json]
-    B --> C[Фаза 2\nПереразметка --strict\nexport_dataset.py]
-    C --> D[Фаза 3\nОбучение\nxlm-roberta-base]
-    D --> E[Фаза 4\nstep4.py\n+ порог уверенности]
-    E --> F[Фаза 5\nActive learning\nпереобучение раз в месяц]
+    A["LLM-разметка<br/>~7000 URL"] --> B["Фаза 1<br/>Фиксация таксономии<br/>taxonomy.json"]
+    B --> C["Фаза 2<br/>Переразметка --strict<br/>export_dataset.py"]
+    C --> D["Фаза 3<br/>Обучение<br/>xlm-roberta-base"]
+    D --> E["Фаза 4<br/>step4.py<br/>+ порог уверенности"]
+    E --> F["Фаза 5<br/>Active learning<br/>переобучение раз в месяц"]
 
     style A fill:#f9f,stroke:#333
     style F fill:#9f9,stroke:#333

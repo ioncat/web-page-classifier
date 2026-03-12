@@ -51,31 +51,31 @@ flowchart TD
     A([raw_links.txt]) --> S1
 
     subgraph step1["Step 1 — Импорт"]
-        S1[Regex-извлечение URL\nДедупликация]
-        S1 --> DB1[(urls\nstatus=pending)]
+        S1["Regex-извлечение URL<br/>Дедупликация"]
+        S1 --> DB1[("urls<br/>status=pending")]
     end
 
     subgraph step2["Step 2 — Парсинг"]
-        DB1 --> S2[HTTP запрос\npolite crawling\nretry + backoff]
-        S2 --> DB2[(urls\nstatus=done\ntitle=...)]
-        S2 --> DB2e[(urls\nstatus=error)]
+        DB1 --> S2["HTTP запрос<br/>polite crawling<br/>retry + backoff"]
+        S2 --> DB2[("urls<br/>status=done<br/>title=...")]
+        S2 --> DB2e[("urls<br/>status=error")]
     end
 
     subgraph step3["Step 3 — Классификация"]
         DB2 --> S3{Режим?}
 
-        S3 -->|"--only-classify\n--re-tag"| NORM[Один запуск\nодна модель]
-        NORM --> DBcat[(urls\ncategory=...\ntagged_by=...)]
-        NORM --> DBtags[(tags\nсправочник\nобновляется)]
+        S3 -->|"--only-classify / --re-tag"| NORM["Один запуск<br/>одна модель"]
+        NORM --> DBcat[("urls<br/>category=...<br/>tagged_by=...")]
+        NORM --> DBtags[("tags<br/>справочник<br/>обновляется")]
 
-        S3 -->|"--compare-models"| CM[Несколько моделей\nпо очереди]
-        CM --> DBmr[(model_results\nurl_id + model\n+ category)]
+        S3 -->|"--compare-models"| CM["Несколько моделей<br/>по очереди"]
+        CM --> DBmr[("model_results<br/>url_id + model<br/>+ category")]
     end
 
     subgraph compare["Сравнение и выбор"]
-        DBmr --> CMP["--compare\nside-by-side таблица"]
-        DBmr --> EXP["--compare --export\nCSV файл"]
-        CMP --> ACC["--accept-model mistral\nкопирует в urls.category"]
+        DBmr --> CMP["--compare<br/>side-by-side таблица"]
+        DBmr --> EXP["--compare --export<br/>CSV файл"]
+        CMP --> ACC["--accept-model mistral<br/>копирует в urls.category"]
         ACC --> DBcat
     end
 ```
@@ -231,8 +231,8 @@ set OLLAMA_NUM_PARALLEL=4  # (Windows, перед ollama serve)
 
 ```mermaid
 flowchart LR
-    MR[(model_results\nрезультаты сравнения)]
-    UC[(urls.category\nфинальный выбор)]
+    MR[("model_results<br/>результаты сравнения")]
+    UC[("urls.category<br/>финальный выбор")]
 
     MR -->|"--accept-model"| UC
     UC -.->|"НЕ влияет"| MR
