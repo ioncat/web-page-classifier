@@ -65,9 +65,22 @@ def _random_headers() -> dict:
     return {**BASE_HEADERS, "User-Agent": random.choice(USER_AGENTS)}
 
 
-# ── Получение заголовка с ручным retry для таймаутов ─────────────────────────
-def fetch_title(url: str) -> str | None:
-    """Загружает страницу и возвращает содержимое <title>.
+# ── Получение метаданных страницы ────────────────────────────────────────────
+def _extract_description(soup: BeautifulSoup) -> str | None:
+    """Извлекает описание страницы из мета-тегов.
+    Порядок приоритета: og:description → description.
+    """
+    for attr, name in [("property", "og:description"), ("name", "description")]:
+        tag = soup.find("meta", attrs={attr: name})
+        if tag and tag.get("content"):
+            desc = tag["content"].strip()
+            if desc:
+                return desc
+    return None
+
+
+def fetch_page_meta(url: str) -> dict:
+    """Загружает страницу и возвращает {"title": str|None, "description": str|None}.
     Перед запросом делает случайную паузу.
     При ReadTimeout / ConnectionError — экспоненциальный backoff.
     """
@@ -84,7 +97,9 @@ def fetch_title(url: str) -> str | None:
             )
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
-            return soup.title.string.strip() if soup.title and soup.title.string else None
+            title = soup.title.string.strip() if soup.title and soup.title.string else None
+            description = _extract_description(soup)
+            return {"title": title, "description": description}
 
         except (requests.exceptions.ReadTimeout,
                 requests.exceptions.ConnectionError,
@@ -101,6 +116,11 @@ def fetch_title(url: str) -> str | None:
 
         except requests.exceptions.RequestException:
             raise  # HTTP-ошибки — не ретраим вручную (urllib3 уже обработал)
+
+
+def fetch_title(url: str) -> str | None:
+    """Обёртка для обратной совместимости. Возвращает только title."""
+    return fetch_page_meta(url)["title"]
 
 
 # ── Вспомогательные функции параллельного режима ─────────────────────────────
@@ -121,17 +141,18 @@ def _interleave_by_domain(urls: list[str]) -> list[str]:
     return result
 
 
-def _fetch_one(url: str) -> tuple[str, str | None, str | None, int | None]:
-    """Загружает один URL. Возвращает (url, title, error_msg, error_code).
+def _fetch_one(url: str) -> tuple[str, str | None, str | None, str | None, int | None]:
+    """Загружает один URL. Возвращает (url, title, description, error_msg, error_code).
     error_code — HTTP-статус (404, 503 и т.п.) или None для сетевых ошибок.
     """
     try:
-        return url, fetch_title(url), None, None
+        meta = fetch_page_meta(url)
+        return url, meta["title"], meta["description"], None, None
     except requests.exceptions.HTTPError as exc:
         code = exc.response.status_code if exc.response is not None else None
-        return url, None, str(exc), code
+        return url, None, None, str(exc), code
     except Exception as exc:
-        return url, None, str(exc), None
+        return url, None, None, str(exc), None
 
 
 def _process_parallel(pending: list[str], workers: int, verbose: bool) -> tuple[int, int]:
@@ -155,7 +176,7 @@ def _process_parallel(pending: list[str], workers: int, verbose: bool) -> tuple[
             futs = {executor.submit(_fetch_one, url): url for url in ordered}
             try:
                 for fut in as_completed(futs):
-                    url, title, error, error_code = fut.result()
+                    url, title, description, error, error_code = fut.result()
                     if error:
                         update_url(url, status="error", error=error, error_code=error_code)
                         error_count += 1
@@ -163,7 +184,7 @@ def _process_parallel(pending: list[str], workers: int, verbose: bool) -> tuple[
                             code_str = f" [HTTP {error_code}]" if error_code else ""
                             console.log(f"[red]ERR{code_str}[/red] {error}")
                     else:
-                        update_url(url, status="done", title=title)
+                        update_url(url, status="done", title=title, description=description)
                         done_count += 1
                         if verbose:
                             console.log(f"[green]OK[/green] {title or '—'}")
@@ -186,7 +207,7 @@ def _process_parallel_plain(pending: list[str], workers: int, verbose: bool) -> 
         futs = {executor.submit(_fetch_one, url): url for url in ordered}
         try:
             for fut in as_completed(futs):
-                url, title, error, error_code = fut.result()
+                url, title, description, error, error_code = fut.result()
                 completed += 1
                 if error:
                     update_url(url, status="error", error=error, error_code=error_code)
@@ -194,7 +215,7 @@ def _process_parallel_plain(pending: list[str], workers: int, verbose: bool) -> 
                     code_str = f" [HTTP {error_code}]" if error_code else ""
                     print(f"[{completed}/{total}] ERR{code_str} {url}: {error}", flush=True)
                 else:
-                    update_url(url, status="done", title=title)
+                    update_url(url, status="done", title=title, description=description)
                     done_count += 1
                     if verbose:
                         print(f"[{completed}/{total}] OK {title or '—'}", flush=True)
@@ -228,11 +249,11 @@ def _process_plain(pending: list[str], verbose: bool) -> tuple[int, int]:
     for i, url in enumerate(pending, 1):
         print(f"[{i}/{total}] {url}", flush=True)
         try:
-            title = fetch_title(url)
-            update_url(url, status="done", title=title)
+            meta = fetch_page_meta(url)
+            update_url(url, status="done", title=meta["title"], description=meta["description"])
             done_count += 1
             if verbose:
-                print(f"  OK: {title}")
+                print(f"  OK: {meta['title']}")
         except requests.exceptions.HTTPError as e:
             code = e.response.status_code if e.response is not None else None
             error_msg = str(e)
@@ -270,11 +291,11 @@ def _process_rich(pending: list[str], verbose: bool) -> tuple[int, int]:
             progress.update(task, description=f"[dim]{short_url}[/dim]")
 
             try:
-                title = fetch_title(url)
-                update_url(url, status="done", title=title)
+                meta = fetch_page_meta(url)
+                update_url(url, status="done", title=meta["title"], description=meta["description"])
                 done_count += 1
                 if verbose:
-                    console.log(f"[green]OK[/green] {title or '—'}")
+                    console.log(f"[green]OK[/green] {meta['title'] or '—'}")
             except requests.exceptions.HTTPError as e:
                 code = e.response.status_code if e.response is not None else None
                 error_msg = str(e)

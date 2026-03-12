@@ -32,11 +32,15 @@ def init_db() -> None:
                 processed_at TEXT
             )
         """)
-        # Миграция: добавляем error_code если колонки ещё нет (старые БД)
-        try:
-            conn.execute("ALTER TABLE urls ADD COLUMN error_code INTEGER")
-        except sqlite3.OperationalError:
-            pass  # колонка уже существует
+        # Миграции для старых БД
+        for migration in [
+            "ALTER TABLE urls ADD COLUMN error_code INTEGER",
+            "ALTER TABLE urls ADD COLUMN description TEXT",
+        ]:
+            try:
+                conn.execute(migration)
+            except sqlite3.OperationalError:
+                pass  # колонка уже существует
 
 
 def insert_urls(urls: list[str]) -> tuple[int, int]:
@@ -73,10 +77,11 @@ def update_url(
     url: str,
     status: str,
     title: str | None = None,
+    description: str | None = None,
     error: str | None = None,
     error_code: int | None = None,
 ) -> None:
-    """Обновляет запись: status, title или error, error_code, processed_at."""
+    """Обновляет запись: status, title, description или error, error_code, processed_at."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with get_conn() as conn:
         conn.execute(
@@ -84,12 +89,13 @@ def update_url(
             UPDATE urls
                SET status = ?,
                    title = ?,
+                   description = ?,
                    error = ?,
                    error_code = ?,
                    processed_at = ?
              WHERE url = ?
             """,
-            (status, title, error, error_code, now, url),
+            (status, title, description, error, error_code, now, url),
         )
 
 
@@ -254,7 +260,7 @@ def get_done_unclassified() -> list[dict]:
     """Возвращает done-записи без присвоенной категории."""
     with get_conn() as conn:
         rows = conn.execute(
-            """SELECT id, url, title
+            """SELECT id, url, title, description
                  FROM urls
                 WHERE status = 'done'
                   AND (category IS NULL OR category = '')
@@ -380,7 +386,7 @@ def get_done_urls() -> list[dict]:
     """Возвращает все done-записи (id, url, title) для запуска сравнения моделей."""
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT id, url, title FROM urls WHERE status = 'done' ORDER BY id"
+            "SELECT id, url, title, description FROM urls WHERE status = 'done' ORDER BY id"
         ).fetchall()
     return [dict(row) for row in rows]
 

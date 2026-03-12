@@ -88,12 +88,13 @@ def _select_model_interactively(available: list[str]) -> str:
 
 
 # ── Промпт и классификация ────────────────────────────────────────────────────
-from config.prompts import BATCH_HEADER, BATCH_ITEM, HINTS_LINE, SINGLE
+from config.prompts import BATCH_HEADER, BATCH_ITEM, DESCRIPTION_LINE, HINTS_LINE, SINGLE
 
 
-def _build_prompt(title: str, url: str, hints: list[str]) -> str:
+def _build_prompt(title: str, url: str, hints: list[str], description: str | None = None) -> str:
     hints_line = HINTS_LINE.format(hints=", ".join(hints)) + "\n" if hints else ""
-    return SINGLE.format(url=url, title=title or "(no title)", hints_line=hints_line)
+    desc_line = DESCRIPTION_LINE.format(description=description[:200]) if description else ""
+    return SINGLE.format(url=url, title=title or "(no title)", hints_line=hints_line, description_line=desc_line)
 
 
 def _build_batch_prompt(items: list[dict], hints: list[str]) -> str:
@@ -101,7 +102,10 @@ def _build_batch_prompt(items: list[dict], hints: list[str]) -> str:
     hints_line = HINTS_LINE.format(hints=", ".join(hints)) + "\n\n" if hints else ""
     lines = [BATCH_HEADER.format(hints_line=hints_line), ""]
     for i, item in enumerate(items, 1):
-        lines.append(BATCH_ITEM.format(i=i, url=item["url"], title=item["title"] or "(no title)"))
+        title = item["title"] or "(no title)"
+        desc = item.get("description")
+        desc_suffix = f"\n   {DESCRIPTION_LINE.format(description=desc[:150])}" if desc else ""
+        lines.append(BATCH_ITEM.format(i=i, url=item["url"], title=title) + desc_suffix)
     return "\n".join(lines)
 
 
@@ -112,6 +116,7 @@ def classify_url(
     title: str,
     hints: list[str],
     no_think: bool = False,
+    description: str | None = None,
 ) -> str:
     """Запрашивает у Ollama теги для одного URL. Возвращает строку тегов через запятую.
 
@@ -120,7 +125,7 @@ def classify_url(
         ValueError            — модель вернула пустой ответ
         Exception             — ошибка соединения (Ollama недоступна)
     """
-    prompt = _build_prompt(title or "", url, hints)
+    prompt = _build_prompt(title or "", url, hints, description=description)
     options: dict = {"num_predict": NUM_PREDICT_SINGLE, "temperature": OLLAMA_TEMPERATURE}
     if no_think:
         options["think"] = False
@@ -191,13 +196,14 @@ def _process_one(
     hints: list[str],
     consecutive_conn_errors: int,
     no_think: bool = False,
+    description: str | None = None,
 ) -> tuple[str | None, int]:
     """Классифицирует один URL. Возвращает (category, новый consecutive_conn_errors).
 
     Поднимает _OllamaDown, если достигнут лимит подряд идущих ошибок соединения.
     """
     try:
-        category = classify_url(client, model, url, title, hints, no_think=no_think)
+        category = classify_url(client, model, url, title, hints, no_think=no_think, description=description)
         return category, 0
 
     except ollama.ResponseError as exc:
@@ -462,7 +468,7 @@ def main(
                         try:
                             cat = classify_url(
                                 client, model, row["url"], row["title"] or "", hints_snap,
-                                no_think=no_think,
+                                no_think=no_think, description=row.get("description"),
                             )
                         except Exception:
                             results.append((row["url"], None))
@@ -547,7 +553,8 @@ def main(
                     return "skip", row["url"], None
                 url, title = row["url"], row["title"] or ""
                 try:
-                    cat = classify_url(client, model, url, title, list(hints), no_think=no_think)
+                    cat = classify_url(client, model, url, title, list(hints), no_think=no_think,
+                                       description=row.get("description"))
                     _sc(url, cat)
                     with _h_lock:
                         _uh(cat, hints)
@@ -643,12 +650,13 @@ def main(
                         cats = classify_batch(client, model, chunk, hints, no_think=no_think)
                         for row, cat in zip(chunk, cats):
                             url, title = row["url"], row["title"] or ""
+                            desc = row.get("description")
                             if cat is None:
                                 # Fallback: одиночный запрос
                                 try:
                                     cat, conn_errors = _process_one(
                                         client, model, url, title, hints, conn_errors,
-                                        no_think=no_think,
+                                        no_think=no_think, description=desc,
                                     )
                                     _sc(url, cat)
                                     _uh(cat, hints)
@@ -678,10 +686,11 @@ def main(
                         print(f"  BATCH ERR: {exc} → fallback", flush=True)
                         for row in chunk:
                             url, title = row["url"], row["title"] or ""
+                            desc = row.get("description")
                             try:
                                 cat, conn_errors = _process_one(
                                     client, model, url, title, hints, conn_errors,
-                                    no_think=no_think,
+                                    no_think=no_think, description=desc,
                                 )
                                 _sc(url, cat)
                                 _uh(cat, hints)
@@ -717,11 +726,12 @@ def main(
                             cats = classify_batch(client, model, chunk, hints, no_think=no_think)
                             for row, cat in zip(chunk, cats):
                                 url, title = row["url"], row["title"] or ""
+                                desc = row.get("description")
                                 if cat is None:
                                     try:
                                         cat, conn_errors = _process_one(
                                             client, model, url, title, hints, conn_errors,
-                                            no_think=no_think,
+                                            no_think=no_think, description=desc,
                                         )
                                         _sc(url, cat)
                                         _uh(cat, hints)
@@ -753,10 +763,11 @@ def main(
                                 console.log(f"[yellow]BATCH ERR[/yellow] {exc} → fallback")
                             for row in chunk:
                                 url, title = row["url"], row["title"] or ""
+                                desc = row.get("description")
                                 try:
                                     cat, conn_errors = _process_one(
                                         client, model, url, title, hints, conn_errors,
-                                        no_think=no_think,
+                                        no_think=no_think, description=desc,
                                     )
                                     _sc(url, cat)
                                     _uh(cat, hints)
@@ -779,11 +790,12 @@ def main(
                 total = len(rows)
                 for i, row in enumerate(rows, 1):
                     url, title = row["url"], row["title"] or ""
+                    desc = row.get("description")
                     print(f"[{i}/{total}] {url}", flush=True)
                     try:
                         category, conn_errors = _process_one(
                             client, model, url, title, hints, conn_errors,
-                            no_think=no_think,
+                            no_think=no_think, description=desc,
                         )
                         _sc(url, category)
                         new_in_dict = _uh(category, hints)
@@ -812,13 +824,14 @@ def main(
 
                     for row in rows:
                         url, title = row["url"], row["title"] or ""
+                        desc = row.get("description")
                         short_url = url[:60] + "…" if len(url) > 60 else url
                         progress.update(task, description=f"[dim]{short_url}[/dim]")
 
                         try:
                             category, conn_errors = _process_one(
                                 client, model, url, title, hints, conn_errors,
-                                no_think=no_think,
+                                no_think=no_think, description=desc,
                             )
                             _sc(url, category)
                             new_in_dict = _uh(category, hints)

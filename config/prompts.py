@@ -3,11 +3,12 @@
 # Редактируй эти строки — скрипты подхватят изменения автоматически.
 #
 # Плейсхолдеры:
-#   SINGLE       → {url}, {title}, {hints_line}
-#   BATCH_HEADER → {hints_line}
-#   BATCH_ITEM   → {i}, {url}, {title}
-#   HINTS_LINE   → {hints}  (список категорий через запятую, подставляется
-#                             в {hints_line} когда справочник непустой)
+#   SINGLE          → {url}, {title}, {hints_line}, {description_line}
+#   BATCH_HEADER    → {hints_line}
+#   BATCH_ITEM      → {i}, {url}, {title}
+#   HINTS_LINE      → {hints}  (список категорий через запятую, подставляется
+#                               в {hints_line} когда справочник непустой)
+#   DESCRIPTION_LINE → {description}  (подставляется когда description не None)
 #
 # Чтобы переключить промпт — закомментируй активный блок,
 # раскомментируй нужную альтернативу.
@@ -15,6 +16,9 @@
 
 # ── Строка-подсказка с существующими категориями ──────────────────────────────
 HINTS_LINE = "Existing categories (reuse if fits): {hints}\n"
+
+# ── Строка с описанием страницы (подставляется только если description != None) ─
+DESCRIPTION_LINE = "Description: {description}\n"
 
 
 # =============================================================================
@@ -75,6 +79,7 @@ SINGLE = (
     "{hints_line}"
     "\n"
     "Title: {title}\n"
+    "{description_line}"
     "Category:"
 )
 
