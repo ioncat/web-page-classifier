@@ -318,6 +318,7 @@ def main(
     batch: int = 1,
     no_think: bool = False,
     dry_run: bool = False,
+    no_description: bool = False,
 ) -> None:
     """
     model            — имя модели Ollama; если None — интерактивный выбор
@@ -329,6 +330,7 @@ def main(
     batch            — кол-во URL в одном запросе к модели (батчинг)
     no_think         — отключить thinking-режим (для qwen3, deepseek-r1 и др.)
     dry_run          — не писать в БД, только показать результаты классификации
+    no_description   — не передавать og:description в промпт (быстрее, меньше токенов)
     """
     _t0 = time.perf_counter()
 
@@ -412,6 +414,8 @@ def main(
     rows = get_done_unclassified()
     if limit is not None:
         rows = rows[:limit]
+    if no_description:
+        rows = [{**r, "description": None} for r in rows]
 
     if not rows:
         console.print(

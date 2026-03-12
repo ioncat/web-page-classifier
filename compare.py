@@ -211,6 +211,7 @@ def run_compare_models(
     domain: str | None = None,
     workers: int = 1,
     no_think: bool = False,
+    no_description: bool = False,
 ) -> None:
     """Прогоняет каждую модель через все done-URL и сохраняет в model_results.
 
@@ -233,6 +234,8 @@ def run_compare_models(
 
     if limit:
         rows = rows[:limit]
+    if no_description:
+        rows = [{**r, "description": None} for r in rows]
 
     if not rows:
         console.print(
@@ -288,8 +291,10 @@ def run_compare_models(
                 if _abort.is_set():
                     return "skip", row["url"], None
                 url, title, uid = row["url"], row["title"] or "", row["id"]
+                desc = row.get("description")
                 try:
-                    cat = classify_url(client, model, url, title, hints, no_think=no_think)
+                    cat = classify_url(client, model, url, title, hints, no_think=no_think,
+                                       description=desc)
                     save_model_result(uid, model, cat)
                     with _ce_lk:
                         _ce[0] = 0
@@ -361,9 +366,11 @@ def run_compare_models(
                 total = len(rows)
                 for i, row in enumerate(rows, 1):
                     url, title, uid = row["url"], row["title"] or "", row["id"]
+                    desc = row.get("description")
                     print(f"[{i}/{total}] {url}", flush=True)
                     try:
-                        category = classify_url(client, model, url, title, hints, no_think=no_think)
+                        category = classify_url(client, model, url, title, hints, no_think=no_think,
+                                                description=desc)
                         save_model_result(uid, model, category)
                         done_count  += 1
                         conn_errors  = 0
@@ -401,11 +408,13 @@ def run_compare_models(
 
                     for row in rows:
                         url, title, uid = row["url"], row["title"] or "", row["id"]
+                        desc = row.get("description")
                         short = url[:55] + "…" if len(url) > 55 else url
                         progress.update(task, description=f"[dim]{short}[/dim]")
 
                         try:
-                            category = classify_url(client, model, url, title, hints, no_think=no_think)
+                            category = classify_url(client, model, url, title, hints, no_think=no_think,
+                                                    description=desc)
                             save_model_result(uid, model, category)
                             done_count  += 1
                             conn_errors  = 0

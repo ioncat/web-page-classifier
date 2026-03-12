@@ -261,6 +261,12 @@ def parse_args() -> argparse.Namespace:
              "без этого флага они тратят все токены на рассуждения и возвращают пустой ответ.",
     )
     parser.add_argument(
+        "--no-description",
+        action="store_true",
+        dest="no_description",
+        help="не передавать og:description в промпт LLM (быстрее, меньше токенов)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         dest="dry_run",
@@ -375,6 +381,7 @@ def main() -> None:
             domain=args.domain,
             workers=args.workers,
             no_think=args.no_think,
+            no_description=args.no_description,
         )
         return
 
@@ -453,6 +460,7 @@ def main() -> None:
             batch=args.batch,
             no_think=args.no_think,
             dry_run=args.dry_run,
+            no_description=args.no_description,
         )
         console.print()
         console.print(Rule("[bold green]Pipeline завершён[/bold green]", style="green"))
@@ -475,15 +483,22 @@ def main() -> None:
     # ── Режим одного URL ──────────────────────────────────────────────────────
     if args.url:
         if args.dry_run:
-            # Без записи в БД: fetch title → classify → print
+            # Без записи в БД: fetch title+description → classify → print
             console.print(f"[yellow bold]⚠ dry-run[/yellow bold] одного URL: [cyan]{args.url}[/cyan]\n")
+            title = None
+            description = None
             try:
-                title = step2.fetch_title(args.url)
+                meta = step2.fetch_page_meta(args.url)
+                title = meta["title"]
+                description = meta["description"]
             except Exception as exc:
-                title = None
                 console.print(f"[red]Ошибка парсинга:[/red] {exc}")
 
-            console.print(f"[dim]Заголовок:[/dim] {title or '(не получен)'}\n")
+            console.print(f"[dim]Заголовок:[/dim]   {title or '(не получен)'}")
+            if description and not args.no_description:
+                short_desc = description[:80] + "…" if len(description) > 80 else description
+                console.print(f"[dim]Description:[/dim] {short_desc}")
+            console.print()
 
             try:
                 client = step3._build_client()
@@ -497,6 +512,7 @@ def main() -> None:
                 category = step3.classify_url(
                     client, model, args.url, title or "", hints,
                     no_think=args.no_think,
+                    description=None if args.no_description else description,
                 )
                 console.print(f"[dim]Модель:[/dim]    {model}")
                 console.print(f"[bold green]Категория:[/bold green] {category}")
@@ -565,6 +581,7 @@ def main() -> None:
             batch=args.batch,
             no_think=args.no_think,
             dry_run=args.dry_run,
+            no_description=args.no_description,
         )
 
     console.print()
