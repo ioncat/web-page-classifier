@@ -19,7 +19,7 @@
 
 ## Решение
 
-1. **Парсинг** заголовков страниц (без headless-браузера — plain HTTP + `<title>`)
+1. **Парсинг** заголовков и мета-описаний страниц (plain HTTP + `<title>`, `og:description`, `meta[name=description]`)
 2. **Разметка** локальной LLM через Ollama — без API-ключей, работает на GPU
 3. **Фиксация таксономии**: закрытый список категорий, переразметка через `--strict`
 4. **Обучение** лёгкого ML-классификатора на LLM-разметке
@@ -48,7 +48,7 @@ flowchart LR
 | Шаг | Файл | Что происходит |
 |-----|------|----------------|
 | **Step 1** Импорт | `step1.py` | Regex извлекает URL из текста, дедуплицирует, добавляет со статусом `pending` |
-| **Step 2** Парсинг | `step2.py` | Загружает страницу, достаёт `<title>`, ставит `done` или `error` |
+| **Step 2** Парсинг | `step2.py` | Загружает страницу, достаёт `<title>` и `og:description`, ставит `done` или `error` |
 | **Step 3** Классификация | `step3.py` | Отправляет `title + domain` в Ollama LLM, пишет категорию в `urls.category` |
 | **Step 4** ML *(скоро)* | `step4.py` | Fine-tuned `xlm-roberta-base`, ~500 URL/сек на CPU, fallback на LLM при низкой уверенности |
 
@@ -175,9 +175,11 @@ L1: Искусственный интеллект
 Архитектурно: каскадные классификаторы (отдельная модель на каждый уровень) или multi-label подход.
 
 ### Обогащение признаков
-Сейчас step2 извлекает только `<title>`. Планируется добавить:
-- `<meta name="description">` и `<meta property="og:description">` — часто информативнее заголовка
+Step2 извлекает `<title>` и мета-описание (`og:description` → `meta[name=description]`).
+Описание передаётся в LLM-промпт (step3) и войдёт в обучающий датасет как дополнительный признак.
+Планируется также:
 - `<meta property="og:title">` — альтернативный заголовок
+- Вход ML-классификатора: `f"{title} [SEP] {description[:200]} [SEP] {domain}"`
 
 Это даст ML-классификатору больше контекста и повысит точность на страницах с коротким или неинформативным title.
 
@@ -212,7 +214,7 @@ python main.py --url https://habr.com/ru/articles/805105/ --dry-run
 url-parser/
 ├── main.py             # entry point, CLI (argparse)
 ├── step1.py            # import URLs from file → DB
-├── step2.py            # fetch <title> for each URL
+├── step2.py            # fetch <title> + og:description for each URL
 ├── step3.py            # LLM classification via Ollama
 ├── compare.py          # side-by-side model comparison
 ├── db.py               # all SQLite operations
@@ -480,6 +482,7 @@ erDiagram
         TEXT url UK
         TEXT status
         TEXT title
+        TEXT description
         TEXT error
         INTEGER error_code
         TEXT added_at
