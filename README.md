@@ -107,8 +107,6 @@ URL:       https://en.wikipedia.org/wiki/Transformer_(deep_learning)
 
 ## ML Roadmap
 
-LLM-пайплайн генерирует обучающие данные для быстрого автономного классификатора.
-
 ```mermaid
 flowchart TD
     A["LLM-разметка<br/>~7000 URL"] --> B["Фаза 1<br/>Фиксация таксономии<br/>taxonomy.json"]
@@ -116,9 +114,6 @@ flowchart TD
     C --> D["Фаза 3<br/>Обучение<br/>xlm-roberta-base"]
     D --> E["Фаза 4<br/>step4.py<br/>+ порог уверенности"]
     E --> F["Фаза 5<br/>Active learning<br/>переобучение раз в месяц"]
-
-    style A fill:#f9f,stroke:#333
-    style F fill:#9f9,stroke:#333
 ```
 
 | Фаза | Задача | Статус |
