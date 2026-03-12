@@ -56,7 +56,7 @@ stateDiagram-v2
     done    --> pending   : --force / --re-tag
 ```
 
-Each step is **idempotent** — re-running without flags skips already-processed URLs.
+Каждый шаг **идемпотентен** — повторный запуск без флагов пропускает уже обработанные URL.
 
 ---
 
