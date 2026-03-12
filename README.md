@@ -305,6 +305,7 @@ MAX_CONSECUTIVE_CONN_ERRORS    # подряд ошибок Ollama → остан
 | `--list-models` | показать список доступных моделей и выйти | — |
 | `--batch N` | кол-во URL в одном запросе к модели (батчинг) | 1 |
 | `--no-think` | отключить thinking-режим модели (`think: false`) | выкл. |
+| `--no-description` | не передавать `og:description` в промпт (быстрее, ~50% меньше токенов) | выкл. |
 
 > `--no-think` нужен для thinking-моделей: `qwen3`, `deepseek-r1`, `minimax-m2` и др.
 
@@ -390,6 +391,9 @@ python main.py --only-classify --model qwen3:8b --no-think
 
 # Батчинг + параллельность (быстрее на больших объёмах)
 python main.py --only-classify --batch 10 --workers 4
+
+# Без мета-описания — быстрее, меньше токенов (для сравнения производительности)
+python main.py --only-classify --no-description
 
 # Перетэггировать всё другой моделью
 python main.py --re-tag --model mistral-small3.2:24b
