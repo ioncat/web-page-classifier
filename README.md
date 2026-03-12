@@ -8,7 +8,7 @@
 
 Растущая коллекция сохранённых ссылок — статьи, репозитории, видео — без какой-либо структуры. Ручная разметка не масштабируется. Внешние API требуют оплаты и интернета. Цель: полностью локальный, автоматизированный конвейер, превращающий сырые ссылки в структурированную базу знаний.
 
-## Подход
+## Решение
 
 1. **Парсинг** заголовков страниц (без headless-браузера — plain HTTP + `<title>`)
 2. **Разметка** локальной LLM через Ollama — без API-ключей, работает на GPU
@@ -135,19 +135,19 @@ flowchart TD
 ```bash
 pip install -r requirements.txt
 
-# Start Ollama (for classification)
+# Запустить Ollama
 ollama serve
 ollama pull mistral-small3.2:24b
 
-# Run full pipeline
+# Полный прогон
 python main.py
 
-# Or step by step
+# Или по шагам
 python main.py --only-import
 python main.py --only-parse --workers 4
 python main.py --only-classify --model mistral-small3.2:24b --batch 10 --workers 4
 
-# Test a single URL without touching the DB
+# Протестировать один URL без записи в БД
 python main.py --url https://habr.com/ru/articles/805105/ --dry-run
 ```
 
