@@ -13,30 +13,30 @@
 erDiagram
     urls {
         INTEGER id PK
-        TEXT    url        "UNIQUE"
-        TEXT    status     "pending | done | error"
-        TEXT    title
-        TEXT    error
-        TEXT    added_at
-        TEXT    processed_at
-        TEXT    category   "финальный выбор (step3 / --accept-model)"
-        TEXT    tagged_by  "модель, выставившая финальный тег"
+        TEXT url UK
+        TEXT status
+        TEXT title
+        TEXT error
+        TEXT added_at
+        TEXT processed_at
+        TEXT category
+        TEXT tagged_by
     }
 
     tags {
-        INTEGER id   PK
-        TEXT    name "UNIQUE — подсказки для LLM-промпта"
+        INTEGER id PK
+        TEXT name UK
     }
 
     model_results {
-        INTEGER id        PK
-        INTEGER url_id    FK
-        TEXT    model     "имя модели Ollama"
-        TEXT    category  "теги от этой модели"
-        TEXT    tagged_at
+        INTEGER id PK
+        INTEGER url_id FK
+        TEXT model
+        TEXT category
+        TEXT tagged_at
     }
 
-    urls      ||--o{ model_results : "url_id"
+    urls ||--o{ model_results : "url_id"
 ```
 
 > **Ключевой constraint:** `UNIQUE(url_id, model)` в `model_results` —

@@ -1,32 +1,32 @@
 # URL Parser — LLM Classification Pipeline
 
-Building a scalable URL classification pipeline: local LLM generates category labels from page titles, which then serve as training data for a fast downstream ML classifier.
+Конвейер автоматической классификации URL: локальная LLM генерирует категории по заголовкам страниц, которые затем используются как обучающие данные для быстрого ML-классификатора.
 
 ---
 
-## Problem
+## Проблема
 
-A growing collection of saved URLs — articles, repos, videos — with no structure. Manual tagging doesn't scale. External APIs cost money and require internet. The goal: a fully local, automated pipeline that turns raw links into a structured, searchable knowledge base.
+Растущая коллекция сохранённых ссылок — статьи, репозитории, видео — без какой-либо структуры. Ручная разметка не масштабируется. Внешние API требуют оплаты и интернета. Цель: полностью локальный, автоматизированный конвейер, превращающий сырые ссылки в структурированную базу знаний.
 
-## Approach
+## Подход
 
-1. **Crawl** page titles from URLs (no headless browser — plain HTTP + `<title>`)
-2. **Label** with a local LLM (Ollama) — no API keys, runs on GPU
-3. **Fix** the taxonomy: define a closed category list, re-label with `--strict`
-4. **Train** a lightweight ML classifier on the LLM-generated labels
-5. **Infer** at 4000 URLs/2 sec — no GPU, no Ollama required
+1. **Парсинг** заголовков страниц (без headless-браузера — plain HTTP + `<title>`)
+2. **Разметка** локальной LLM через Ollama — без API-ключей, работает на GPU
+3. **Фиксация таксономии**: закрытый список категорий, переразметка через `--strict`
+4. **Обучение** лёгкого ML-классификатора на LLM-разметке
+5. **Инференс** — 4000 URL за ~2 сек без GPU и Ollama
 
-## Pipeline
+## Пайплайн
 
 ```mermaid
 flowchart LR
     A([raw_links.txt]) --> B
 
-    subgraph pipeline ["Pipeline"]
-        B[Step 1\nImport]
-        B --> C[Step 2\nTitle extraction]
-        C --> D[Step 3\nLLM classification]
-        D --> E[Step 4\nML classifier\n🔜]
+    subgraph pipeline ["Пайплайн"]
+        B[Step 1\nИмпорт]
+        B --> C[Step 2\nПарсинг заголовков]
+        C --> D[Step 3\nLLM-классификация]
+        D --> E[Step 4\nML-классификатор\n🔜]
     end
 
     pipeline --> F[(urls.db)]
@@ -34,16 +34,16 @@ flowchart LR
 
 ---
 
-## How it works
+## Как работает
 
-| Step | File | What happens |
-|------|------|-------------|
-| **Step 1** Import | `step1.py` | Regex extracts URLs from raw text, deduplicates, inserts with `status=pending` |
-| **Step 2** Parse | `step2.py` | Fetches each URL, extracts `<title>`, sets `status=done` or `error` |
-| **Step 3** Classify | `step3.py` | Sends `title + domain` to Ollama LLM, writes category to `urls.category` |
-| **Step 4** ML *(coming)* | `step4.py` | Fine-tuned `xlm-roberta-base`, ~500 URLs/sec on CPU, fallback to LLM on low confidence |
+| Шаг | Файл | Что происходит |
+|-----|------|----------------|
+| **Step 1** Импорт | `step1.py` | Regex извлекает URL из текста, дедуплицирует, добавляет со статусом `pending` |
+| **Step 2** Парсинг | `step2.py` | Загружает страницу, достаёт `<title>`, ставит `done` или `error` |
+| **Step 3** Классификация | `step3.py` | Отправляет `title + domain` в Ollama LLM, пишет категорию в `urls.category` |
+| **Step 4** ML *(скоро)* | `step4.py` | Fine-tuned `xlm-roberta-base`, ~500 URL/сек на CPU, fallback на LLM при низкой уверенности |
 
-**URL state machine:**
+**Машина состояний URL:**
 
 ```mermaid
 stateDiagram-v2
@@ -60,77 +60,77 @@ Each step is **idempotent** — re-running without flags skips already-processed
 
 ---
 
-## Example output
+## Пример вывода
 
 ```
 URL:       https://habr.com/ru/articles/805105/
-Title:     Как я построил RAG-систему для поиска по документам
-Category:  Искусственный интеллект
-Model:     mistral-small3.2:24b
+Заголовок: Как я построил RAG-систему для поиска по документам
+Категория: Искусственный интеллект
+Модель:    mistral-small3.2:24b
 
 URL:       https://github.com/BerriAI/litellm
-Title:     LiteLLM — Call all LLM APIs using OpenAI format
-Category:  Разработка
+Заголовок: LiteLLM — Call all LLM APIs using OpenAI format
+Категория: Разработка
 
 URL:       https://en.wikipedia.org/wiki/Transformer_(deep_learning)
-Title:     Transformer (deep learning)
-Category:  Data Science
+Заголовок: Transformer (deep learning)
+Категория: Data Science
 ```
 
-Stats after a full run:
+Статистика после полного прогона:
 
-| Status | Count |
-|--------|------:|
-| done + classified | 6 901 |
-| error (permanent 403/404) | 1 062 |
-| Unique categories | ~85 (after cleanup) |
+| Статус | Кол-во |
+|--------|-------:|
+| done + классифицировано | 6 901 |
+| error (постоянные 403/404) | 1 062 |
+| Уникальных категорий | ~85 (после чистки) |
 
 ---
 
 ## ML Roadmap
 
-The LLM pipeline generates training data for a fast offline classifier.
+LLM-пайплайн генерирует обучающие данные для быстрого автономного классификатора.
 
 ```mermaid
 flowchart TD
-    A[LLM labels\n~7 000 URLs] --> B[Фаза 1\nFix taxonomy\ntaxonomy.json]
-    B --> C[Фаза 2\n--strict re-labeling\nexport_dataset.py]
-    C --> D[Фаза 3\nFine-tune\nxlm-roberta-base]
-    D --> E[Фаза 4\nstep4.py\n+ confidence threshold]
-    E --> F[Фаза 5\nActive learning\nmonthly retrain]
+    A[LLM-разметка\n~7000 URL] --> B[Фаза 1\nФиксация таксономии\ntaxonomy.json]
+    B --> C[Фаза 2\nПереразметка --strict\nexport_dataset.py]
+    C --> D[Фаза 3\nОбучение\nxlm-roberta-base]
+    D --> E[Фаза 4\nstep4.py\n+ порог уверенности]
+    E --> F[Фаза 5\nActive learning\nпереобучение раз в месяц]
 
     style A fill:#f9f,stroke:#333
     style F fill:#9f9,stroke:#333
 ```
 
-| Phase | Task | Status |
-|-------|------|--------|
-| 0 | Distribution analysis | ✅ done |
-| 1 | Taxonomy fixation (`taxonomy.json`) | 🔄 in progress |
-| 2.1 | `--strict` mode in step3 + re-label | ⏳ next |
+| Фаза | Задача | Статус |
+|------|--------|--------|
+| 0 | Анализ распределения | ✅ готово |
+| 1 | Фиксация таксономии (`taxonomy.json`) | 🔄 в процессе |
+| 2.1 | Режим `--strict` в step3 + переразметка | ⏳ следующий |
 | 2.2 | `export_dataset.py` | ⏳ |
-| 2.3 | Manual validation (~50 examples/class) | ⏳ |
+| 2.3 | Ручная валидация (~50 примеров/класс) | ⏳ |
 | 3 | `train_classifier.py`, `xlm-roberta-base` | ⏳ |
 | 4 | `step4.py` + `--only-ml-classify` | ⏳ |
-| 5 | Active learning, monthly retrain | ⏳ |
+| 5 | Active learning, ежемесячное переобучение | ⏳ |
 
-**Target:** `macro-F1 > 0.80`, inference without GPU or Ollama.
+**Цель:** `macro-F1 > 0.80`, инференс без GPU и Ollama.
 
-See [`docs/ml-plan.md`](docs/ml-plan.md) for full architecture details.
-
----
-
-## Future work
-
-- `--strict` mode — LLM chooses only from `taxonomy.json`, eliminates hallucinated categories
-- `export_dataset.py` — export `(title, domain) → category` pairs as `dataset.jsonl`
-- `--fix-category URL "Category"` — manual label correction for active learning
-- `step4.py` — ML classifier with confidence fallback to LLM
-- Active learning UI — surface low-confidence examples for review first
+Подробная архитектура: [`docs/ml-plan.md`](docs/ml-plan.md)
 
 ---
 
-## Quick start
+## Планы развития
+
+- `--strict` режим — LLM выбирает только из `taxonomy.json`, устраняет выдуманные категории
+- `export_dataset.py` — экспорт пар `(title, domain) → category` в `dataset.jsonl`
+- `--fix-category URL "Категория"` — ручная правка меток для active learning
+- `step4.py` — ML-классификатор с fallback на LLM при низкой уверенности
+- Active learning UI — сначала показывает примеры с наименьшей уверенностью модели
+
+---
+
+## Быстрый старт
 
 ```bash
 pip install -r requirements.txt
@@ -153,7 +153,7 @@ python main.py --url https://habr.com/ru/articles/805105/ --dry-run
 
 ---
 
-## Project structure
+## Структура проекта
 
 ```
 url-parser/
