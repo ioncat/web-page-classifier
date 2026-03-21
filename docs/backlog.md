@@ -112,6 +112,18 @@
 
 ---
 
+## Сессия 9 — Дозаполнение description (21.03)
+
+| # | Фича | Файлы |
+|---|------|-------|
+| 55 | **Обнаружена проблема:** колонка `description` была добавлена в миграцию `init_db()`, но ни разу не применялась к боевой БД — все 6901 done-записей имели `NULL`. Фича `og:description` в step2 работала корректно, но данные некуда было писать | `db.py` |
+| 56 | **`get_done_without_description()`** — выборка done-URL с пустым description | `db.py` |
+| 57 | **`update_description()`** — точечный UPDATE только колонки `description`, не трогает `status`, `title`, `error` | `db.py` |
+| 58 | **`refetch_descriptions()`** — дозаполняет description для done-записей без него: поддержка `--workers`, `--limit`, `--domain`, `--no-progress`, `--verbose`; при ошибке HTTP статус записи не меняется | `step2.py` |
+| 59 | **`--refetch-description`** — флаг в `main.py` (mutually exclusive с `--only-*`); запускает `refetch_descriptions()` | `main.py` |
+
+---
+
 ## Запланировано
 
 | # | Фича | Приоритет | Описание |
@@ -135,8 +147,8 @@
 
 | Показатель | Значение |
 |---|---|
-| Всего фич | **52** (+10 запланировано) |
+| Всего фич | **57** (+10 запланировано) |
 | Файлов в проекте | 11 (`main.py`, `step1–3.py`, `compare.py`, `benchmark/benchmark.py`, `db.py`, `config/settings.py`, `config/prompts.py`, `README.md`, `docs/`) |
 | GPU утилизация: старт → финал | 5–10% → **80–90%** |
-| Сессий | 8 (3 дня) |
+| Сессий | 9 (4 дня) |
 | Коммитов | 30+ |

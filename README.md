@@ -273,6 +273,7 @@ MAX_CONSECUTIVE_CONN_ERRORS    # подряд ошибок Ollama → остан
 | `--only-import` | запустить только step1 (импорт URL) |
 | `--only-parse` | запустить только step2 (парсинг заголовков) |
 | `--only-classify` | запустить только step3 (классификация через Ollama) |
+| `--refetch-description` | дозаполнить `description` у done-URL где он пустой (не трогает `status` и `title`) |
 | `--re-tag` | сбросить `category`/`tagged_by` у всех done-URL и запустить step3 заново |
 
 ### Фильтрация и входные данные
@@ -350,6 +351,12 @@ MAX_CONSECUTIVE_CONN_ERRORS    # подряд ошибок Ollama → остан
 ```bash
 # Полный прогон
 python main.py
+
+# Дозаполнить description у уже обработанных URL (не перепарсивает title)
+python main.py --refetch-description --workers 4
+
+# То же, только для одного домена
+python main.py --refetch-description --domain habr.com --workers 4
 
 # Другой входной файл, первые 100 URL
 python main.py --input links.txt --limit 100

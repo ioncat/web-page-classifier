@@ -21,7 +21,17 @@ from rich.progress import (
 )
 from rich.table import Table
 
-from db import get_errors, get_pending, get_pending_by_domain, get_stats, init_db, update_url, TRANSIENT_CODES
+from db import (
+    get_done_without_description,
+    get_errors,
+    get_pending,
+    get_pending_by_domain,
+    get_stats,
+    init_db,
+    update_description,
+    update_url,
+    TRANSIENT_CODES,
+)
 from config.settings import (
     BASE_HEADERS,
     DELAY_MAX,
@@ -406,6 +416,156 @@ def main(
         done_count, error_count = _process_rich(pending, verbose)
 
     _print_summary(done_count, error_count, domain=domain)
+    console.print(Panel("[green]Готово.[/green]"))
+
+
+def refetch_descriptions(
+    limit: int | None = None,
+    no_progress: bool = False,
+    verbose: bool = False,
+    domain: str | None = None,
+    workers: int = 1,
+) -> None:
+    """Дозаполняет description для done-записей, у которых он пустой.
+    Не меняет status, title или другие поля.
+    """
+    from urllib.parse import urlparse
+
+    console.print(Panel("[bold cyan]Step 2 — Дозаполнение description[/bold cyan]"))
+
+    init_db()
+
+    urls = get_done_without_description()
+
+    if domain:
+        domain_norm = domain.lower().removeprefix("www.")
+        urls = [
+            u for u in urls
+            if urlparse(u).netloc.lower().removeprefix("www.") == domain_norm
+        ]
+        console.print(f"Фильтр по домену: [cyan]{domain}[/cyan] → [bold]{len(urls)}[/bold] URL")
+
+    if limit is not None:
+        urls = urls[:limit]
+
+    if not urls:
+        console.print("[green]Нет URL без description.[/green]")
+        return
+
+    console.print(f"Без description: [bold yellow]{len(urls)}[/bold yellow] URL\n")
+
+    done_count = 0
+    error_count = 0
+
+    def _process_one(url: str) -> tuple[str, str | None, str | None]:
+        """Возвращает (url, description, error_msg)."""
+        try:
+            meta = fetch_page_meta(url)
+            return url, meta["description"], None
+        except Exception as exc:
+            return url, None, str(exc)
+
+    if workers > 1:
+        ordered = _interleave_by_domain(urls)
+        if no_progress:
+            total = len(ordered)
+            completed = 0
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futs = {executor.submit(_process_one, u): u for u in ordered}
+                try:
+                    for fut in as_completed(futs):
+                        url, description, error = fut.result()
+                        completed += 1
+                        if error:
+                            error_count += 1
+                            print(f"[{completed}/{total}] ERR {url}: {error}", flush=True)
+                        else:
+                            update_description(url, description)
+                            done_count += 1
+                            if verbose:
+                                short = (description or "")[:80]
+                                print(f"[{completed}/{total}] OK  {short or '—'}", flush=True)
+                            else:
+                                print(f"[{completed}/{total}] {url}", flush=True)
+                except KeyboardInterrupt:
+                    print("\nПрерывание по Ctrl+C...")
+        else:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                MofNCompleteColumn(),
+                TaskProgressColumn(),
+                TimeElapsedColumn(),
+                console=console,
+                transient=False,
+            ) as progress:
+                task = progress.add_task("Дозаполнение...", total=len(ordered))
+                with ThreadPoolExecutor(max_workers=workers) as executor:
+                    futs = {executor.submit(_process_one, u): u for u in ordered}
+                    try:
+                        for fut in as_completed(futs):
+                            url, description, error = fut.result()
+                            if error:
+                                error_count += 1
+                                if verbose:
+                                    console.log(f"[red]ERR[/red] {error}")
+                            else:
+                                update_description(url, description)
+                                done_count += 1
+                                if verbose:
+                                    console.log(f"[green]OK[/green] {(description or '')[:80] or '—'}")
+                            progress.advance(task)
+                    except KeyboardInterrupt:
+                        console.print("\n[yellow]Прерывание по Ctrl+C...[/yellow]")
+    else:
+        total = len(urls)
+        if no_progress:
+            for i, url in enumerate(urls, 1):
+                print(f"[{i}/{total}] {url}", flush=True)
+                url_, description, error = _process_one(url)
+                if error:
+                    error_count += 1
+                    print(f"  ERR: {error}")
+                else:
+                    update_description(url_, description)
+                    done_count += 1
+                    if verbose:
+                        print(f"  OK: {(description or '')[:80] or '—'}")
+        else:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                MofNCompleteColumn(),
+                TaskProgressColumn(),
+                TimeElapsedColumn(),
+                console=console,
+                transient=False,
+            ) as progress:
+                task = progress.add_task("Дозаполнение...", total=total)
+                for url in urls:
+                    short_url = url[:60] + "…" if len(url) > 60 else url
+                    progress.update(task, description=f"[dim]{short_url}[/dim]")
+                    _, description, error = _process_one(url)
+                    if error:
+                        error_count += 1
+                        if verbose:
+                            console.log(f"[red]ERR[/red] {error}")
+                    else:
+                        update_description(url, description)
+                        done_count += 1
+                        if verbose:
+                            console.log(f"[green]OK[/green] {(description or '')[:80] or '—'}")
+                    progress.advance(task)
+
+    summary = Table(title="Итоги дозаполнения", show_header=True, header_style="bold magenta")
+    summary.add_column("Статус", style="cyan")
+    summary.add_column("Кол-во", justify="right", style="bold")
+    summary.add_row("[green]Получено description[/green]", f"[green]{done_count}[/green]")
+    summary.add_row("[yellow]Без description (ошибка/нет тега)[/yellow]", f"[yellow]{error_count}[/yellow]")
+    summary.add_row("Итого обработано", str(done_count + error_count))
+    console.print(summary)
     console.print(Panel("[green]Готово.[/green]"))
 
 

@@ -221,6 +221,12 @@ def parse_args() -> argparse.Namespace:
         dest="only_classify",
         help="запустить только step3 (классификация через Ollama)",
     )
+    mode_group.add_argument(
+        "--refetch-description",
+        action="store_true",
+        dest="refetch_description",
+        help="дозаполнить description у done-URL где он пустой (не трогает status и title)",
+    )
 
     # ── Вывод ─────────────────────────────────────────────────────────────────
     parser.add_argument(
@@ -464,6 +470,18 @@ def main() -> None:
         )
         console.print()
         console.print(Rule("[bold green]Pipeline завершён[/bold green]", style="green"))
+        return
+
+    # ── --refetch-description ─────────────────────────────────────────────────
+    if args.refetch_description:
+        step2.refetch_descriptions(
+            limit=args.limit,
+            no_progress=args.no_progress,
+            verbose=args.verbose,
+            domain=args.domain,
+            workers=args.workers,
+        )
+        console.print(Rule("[bold green]Готово[/bold green]", style="green"))
         return
 
     # ── --list-models ──────────────────────────────────────────────────────────

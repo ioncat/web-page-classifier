@@ -201,6 +201,25 @@ def get_pending_by_domain(domain: str) -> list[str]:
     ]
 
 
+def get_done_without_description() -> list[str]:
+    """Возвращает URL со status='done' и пустым description."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT url FROM urls WHERE status = 'done'"
+            " AND (description IS NULL OR description = '') ORDER BY id"
+        ).fetchall()
+    return [row["url"] for row in rows]
+
+
+def update_description(url: str, description: str | None) -> None:
+    """Обновляет только колонку description, не трогая status, title и прочее."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE urls SET description = ? WHERE url = ?",
+            (description, url),
+        )
+
+
 def get_errors() -> list[dict]:
     """Возвращает список записей с ошибками (url, error, error_code)."""
     with get_conn() as conn:
