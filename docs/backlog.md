@@ -121,6 +121,17 @@
 | 57 | **`update_description()`** — точечный UPDATE только колонки `description`, не трогает `status`, `title`, `error` | `db.py` |
 | 58 | **`refetch_descriptions()`** — дозаполняет description для done-записей без него: поддержка `--workers`, `--limit`, `--domain`, `--no-progress`, `--verbose`; при ошибке HTTP статус записи не меняется | `step2.py` |
 | 59 | **`--refetch-description`** — флаг в `main.py` (mutually exclusive с `--only-*`); запускает `refetch_descriptions()` | `main.py` |
+| 60 | **fix: счётчики в `refetch_descriptions()`** — было 2 счётчика (`done`/`error`), `done` считал любой успешный запрос включая `description=None`. Стало 3 счётчика: `got` (записано), `no_tag` (тег отсутствует), `error` (HTTP/таймаут); `None` больше не пишется в БД | `step2.py` |
+
+### Результаты первого прогона `--refetch-description` (21.03)
+
+| Показатель | Значение |
+|---|---|
+| Исходно без description | **5237** из 6901 done-URL (75.9%) |
+| Реально записано | **1713** (32.7% от запрошенных) |
+| Страница OK, тег отсутствует | **2907** (55.5%) — одностраничники, страницы комментариев, GitHub-профили |
+| Ошибка HTTP / таймаут | **617** (11.8%) |
+| Итого с description после прогона | **3377 / 6901** (48.9%) |
 
 ---
 
@@ -147,7 +158,7 @@
 
 | Показатель | Значение |
 |---|---|
-| Всего фич | **57** (+10 запланировано) |
+| Всего фич | **60** (+10 запланировано) |
 | Файлов в проекте | 11 (`main.py`, `step1–3.py`, `compare.py`, `benchmark/benchmark.py`, `db.py`, `config/settings.py`, `config/prompts.py`, `README.md`, `docs/`) |
 | GPU утилизация: старт → финал | 5–10% → **80–90%** |
 | Сессий | 9 (4 дня) |
