@@ -454,16 +454,30 @@ def refetch_descriptions(
 
     console.print(f"Без description: [bold yellow]{len(urls)}[/bold yellow] URL\n")
 
-    done_count = 0
-    error_count = 0
+    got_count = 0    # реально записано (description != None)
+    no_tag_count = 0  # страница получена, но тег отсутствует
+    error_count = 0   # HTTP-ошибка / таймаут / исключение
 
     def _process_one(url: str) -> tuple[str, str | None, str | None]:
-        """Возвращает (url, description, error_msg)."""
+        """Возвращает (url, description, error_msg).
+        description=None означает «страница доступна, но тег не найден».
+        """
         try:
             meta = fetch_page_meta(url)
             return url, meta["description"], None
         except Exception as exc:
             return url, None, str(exc)
+
+    def _handle_result(url: str, description: str | None, error: str | None) -> None:
+        nonlocal got_count, no_tag_count, error_count
+        if error:
+            error_count += 1
+            return
+        if description:
+            update_description(url, description)
+            got_count += 1
+        else:
+            no_tag_count += 1
 
     if workers > 1:
         ordered = _interleave_by_domain(urls)
@@ -476,17 +490,14 @@ def refetch_descriptions(
                     for fut in as_completed(futs):
                         url, description, error = fut.result()
                         completed += 1
+                        _handle_result(url, description, error)
                         if error:
-                            error_count += 1
                             print(f"[{completed}/{total}] ERR {url}: {error}", flush=True)
+                        elif verbose:
+                            short = (description or "")[:80]
+                            print(f"[{completed}/{total}] {'OK ' if description else 'NO_TAG'} {short or url}", flush=True)
                         else:
-                            update_description(url, description)
-                            done_count += 1
-                            if verbose:
-                                short = (description or "")[:80]
-                                print(f"[{completed}/{total}] OK  {short or '—'}", flush=True)
-                            else:
-                                print(f"[{completed}/{total}] {url}", flush=True)
+                            print(f"[{completed}/{total}] {url}", flush=True)
                 except KeyboardInterrupt:
                     print("\nПрерывание по Ctrl+C...")
         else:
@@ -506,15 +517,14 @@ def refetch_descriptions(
                     try:
                         for fut in as_completed(futs):
                             url, description, error = fut.result()
-                            if error:
-                                error_count += 1
-                                if verbose:
+                            _handle_result(url, description, error)
+                            if verbose:
+                                if error:
                                     console.log(f"[red]ERR[/red] {error}")
-                            else:
-                                update_description(url, description)
-                                done_count += 1
-                                if verbose:
-                                    console.log(f"[green]OK[/green] {(description or '')[:80] or '—'}")
+                                elif description:
+                                    console.log(f"[green]OK[/green] {description[:80]}")
+                                else:
+                                    console.log(f"[dim]NO_TAG[/dim] {url[:80]}")
                             progress.advance(task)
                     except KeyboardInterrupt:
                         console.print("\n[yellow]Прерывание по Ctrl+C...[/yellow]")
@@ -524,14 +534,11 @@ def refetch_descriptions(
             for i, url in enumerate(urls, 1):
                 print(f"[{i}/{total}] {url}", flush=True)
                 url_, description, error = _process_one(url)
+                _handle_result(url_, description, error)
                 if error:
-                    error_count += 1
                     print(f"  ERR: {error}")
-                else:
-                    update_description(url_, description)
-                    done_count += 1
-                    if verbose:
-                        print(f"  OK: {(description or '')[:80] or '—'}")
+                elif verbose:
+                    print(f"  {'OK' if description else 'NO_TAG'}: {(description or '')[:80] or '—'}")
         else:
             with Progress(
                 SpinnerColumn(),
@@ -548,23 +555,23 @@ def refetch_descriptions(
                     short_url = url[:60] + "…" if len(url) > 60 else url
                     progress.update(task, description=f"[dim]{short_url}[/dim]")
                     _, description, error = _process_one(url)
-                    if error:
-                        error_count += 1
-                        if verbose:
+                    _handle_result(url, description, error)
+                    if verbose:
+                        if error:
                             console.log(f"[red]ERR[/red] {error}")
-                    else:
-                        update_description(url, description)
-                        done_count += 1
-                        if verbose:
-                            console.log(f"[green]OK[/green] {(description or '')[:80] or '—'}")
+                        elif description:
+                            console.log(f"[green]OK[/green] {description[:80]}")
+                        else:
+                            console.log(f"[dim]NO_TAG[/dim] {url[:80]}")
                     progress.advance(task)
 
     summary = Table(title="Итоги дозаполнения", show_header=True, header_style="bold magenta")
     summary.add_column("Статус", style="cyan")
     summary.add_column("Кол-во", justify="right", style="bold")
-    summary.add_row("[green]Получено description[/green]", f"[green]{done_count}[/green]")
-    summary.add_row("[yellow]Без description (ошибка/нет тега)[/yellow]", f"[yellow]{error_count}[/yellow]")
-    summary.add_row("Итого обработано", str(done_count + error_count))
+    summary.add_row("[green]Записано description[/green]", f"[green]{got_count}[/green]")
+    summary.add_row("[dim]Страница OK, тег отсутствует[/dim]", f"[dim]{no_tag_count}[/dim]")
+    summary.add_row("[red]Ошибка HTTP / таймаут[/red]", f"[red]{error_count}[/red]")
+    summary.add_row("Итого обработано", str(got_count + no_tag_count + error_count))
     console.print(summary)
     console.print(Panel("[green]Готово.[/green]"))
 
