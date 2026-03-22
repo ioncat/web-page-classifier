@@ -11,12 +11,22 @@ Mobile-first, доступен из интернета.
 
 ## Установка
 
+Web UI — отдельный проект со своим virtualenv:
+
 ```bash
-# Только веб-зависимости (отдельно от пайплайна)
-pip install -r web/requirements.txt
+cd web/
+python -m venv venv
+
+# Активация (PowerShell)
+.\venv\Scripts\Activate.ps1
+
+# Активация (cmd)
+.\venv\Scripts\activate.bat
+
+pip install -r requirements.txt
 ```
 
-> Зависимости пайплайна (`requests`, `ollama`, `rich` и др.) находятся в корневом `requirements.txt` и для веб UI не нужны.
+> Пайплайн и Web UI — разные проекты с разными окружениями. `venv/` в корне проекта для веб UI не нужен.
 
 ## Переменные окружения
 
@@ -44,18 +54,26 @@ export DB_PATH=../urls.db
 
 ## Запуск локально
 
+Запускать из **корня проекта** с активированным `web/venv`:
+
 ```bash
 # Из корня проекта
+.\web\venv\Scripts\Activate.ps1           # PowerShell
+# или
+.\web\venv\Scripts\activate.bat           # cmd
+
 python -m uvicorn web.app:app --port 8000 --reload
 
 # Открыть в браузере
 http://localhost:8000
 # Логин по умолчанию: admin / changeme
 
-# После изменений в коде — перезапустить сервер (Ctrl+C, затем снова):
-# (статика кэшируется браузером; cache-busting срабатывает при перезапуске)
+# После изменений — перезапустить сервер (Ctrl+C, затем снова):
+# статика кэшируется браузером; cache-busting срабатывает при перезапуске
 python -m uvicorn web.app:app --port 8000 --reload
 ```
+
+> Запускать именно из корня (`web-page-classifier/`), иначе сломаются импорты `web.*` и путь к `urls.db`.
 
 ## Структура
 
