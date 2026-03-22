@@ -55,7 +55,8 @@
       <nav class="flex-1 py-2">
         {% for cat in all_categories %}
         <a href="/category/{{ cat.category | urlencode }}"
-           class="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50
+           data-category="{{ cat.category }}"
+           class="sidebar-cat flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50
                   {% if active_category == cat.category %}bg-blue-50 text-blue-700 font-semibold{% else %}text-gray-700{% endif %}">
           <span class="truncate">{{ cat.category }}</span>
           <span class="ml-2 shrink-0 text-xs px-1.5 py-0.5 rounded-full
@@ -97,6 +98,31 @@
       {% block content %}{% endblock %}
     </main>
 
+  </div>
+
+  <!-- Move to category modal -->
+  <div id="move-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div class="absolute inset-0 bg-black/50" id="move-modal-overlay"></div>
+    <div class="relative bg-white w-full sm:w-96 sm:rounded-2xl rounded-t-2xl max-h-[75vh] flex flex-col shadow-xl">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <h3 class="font-semibold text-gray-900">Переместить в категорию</h3>
+        <button id="move-modal-close" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="overflow-y-auto py-2" id="move-modal-list">
+        {% for cat in all_categories %}
+        <button class="modal-cat-btn w-full text-left flex items-center justify-between px-5 py-3
+                       text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                data-category="{{ cat.category }}">
+          <span>{{ cat.category }}</span>
+          <span class="text-xs text-gray-400">{{ cat.count }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 
   <script src="/static/app.js"></script>

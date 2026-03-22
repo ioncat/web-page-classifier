@@ -1,5 +1,6 @@
 """JSON API роуты."""
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from web.auth import verify_auth
 from web import database as db
@@ -32,3 +33,16 @@ def delete_url(url_id: int):
     if not db.delete_url(url_id):
         raise HTTPException(status_code=404, detail="URL не найден")
     return {"ok": True}
+
+
+class CategoryUpdate(BaseModel):
+    category: str
+
+
+@router.patch("/urls/{url_id}/category")
+def update_category(url_id: int, body: CategoryUpdate):
+    if not body.category.strip():
+        raise HTTPException(status_code=422, detail="Категория не может быть пустой")
+    if not db.update_category(url_id, body.category.strip()):
+        raise HTTPException(status_code=404, detail="URL не найден")
+    return {"ok": True, "category": body.category.strip()}

@@ -128,6 +128,16 @@ def get_stats() -> dict:
     return {"total_urls": total, "total_categories": cats}
 
 
+def update_category(url_id: int, new_category: str) -> bool:
+    """Меняет категорию URL. Возвращает True если строка обновлена."""
+    with _get_conn() as conn:
+        cur = conn.execute(
+            "UPDATE urls SET category = ? WHERE id = ?",
+            (new_category, url_id),
+        )
+    return cur.rowcount > 0
+
+
 def delete_url(url_id: int) -> bool:
     """Удаляет запись по id. Возвращает True если строка была удалена."""
     with _get_conn() as conn:
