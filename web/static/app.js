@@ -36,6 +36,10 @@ async function apiPatchCategory(urlId, category) {
   if (!res.ok) throw new Error('patch failed');
 }
 
+function getCardCategories(card) {
+  return [...card.querySelectorAll('.card-cat-badge')].map(b => b.textContent.trim());
+}
+
 function updateCardBadges(card, category) {
   const footer = card.querySelector('.card-cat-badge')?.parentElement;
   if (!footer) return;
@@ -45,6 +49,19 @@ function updateCardBadges(card, category) {
   badge.className = 'card-cat-badge text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100';
   badge.textContent = category;
   footer.appendChild(badge);
+}
+
+// Обновить счётчик категории в sidebar: delta = +1 или -1
+function updateSidebarCount(category, delta) {
+  document.querySelectorAll(`.sidebar-cat[data-category="${CSS.escape(category)}"]`).forEach(el => {
+    const badge = el.querySelector('span:last-child');
+    if (!badge) return;
+    const val = parseInt(badge.textContent, 10);
+    if (isNaN(val)) return;
+    const next = val + delta;
+    badge.textContent = next;
+    if (next <= 0) el.closest('a,div')?.classList.add('opacity-40');
+  });
 }
 
 
@@ -62,6 +79,7 @@ document.addEventListener('click', async (e) => {
   btn.disabled = true;
   try {
     await apiDelete(urlId);
+    getCardCategories(card).forEach(cat => updateSidebarCount(cat, -1));
     removeCard(card);
   } catch {
     alert('Ошибка удаления. Попробуй снова.');
@@ -89,7 +107,6 @@ function closeMoveModal() {
 moveModalOverlay?.addEventListener('click', closeMoveModal);
 moveModalClose?.addEventListener('click', closeMoveModal);
 
-// Кнопка "Переместить" на карточке
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.btn-move');
   if (!btn) return;
@@ -97,21 +114,22 @@ document.addEventListener('click', (e) => {
   if (card) openMoveModal(card);
 });
 
-// Выбор категории в модальном окне
 document.getElementById('move-modal-list')?.addEventListener('click', async (e) => {
   const btn = e.target.closest('.modal-cat-btn');
   if (!btn || !activeMoveCard) return;
 
-  const category = btn.dataset.category;
-  const urlId    = activeMoveCard.dataset.id;
-  const card     = activeMoveCard;
+  const newCategory = btn.dataset.category;
+  const urlId       = activeMoveCard.dataset.id;
+  const card        = activeMoveCard;
+  const oldCategories = getCardCategories(card);
 
   closeMoveModal();
 
   try {
-    await apiPatchCategory(urlId, category);
-    updateCardBadges(card, category);
-    card.style.transition = 'outline 0.1s';
+    await apiPatchCategory(urlId, newCategory);
+    oldCategories.forEach(cat => updateSidebarCount(cat, -1));
+    updateSidebarCount(newCategory, +1);
+    updateCardBadges(card, newCategory);
     card.style.outline = '2px solid #3b82f6';
     setTimeout(() => { card.style.outline = ''; }, 800);
   } catch {
@@ -135,9 +153,9 @@ document.addEventListener('dragstart', (e) => {
 document.addEventListener('dragend', () => {
   draggedCard?.classList.remove('opacity-40');
   draggedCard = null;
-  document.querySelectorAll('.sidebar-cat').forEach(el => {
-    el.classList.remove('bg-green-50', 'text-green-700', 'ring-2', 'ring-green-400');
-  });
+  document.querySelectorAll('.sidebar-cat').forEach(el =>
+    el.classList.remove('bg-green-50', 'text-green-700', 'ring-2', 'ring-green-400')
+  );
 });
 
 const sidebar = document.getElementById('sidebar');
@@ -165,17 +183,20 @@ sidebar?.addEventListener('drop', async (e) => {
   const cat = e.target.closest('.sidebar-cat');
   if (!cat || !draggedCard) return;
 
-  const category = cat.dataset.category;
-  const urlId    = draggedCard.dataset.id;
-  const card     = draggedCard;
+  const newCategory   = cat.dataset.category;
+  const urlId         = draggedCard.dataset.id;
+  const card          = draggedCard;
+  const oldCategories = getCardCategories(card);
 
   document.querySelectorAll('.sidebar-cat').forEach(el =>
     el.classList.remove('bg-green-50', 'text-green-700', 'ring-2', 'ring-green-400')
   );
 
   try {
-    await apiPatchCategory(urlId, category);
-    updateCardBadges(card, category);
+    await apiPatchCategory(urlId, newCategory);
+    oldCategories.forEach(c => updateSidebarCount(c, -1));
+    updateSidebarCount(newCategory, +1);
+    updateCardBadges(card, newCategory);
     card.classList.remove('opacity-40');
     card.style.outline = '2px solid #3b82f6';
     setTimeout(() => { card.style.outline = ''; }, 800);
