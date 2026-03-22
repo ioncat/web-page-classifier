@@ -23,17 +23,21 @@ function removeCard(card) {
 }
 
 async function apiDelete(urlId) {
-  const res = await fetch(`/api/urls/${urlId}`, { method: 'DELETE' });
-  if (!res.ok) throw new Error('delete failed');
+  const res = await fetch(`/api/urls/${urlId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`delete failed: ${res.status}`);
 }
 
 async function apiPatchCategory(urlId, category) {
   const res = await fetch(`/api/urls/${urlId}/category`, {
     method: 'PATCH',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ category }),
   });
-  if (!res.ok) throw new Error('patch failed');
+  if (!res.ok) throw new Error(`patch failed: ${res.status}`);
 }
 
 function getCardCategories(card) {
@@ -81,8 +85,8 @@ document.addEventListener('click', async (e) => {
     await apiDelete(urlId);
     getCardCategories(card).forEach(cat => updateSidebarCount(cat, -1));
     removeCard(card);
-  } catch {
-    alert('Ошибка удаления. Попробуй снова.');
+  } catch (err) {
+    alert('Ошибка удаления: ' + err.message);
     btn.disabled = false;
   }
 });
@@ -132,8 +136,8 @@ document.getElementById('move-modal-list')?.addEventListener('click', async (e) 
     updateCardBadges(card, newCategory);
     card.style.outline = '2px solid #3b82f6';
     setTimeout(() => { card.style.outline = ''; }, 800);
-  } catch {
-    alert('Не удалось переместить. Попробуй снова.');
+  } catch (err) {
+    alert('Не удалось переместить: ' + err.message);
   }
 });
 
@@ -200,7 +204,7 @@ sidebar?.addEventListener('drop', async (e) => {
     card.classList.remove('opacity-40');
     card.style.outline = '2px solid #3b82f6';
     setTimeout(() => { card.style.outline = ''; }, 800);
-  } catch {
-    alert('Не удалось переместить. Попробуй снова.');
+  } catch (err) {
+    alert('Не удалось переместить: ' + err.message);
   }
 });

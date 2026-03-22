@@ -37,6 +37,7 @@
 
   <!-- Footer: domain + categories -->
   <div class="mt-3 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-gray-300 font-mono">#{{ item.id }}</span>
     <span class="text-xs text-gray-400 font-mono truncate max-w-[180px]">{{ item.domain }}</span>
     {% for cat in item.categories_list %}
     <a href="/category/{{ cat | urlencode }}"
