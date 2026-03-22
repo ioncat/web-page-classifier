@@ -100,6 +100,27 @@
 
   </div>
 
+  <!-- Bulk select action bar -->
+  <div id="bulk-bar" class="hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+    <div class="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
+      <div class="flex items-center gap-3">
+        <button id="bulk-select-all" class="text-sm text-blue-600 hover:underline">Выбрать все</button>
+        <span id="bulk-count" class="text-sm font-medium text-gray-700">0 выбрано</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="bulk-cancel" class="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
+          Отмена
+        </button>
+        <button id="bulk-refetch" class="px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 disabled:opacity-50" disabled>
+          Обработать выбранные
+        </button>
+        <button id="bulk-delete" class="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-50" disabled>
+          Удалить выбранные
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Move to category modal -->
   <div id="move-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
     <div class="absolute inset-0 bg-black/50" id="move-modal-overlay"></div>

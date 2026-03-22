@@ -30,6 +30,18 @@ async function apiDelete(urlId) {
   if (!res.ok) throw new Error(`delete failed: ${res.status}`);
 }
 
+async function apiRefetch(urlId) {
+  const res = await fetch(`/api/urls/${urlId}/refetch`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `refetch failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 async function apiPatchCategory(urlId, category) {
   const res = await fetch(`/api/urls/${urlId}/category`, {
     method: 'PATCH',
@@ -92,6 +104,32 @@ document.addEventListener('click', async (e) => {
 });
 
 
+// ── Refetch (обработка одной ссылки пайплайном) ─────────────────────────────
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.btn-refetch');
+  if (!btn) return;
+
+  const card  = btn.closest('.url-card');
+  const urlId = card?.dataset.id;
+  if (!urlId) return;
+
+  // Визуальная индикация: спиннер
+  const svg = btn.querySelector('svg');
+  if (svg) svg.classList.add('animate-spin');
+  btn.disabled = true;
+
+  try {
+    await apiRefetch(urlId);
+    // Перезагрузить страницу чтобы увидеть обновлённые title/description
+    location.reload();
+  } catch (err) {
+    alert('Ошибка обработки: ' + err.message);
+    if (svg) svg.classList.remove('animate-spin');
+    btn.disabled = false;
+  }
+});
+
+
 // ── Модальное окно "Переместить" ──────────────────────────────────────────────
 const moveModal        = document.getElementById('move-modal');
 const moveModalOverlay = document.getElementById('move-modal-overlay');
@@ -138,6 +176,135 @@ document.getElementById('move-modal-list')?.addEventListener('click', async (e) 
     setTimeout(() => { card.style.outline = ''; }, 800);
   } catch (err) {
     alert('Не удалось переместить: ' + err.message);
+  }
+});
+
+
+// ── Mass select / bulk delete ─────────────────────────────────────────────────
+const bulkBar       = document.getElementById('bulk-bar');
+const bulkCount     = document.getElementById('bulk-count');
+const bulkDelete    = document.getElementById('bulk-delete');
+const bulkRefetch   = document.getElementById('bulk-refetch');
+const bulkSelectAll = document.getElementById('bulk-select-all');
+const bulkCancel    = document.getElementById('bulk-cancel');
+
+let selectMode = false;
+
+function enterSelectMode() {
+  selectMode = true;
+  document.querySelectorAll('.card-checkbox').forEach(cb => cb.classList.remove('hidden'));
+  document.querySelectorAll('.card-actions').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.url-card').forEach(c => c.setAttribute('draggable', 'false'));
+  bulkBar?.classList.remove('hidden');
+  updateBulkCount();
+  document.querySelectorAll('#btn-select-mode').forEach(btn => {
+    btn.textContent = 'Отмена';
+    btn.classList.add('bg-gray-100');
+  });
+}
+
+function exitSelectMode() {
+  selectMode = false;
+  document.querySelectorAll('.card-checkbox').forEach(cb => {
+    cb.classList.add('hidden');
+    cb.checked = false;
+  });
+  document.querySelectorAll('.card-actions').forEach(el => el.classList.remove('hidden'));
+  document.querySelectorAll('.url-card').forEach(c => c.setAttribute('draggable', 'true'));
+  bulkBar?.classList.add('hidden');
+  document.querySelectorAll('#btn-select-mode').forEach(btn => {
+    btn.textContent = 'Выбрать';
+    btn.classList.remove('bg-gray-100');
+  });
+}
+
+function updateBulkCount() {
+  const n = document.querySelectorAll('.card-checkbox:checked').length;
+  if (bulkCount) bulkCount.textContent = `${n} выбрано`;
+  if (bulkDelete) bulkDelete.disabled = n === 0;
+  if (bulkRefetch) bulkRefetch.disabled = n === 0;
+}
+
+// Кнопки "Выбрать" / "Отмена" на страницах категории и поиска
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#btn-select-mode')) return;
+  selectMode ? exitSelectMode() : enterSelectMode();
+});
+
+// Checkbox change
+document.addEventListener('change', (e) => {
+  if (!e.target.classList.contains('card-checkbox')) return;
+  updateBulkCount();
+});
+
+// Выбрать все
+bulkSelectAll?.addEventListener('click', () => {
+  document.querySelectorAll('.card-checkbox').forEach(cb => { cb.checked = true; });
+  updateBulkCount();
+});
+
+// Отмена (нижняя панель)
+bulkCancel?.addEventListener('click', exitSelectMode);
+
+// Удалить выбранные
+bulkDelete?.addEventListener('click', async () => {
+  const checked = [...document.querySelectorAll('.card-checkbox:checked')];
+  if (!checked.length) return;
+
+  if (!confirm(`Удалить ${checked.length} ссылок? Действие необратимо.`)) return;
+
+  bulkDelete.disabled = true;
+  const ids = checked.map(cb => parseInt(cb.closest('.url-card').dataset.id, 10));
+
+  try {
+    const res = await fetch('/api/bulk-delete', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) throw new Error(`bulk-delete failed: ${res.status}`);
+
+    checked.forEach(cb => {
+      const card = cb.closest('.url-card');
+      getCardCategories(card).forEach(cat => updateSidebarCount(cat, -1));
+      removeCard(card);
+    });
+    exitSelectMode();
+  } catch (err) {
+    alert('Ошибка массового удаления: ' + err.message);
+    bulkDelete.disabled = false;
+  }
+});
+
+
+// ── Bulk refetch (массовая обработка пайплайном) ─────────────────────────────
+bulkRefetch?.addEventListener('click', async () => {
+  const checked = [...document.querySelectorAll('.card-checkbox:checked')];
+  if (!checked.length) return;
+
+  if (!confirm(`Обработать ${checked.length} ссылок пайплайном? Это может занять некоторое время.`)) return;
+
+  bulkRefetch.disabled = true;
+  bulkRefetch.textContent = 'Обработка…';
+  const ids = checked.map(cb => parseInt(cb.closest('.url-card').dataset.id, 10));
+
+  try {
+    const res = await fetch('/api/bulk-refetch', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) throw new Error(`bulk-refetch failed: ${res.status}`);
+    const data = await res.json();
+    exitSelectMode();
+    alert(`Обработано: ${data.processed}, ошибок: ${data.errors}`);
+    location.reload();
+  } catch (err) {
+    alert('Ошибка массовой обработки: ' + err.message);
+    bulkRefetch.disabled = false;
+    bulkRefetch.textContent = 'Обработать выбранные';
   }
 });
 

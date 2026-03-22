@@ -1,4 +1,5 @@
 import random
+import re
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -75,6 +76,31 @@ def _random_headers() -> dict:
     return {**BASE_HEADERS, "User-Agent": random.choice(USER_AGENTS)}
 
 
+# ── JS challenge bypass ──────────────────────────────────────────────────────
+_JS_CHALLENGE_RE = re.compile(r'defaultHash\s*=\s*"([a-f0-9]{32,})"')
+
+# Максимальный размер ответа, при котором проверяем на challenge.
+# Настоящие страницы обычно > 1 КБ, challenge-заглушки — 300–600 байт.
+_CHALLENGE_MAX_LEN = 1500
+
+
+def _try_js_challenge(resp: requests.Response, session: requests.Session,
+                      url: str, headers: dict) -> requests.Response | None:
+    """Если ответ — JS challenge с defaultHash, ставит cookie и повторяет запрос.
+    Возвращает новый Response или None если это не challenge.
+    """
+    if len(resp.text) > _CHALLENGE_MAX_LEN:
+        return None
+    m = _JS_CHALLENGE_RE.search(resp.text)
+    if not m:
+        return None
+    hash_val = m.group(1)
+    domain = _urlparse(url).netloc
+    session.cookies.set("challenge_passed", hash_val, domain=domain, path="/")
+    console.log(f"[yellow]⚡ JS challenge[/yellow] → cookie set, retry: [dim]{url[:80]}[/dim]")
+    return session.get(url, headers=headers, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+
+
 # ── Получение метаданных страницы ────────────────────────────────────────────
 def _extract_description(soup: BeautifulSoup) -> str | None:
     """Извлекает описание страницы из мета-тегов.
@@ -99,13 +125,21 @@ def fetch_page_meta(url: str) -> dict:
     attempt = 0
     while True:
         try:
+            hdrs = _random_headers()
             resp = _session.get(
                 url,
-                headers=_random_headers(),
+                headers=hdrs,
                 timeout=REQUEST_TIMEOUT,
                 allow_redirects=True,
             )
             resp.raise_for_status()
+
+            # JS challenge bypass (anti-bot cookie)
+            resp2 = _try_js_challenge(resp, _session, url, hdrs)
+            if resp2 is not None:
+                resp2.raise_for_status()
+                resp = resp2
+
             soup = BeautifulSoup(resp.text, "html.parser")
             title = soup.title.string.strip() if soup.title and soup.title.string else None
             description = _extract_description(soup)

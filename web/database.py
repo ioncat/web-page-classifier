@@ -138,6 +138,35 @@ def update_category(url_id: int, new_category: str) -> bool:
     return cur.rowcount > 0
 
 
+def get_url_by_id(url_id: int) -> str | None:
+    """Возвращает URL-строку по id или None."""
+    with _get_conn() as conn:
+        row = conn.execute("SELECT url FROM urls WHERE id = ?", (url_id,)).fetchone()
+    return row["url"] if row else None
+
+
+def get_urls_by_ids(ids: list[int]) -> dict[int, str]:
+    """Возвращает {id: url} для списка id."""
+    if not ids:
+        return {}
+    placeholders = ",".join("?" * len(ids))
+    with _get_conn() as conn:
+        rows = conn.execute(
+            f"SELECT id, url FROM urls WHERE id IN ({placeholders})", ids
+        ).fetchall()
+    return {row["id"]: row["url"] for row in rows}
+
+
+def delete_urls_bulk(ids: list[int]) -> int:
+    """Удаляет несколько URL по списку id. Возвращает кол-во удалённых."""
+    if not ids:
+        return 0
+    placeholders = ",".join("?" * len(ids))
+    with _get_conn() as conn:
+        cur = conn.execute(f"DELETE FROM urls WHERE id IN ({placeholders})", ids)
+    return cur.rowcount
+
+
 def delete_url(url_id: int) -> bool:
     """Удаляет запись по id. Возвращает True если строка была удалена."""
     with _get_conn() as conn:

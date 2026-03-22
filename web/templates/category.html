@@ -8,12 +8,19 @@
     <a href="/" class="hover:text-blue-600">Все категории</a>
     <span>/</span>
   </div>
-  <h1 class="text-2xl font-bold text-gray-900">{{ category }}</h1>
-  <p class="mt-1 text-sm text-gray-500">{{ total }} ссылок · страница {{ page }} из {{ pages }}</p>
+  <div class="flex items-center gap-3">
+    <button id="btn-select-mode" class="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 shrink-0">
+      Выбрать
+    </button>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">{{ category }}</h1>
+      <p class="mt-1 text-sm text-gray-500">{{ total }} ссылок · страница {{ page }} из {{ pages }}</p>
+    </div>
+  </div>
 </div>
 
 <!-- URL cards -->
-<div class="flex flex-col gap-3">
+<div id="cards-list" class="flex flex-col gap-3">
   {% for item in items %}
     {% include "_url_card.html" %}
   {% endfor %}

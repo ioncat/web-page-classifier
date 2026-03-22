@@ -122,6 +122,7 @@
 | 58 | **`refetch_descriptions()`** — дозаполняет description для done-записей без него: поддержка `--workers`, `--limit`, `--domain`, `--no-progress`, `--verbose`; при ошибке HTTP статус записи не меняется | `step2.py` |
 | 59 | **`--refetch-description`** — флаг в `main.py` (mutually exclusive с `--only-*`); запускает `refetch_descriptions()` | `main.py` |
 | 60 | **fix: счётчики в `refetch_descriptions()`** — было 2 счётчика (`done`/`error`), `done` считал любой успешный запрос включая `description=None`. Стало 3 счётчика: `got` (записано), `no_tag` (тег отсутствует), `error` (HTTP/таймаут); `None` больше не пишется в БД | `step2.py` |
+| 61 | **JS anti-bot challenge bypass** — `_try_js_challenge()`: если ответ < 1500 байт и содержит `defaultHash="..."`, извлекает hash, ставит cookie `challenge_passed`, повторяет запрос. Прозрачно интегрировано в `fetch_page_meta()`. Решает проблему сайтов с JS-заглушкой (напр. `clubpuer.com.ua`), которые раньше возвращали `title=None` | `step2.py` |
 
 ### Результаты прогонов `--refetch-description` (21.03)
 
@@ -149,7 +150,7 @@
 | **Осталось в БД** | **7650** | |
 
 Оставлены на ручную проверку: `429`, `401`, `500/502/503`, таймауты (`NULL`), habr.com `done`-страницы.
-`visualcapitalist.com` (116 × 403) — оставлен, страницы открываются в браузере (антибот).
+`visualcapitalist.com` (116 × 403) — оставлен, страницы открываются в браузере (антибот). Фича #61 (JS challenge bypass) может помочь с частью таких сайтов — стоит перепроверить через `--retry-transient`.
 
 ---
 
@@ -176,7 +177,7 @@
 
 | Показатель | Значение |
 |---|---|
-| Всего фич | **60** (+10 запланировано) |
+| Всего фич | **61** (+10 запланировано) |
 | Файлов в проекте | 11 (`main.py`, `step1–3.py`, `compare.py`, `benchmark/benchmark.py`, `db.py`, `config/settings.py`, `config/prompts.py`, `README.md`, `docs/`) |
 | GPU утилизация: старт → финал | 5–10% → **80–90%** |
 | Сессий | 9 (4 дня) |

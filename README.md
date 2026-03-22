@@ -19,7 +19,7 @@
 
 ## Решение
 
-1. **Парсинг** заголовков и мета-описаний страниц (plain HTTP + `<title>`, `og:description`, `meta[name=description]`)
+1. **Парсинг** заголовков и мета-описаний страниц (plain HTTP + `<title>`, `og:description`, `meta[name=description]`, обход JS anti-bot challenge)
 2. **Разметка** локальной LLM через Ollama — без API-ключей, работает на GPU
 3. **Фиксация таксономии**: закрытый список категорий, переразметка через `--strict`
 4. **Обучение** лёгкого ML-классификатора на LLM-разметке
@@ -48,7 +48,7 @@ flowchart LR
 | Шаг | Файл | Что происходит |
 |-----|------|----------------|
 | **Step 1** Импорт | `step1.py` | Regex извлекает URL из текста, дедуплицирует, добавляет со статусом `pending` |
-| **Step 2** Парсинг | `step2.py` | Загружает страницу, достаёт `<title>` и `og:description`, ставит `done` или `error` |
+| **Step 2** Парсинг | `step2.py` | Загружает страницу, достаёт `<title>` и `og:description`, ставит `done` или `error`. Обходит JS anti-bot challenge (cookie `challenge_passed`) |
 | **Step 3** Классификация | `step3.py` | Отправляет `title + domain` в Ollama LLM, пишет категорию в `urls.category` |
 | **Step 4** ML *(скоро)* | `step4.py` | Fine-tuned `xlm-roberta-base`, ~500 URL/сек на CPU, fallback на LLM при низкой уверенности |
 

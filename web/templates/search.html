@@ -36,8 +36,13 @@
 <!-- Results -->
 {% if q or active_category %}
   {% if items %}
-  <p class="mb-4 text-sm text-gray-500">Найдено: {{ total }}</p>
-  <div class="flex flex-col gap-3">
+  <div class="flex items-center gap-3 mb-4">
+    <button id="btn-select-mode" class="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 shrink-0">
+      Выбрать
+    </button>
+    <p class="text-sm text-gray-500">Найдено: {{ total }}</p>
+  </div>
+  <div id="cards-list" class="flex flex-col gap-3">
     {% for item in items %}
       {% include "_url_card.html" %}
     {% endfor %}
