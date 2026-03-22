@@ -51,6 +51,10 @@ python -m uvicorn web.app:app --port 8000 --reload
 # Открыть в браузере
 http://localhost:8000
 # Логин по умолчанию: admin / changeme
+
+# После изменений в коде — перезапустить сервер (Ctrl+C, затем снова):
+# (статика кэшируется браузером; cache-busting срабатывает при перезапуске)
+python -m uvicorn web.app:app --port 8000 --reload
 ```
 
 ## Структура
