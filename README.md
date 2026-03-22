@@ -458,6 +458,26 @@ python main.py --no-progress -v
 
 ---
 
+## Web UI
+
+Отдельный субпроект для просмотра классифицированных URL в браузере (mobile-first, Basic Auth).
+
+```bash
+# Установка зависимостей UI (отдельно от пайплайна)
+pip install -r web/requirements.txt
+
+# Запуск локально
+python -m uvicorn web.app:app --port 8000 --reload
+# → http://localhost:8000  (логин: admin / changeme)
+
+# Кастомные credentials
+WEB_USER=myname WEB_PASSWORD=mypass python -m uvicorn web.app:app --port 8000 --reload
+```
+
+> Подробная документация: **[`web/README.md`](web/README.md)** · План разработки: **[`web/docs/backlog.md`](web/docs/backlog.md)**
+
+---
+
 ## Производительность
 
 | `--batch` | `--workers` | `OLLAMA_NUM_PARALLEL` | GPU utilization |
