@@ -1,7 +1,7 @@
 # Web UI — web-page-classifier
 
 Веб-интерфейс для просмотра и управления классифицированными URL.
-Mobile-first, доступен из интернета.
+Mobile-first.
 
 ## Стек
 
