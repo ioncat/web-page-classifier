@@ -1,5 +1,5 @@
 """JSON API роуты."""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from web.auth import verify_auth
 from web import database as db
@@ -25,3 +25,10 @@ def urls(
 @router.get("/stats")
 def stats():
     return db.get_stats()
+
+
+@router.delete("/urls/{url_id}")
+def delete_url(url_id: int):
+    if not db.delete_url(url_id):
+        raise HTTPException(status_code=404, detail="URL не найден")
+    return {"ok": True}

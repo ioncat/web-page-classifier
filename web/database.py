@@ -1,5 +1,6 @@
-"""Read-only слой к SQLite для Web UI.
-Не содержит write-операций — UI не может изменить данные пайплайна.
+"""Слой доступа к SQLite для Web UI.
+Read-операции — просмотр данных.
+Write-операции — только удаление и смена категории через UI.
 """
 import os
 import sqlite3
@@ -47,7 +48,7 @@ def get_urls_by_category(
         ).fetchone()[0]
 
         rows = conn.execute(
-            """SELECT url, title, description, category, processed_at
+            """SELECT id, url, title, description, category, processed_at
                  FROM urls
                 WHERE status='done' AND category=?
                 ORDER BY id
@@ -95,7 +96,7 @@ def search_urls(
         ).fetchone()[0]
 
         rows = conn.execute(
-            f"""SELECT url, title, description, category, processed_at
+            f"""SELECT id, url, title, description, category, processed_at
                   FROM urls
                  WHERE {where}
                  ORDER BY id
@@ -125,6 +126,13 @@ def get_stats() -> dict:
             " WHERE status='done' AND category IS NOT NULL AND category != ''"
         ).fetchone()[0]
     return {"total_urls": total, "total_categories": cats}
+
+
+def delete_url(url_id: int) -> bool:
+    """Удаляет запись по id. Возвращает True если строка была удалена."""
+    with _get_conn() as conn:
+        cur = conn.execute("DELETE FROM urls WHERE id = ?", (url_id,))
+    return cur.rowcount > 0
 
 
 def _enrich(row: dict) -> dict:
