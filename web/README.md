@@ -1,6 +1,6 @@
 # Web UI — web-page-classifier
 
-Веб-интерфейс для просмотра классифицированных URL по категориям.
+Веб-интерфейс для просмотра и управления классифицированными URL.
 Mobile-first, доступен из интернета.
 
 ## Стек
@@ -34,14 +34,23 @@ export WEB_PASSWORD=secret
 export DB_PATH=../urls.db
 ```
 
+## Возможности
+
+- Просмотр URL по категориям, поиск по title / description / URL
+- **Удаление** URL из БД прямо из интерфейса (кнопка 🗑)
+- **Перемещение** в другую категорию:
+  - Десктоп: перетащи карточку на категорию в sidebar (подсветится зелёным)
+  - Мобайл / десктоп: кнопка ↔ → модальное окно со списком категорий
+
 ## Запуск локально
 
 ```bash
 # Из корня проекта
-uvicorn web.app:app --reload
+python -m uvicorn web.app:app --port 8000 --reload
 
 # Открыть в браузере
 http://localhost:8000
+# Логин по умолчанию: admin / changeme
 ```
 
 ## Структура
@@ -50,7 +59,7 @@ http://localhost:8000
 web/
 ├── app.py              # точка входа FastAPI
 ├── auth.py             # HTTP Basic Auth
-├── database.py         # read-only запросы к SQLite
+├── database.py         # запросы к SQLite (чтение + удаление/смена категории)
 ├── models.py           # Pydantic схемы
 ├── routers/
 │   ├── pages.py        # HTML-роуты
@@ -62,7 +71,7 @@ web/
 │   ├── search.html     # поиск
 │   └── _url_card.html  # компонент карточки URL
 ├── static/
-│   └── app.js          # бургер-меню
+│   └── app.js          # бургер-меню, удаление, DnD, модальное окно
 └── docs/
     └── backlog.md      # план разработки
 ```
