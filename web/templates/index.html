@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Все категории — Классификатор ссылок{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Все категории</h1>
+  <p class="mt-1 text-sm text-gray-500">
+    {{ stats.total_categories }} категорий · {{ stats.total_urls }} ссылок
+  </p>
+</div>
+
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+  {% for cat in categories %}
+  <a href="/category/{{ cat.category | urlencode }}"
+     class="flex flex-col justify-between p-4 bg-white rounded-xl border border-gray-200
+            hover:border-blue-400 hover:shadow-md transition-all duration-150">
+    <span class="text-sm font-medium text-gray-800 leading-snug">{{ cat.category }}</span>
+    <span class="mt-3 text-2xl font-bold text-blue-600">{{ cat.count }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

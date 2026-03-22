@@ -12,17 +12,11 @@ Mobile-first, доступен из интернета.
 ## Установка
 
 ```bash
-# Из корня проекта
-pip install -r requirements.txt
+# Только веб-зависимости (отдельно от пайплайна)
+pip install -r web/requirements.txt
 ```
 
-Новые зависимости (добавлены в `requirements.txt`):
-```
-fastapi
-uvicorn[standard]
-jinja2
-python-multipart
-```
+> Зависимости пайплайна (`requests`, `ollama`, `rich` и др.) находятся в корневом `requirements.txt` и для веб UI не нужны.
 
 ## Переменные окружения
 

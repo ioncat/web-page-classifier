@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Классификатор ссылок{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-900">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+    <div class="flex items-center gap-3 px-4 py-3">
+
+      <!-- Burger (mobile) -->
+      <button id="burger" class="md:hidden p-2 rounded-lg hover:bg-gray-100" aria-label="Меню">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+
+      <!-- Logo -->
+      <a href="/" class="font-bold text-blue-600 text-lg shrink-0">🔖 Ссылки</a>
+
+      <!-- Search -->
+      <form action="/search" method="get" class="flex-1 flex gap-2">
+        <input
+          type="search" name="q"
+          value="{{ q if q is defined else '' }}"
+          placeholder="Поиск по заголовку, описанию, URL…"
+          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+        <button type="submit"
+                class="px-4 py-2 text-sm font-medium text-white bg-blue-600
+                       rounded-lg hover:bg-blue-700 shrink-0">
+          Найти
+        </button>
+      </form>
+
+    </div>
+  </header>
+
+  <!-- Layout -->
+  <div class="flex min-h-[calc(100vh-57px)]">
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+           class="hidden md:flex flex-col w-64 shrink-0 bg-white border-r border-gray-200
+                  sticky top-[57px] h-[calc(100vh-57px)] overflow-y-auto">
+      <div class="p-3 border-b border-gray-100">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Категории</p>
+      </div>
+      <nav class="flex-1 py-2">
+        {% for cat in all_categories %}
+        <a href="/category/{{ cat.category | urlencode }}"
+           class="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50
+                  {% if active_category == cat.category %}bg-blue-50 text-blue-700 font-semibold{% else %}text-gray-700{% endif %}">
+          <span class="truncate">{{ cat.category }}</span>
+          <span class="ml-2 shrink-0 text-xs px-1.5 py-0.5 rounded-full
+                       {% if active_category == cat.category %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-500{% endif %}">
+            {{ cat.count }}
+          </span>
+        </a>
+        {% endfor %}
+      </nav>
+    </aside>
+
+    <!-- Mobile sidebar overlay -->
+    <div id="overlay" class="hidden fixed inset-0 bg-black/40 z-10 md:hidden"></div>
+
+    <!-- Mobile sidebar drawer -->
+    <aside id="drawer"
+           class="hidden fixed top-[57px] left-0 bottom-0 w-72 bg-white border-r border-gray-200
+                  z-20 overflow-y-auto md:hidden">
+      <div class="p-3 border-b border-gray-100">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Категории</p>
+      </div>
+      <nav class="py-2">
+        {% for cat in all_categories %}
+        <a href="/category/{{ cat.category | urlencode }}"
+           class="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-gray-50
+                  {% if active_category == cat.category %}bg-blue-50 text-blue-700 font-semibold{% else %}text-gray-700{% endif %}">
+          <span class="truncate">{{ cat.category }}</span>
+          <span class="ml-2 shrink-0 text-xs px-1.5 py-0.5 rounded-full
+                       {% if active_category == cat.category %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-500{% endif %}">
+            {{ cat.count }}
+          </span>
+        </a>
+        {% endfor %}
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 p-4 md:p-6 min-w-0">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}{{ category }} — Классификатор ссылок{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <div class="flex items-center gap-2 text-sm text-gray-400 mb-1">
+    <a href="/" class="hover:text-blue-600">Все категории</a>
+    <span>/</span>
+  </div>
+  <h1 class="text-2xl font-bold text-gray-900">{{ category }}</h1>
+  <p class="mt-1 text-sm text-gray-500">{{ total }} ссылок · страница {{ page }} из {{ pages }}</p>
+</div>
+
+<!-- URL cards -->
+<div class="flex flex-col gap-3">
+  {% for item in items %}
+    {% include "_url_card.html" %}
+  {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if pages > 1 %}
+<nav class="mt-8 flex items-center justify-center gap-2">
+  {% if page > 1 %}
+  <a href="?page={{ page - 1 }}"
+     class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300
+            rounded-lg hover:bg-gray-50">
+    ← Назад
+  </a>
+  {% endif %}
+
+  <span class="px-4 py-2 text-sm text-gray-500">
+    {{ page }} / {{ pages }}
+  </span>
+
+  {% if page < pages %}
+  <a href="?page={{ page + 1 }}"
+     class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300
+            rounded-lg hover:bg-gray-50">
+    Вперёд →
+  </a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endblock %}
