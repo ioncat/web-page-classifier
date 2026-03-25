@@ -31,11 +31,13 @@ from config.settings import (
     NUM_PREDICT_PER_URL,
     NUM_PREDICT_SINGLE,
     OLLAMA_HOST,
+    OLLAMA_NUM_CTX,
     OLLAMA_REQUEST_TIMEOUT,
     OLLAMA_TEMPERATURE,
     TAG_MAX_LEN,
     TAG_MAX_WORDS,
 )
+from config.taxonomy import TAXONOMY
 
 console = Console()
 
@@ -88,24 +90,58 @@ def _select_model_interactively(available: list[str]) -> str:
 
 
 # ── Промпт и классификация ────────────────────────────────────────────────────
-from config.prompts import BATCH_HEADER, BATCH_ITEM, DESCRIPTION_LINE, HINTS_LINE, SINGLE
+from config.prompts import BATCH_HEADER, BATCH_ITEM, DESCRIPTION_LINE, SINGLE, TAXONOMY_LINE
+
+# Строка таксономии для промптов (формируется один раз)
+_TAXONOMY_STR = TAXONOMY_LINE.format(taxonomy=", ".join(TAXONOMY))
+# Множество для быстрой валидации ответа модели
+_TAXONOMY_SET = {t.lower(): t for t in TAXONOMY}
+
+
+_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+
+
+def _normalize_category(raw: str) -> str | None:
+    """Приводит ответ модели к каноническому виду из таксономии.
+    Возвращает None если категория не из таксономии.
+    Извлекает категорию из markdown bold (**...**) и прочего обрамления."""
+    # Попробовать весь текст как есть
+    cleaned = raw.strip().strip("\"'.,;:-")
+    canonical = _TAXONOMY_SET.get(cleaned.lower())
+    if canonical:
+        return canonical
+
+    # Извлечь из **bold**
+    m = _BOLD_RE.search(raw)
+    if m:
+        bold = m.group(1).strip().strip("\"'.,;:-")
+        canonical = _TAXONOMY_SET.get(bold.lower())
+        if canonical:
+            return canonical
+
+    # Попробовать каждую строку ответа
+    for line in raw.splitlines():
+        line = line.strip().strip("\"'.,;:-*")
+        canonical = _TAXONOMY_SET.get(line.lower())
+        if canonical:
+            return canonical
+
+    return None
 
 
 def _build_prompt(title: str, url: str, hints: list[str], description: str | None = None) -> str:
-    hints_line = HINTS_LINE.format(hints=", ".join(hints)) + "\n" if hints else ""
     desc_line = DESCRIPTION_LINE.format(description=description[:200]) if description else ""
-    return SINGLE.format(url=url, title=title or "(no title)", hints_line=hints_line, description_line=desc_line)
+    return SINGLE.format(title=title or "(no title)", taxonomy=_TAXONOMY_STR, description_line=desc_line)
 
 
 def _build_batch_prompt(items: list[dict], hints: list[str]) -> str:
     """Промпт для пакетной классификации N URL за один запрос к модели."""
-    hints_line = HINTS_LINE.format(hints=", ".join(hints)) + "\n\n" if hints else ""
-    lines = [BATCH_HEADER.format(hints_line=hints_line), ""]
+    lines = [BATCH_HEADER.format(taxonomy=_TAXONOMY_STR), ""]
     for i, item in enumerate(items, 1):
         title = item["title"] or "(no title)"
         desc = item.get("description")
         desc_suffix = f"\n   {DESCRIPTION_LINE.format(description=desc[:150])}" if desc else ""
-        lines.append(BATCH_ITEM.format(i=i, url=item["url"], title=title) + desc_suffix)
+        lines.append(BATCH_ITEM.format(i=i, title=title) + desc_suffix)
     return "\n".join(lines)
 
 
@@ -126,7 +162,7 @@ def classify_url(
         Exception             — ошибка соединения (Ollama недоступна)
     """
     prompt = _build_prompt(title or "", url, hints, description=description)
-    options: dict = {"num_predict": NUM_PREDICT_SINGLE, "temperature": OLLAMA_TEMPERATURE}
+    options: dict = {"num_predict": NUM_PREDICT_SINGLE, "temperature": OLLAMA_TEMPERATURE, "num_ctx": OLLAMA_NUM_CTX}
     if no_think:
         options["think"] = False
     resp = client.chat(
@@ -137,14 +173,12 @@ def classify_url(
     raw = resp.message.content.strip()
 
     first_line = next((ln for ln in raw.splitlines() if ln.strip()), "")
-    # Берём всю строку как одну категорию (убираем кавычки/пунктуацию по краям)
-    tag = first_line.strip().strip("\"'.,;:-")
-    tags = [tag] if tag else []
+    category = _normalize_category(first_line)
 
-    if not tags:
-        raise ValueError(f"Модель вернула пустой ответ: {raw!r}")
+    if not category:
+        raise ValueError(f"Ответ не из таксономии: {raw!r}")
 
-    return ", ".join(tags)
+    return category
 
 
 def classify_batch(
@@ -161,7 +195,7 @@ def classify_batch(
     на classify_url.
     """
     prompt = _build_batch_prompt(items, hints)
-    options: dict = {"num_predict": len(items) * NUM_PREDICT_PER_URL, "temperature": OLLAMA_TEMPERATURE}
+    options: dict = {"num_predict": len(items) * NUM_PREDICT_PER_URL, "temperature": OLLAMA_TEMPERATURE, "num_ctx": OLLAMA_NUM_CTX}
     if no_think:
         options["think"] = False
     resp = client.chat(
@@ -177,9 +211,9 @@ def classify_batch(
         if m:
             idx = int(m.group(1)) - 1
             if 0 <= idx < len(items):
-                tag = m.group(2).strip().strip("\"'.,;:-")
-                if tag:
-                    results[idx] = tag
+                category = _normalize_category(m.group(2))
+                if category:
+                    results[idx] = category
     return results
 
 

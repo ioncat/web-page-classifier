@@ -42,6 +42,9 @@
     </button>
     <p class="text-sm text-gray-500">Найдено: {{ total }}</p>
   </div>
+  <div class="mb-4">
+    {% include "_sort_bar.html" %}
+  </div>
   <div id="cards-list" class="flex flex-col gap-3">
     {% for item in items %}
       {% include "_url_card.html" %}
@@ -52,7 +55,7 @@
   {% if pages > 1 %}
   <nav class="mt-8 flex items-center justify-center gap-2">
     {% if page > 1 %}
-    <a href="?q={{ q }}&category={{ active_category or '' }}&page={{ page - 1 }}"
+    <a href="?q={{ q }}&category={{ active_category or '' }}&sort={{ sort }}&page={{ page - 1 }}"
        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300
               rounded-lg hover:bg-gray-50">
       ← Назад
@@ -60,7 +63,7 @@
     {% endif %}
     <span class="px-4 py-2 text-sm text-gray-500">{{ page }} / {{ pages }}</span>
     {% if page < pages %}
-    <a href="?q={{ q }}&category={{ active_category or '' }}&page={{ page + 1 }}"
+    <a href="?q={{ q }}&category={{ active_category or '' }}&sort={{ sort }}&page={{ page + 1 }}"
        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300
               rounded-lg hover:bg-gray-50">
       Вперёд →

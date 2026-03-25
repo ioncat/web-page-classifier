@@ -1,0 +1,11 @@
+<!-- Sort selector — include on pages with sort_options and sort vars -->
+<div class="flex items-center gap-2 text-sm">
+  <span class="text-gray-400">Сортировка:</span>
+  {% for key, (sql, label) in sort_options.items() %}
+  <a href="?sort={{ key }}{% if page is defined and page > 1 %}&page=1{% endif %}{% if q is defined and q %}&q={{ q }}{% endif %}{% if category is defined and category %}&category={{ category }}{% endif %}"
+     class="px-2.5 py-1 rounded-lg transition-colors
+            {% if sort == key %}bg-blue-100 text-blue-700 font-medium{% else %}text-gray-500 hover:bg-gray-100{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>

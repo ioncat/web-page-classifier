@@ -1,13 +1,21 @@
 """HTML роуты (Jinja2 шаблоны)."""
+from pathlib import Path
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from web.auth import verify_auth
-from web import database as db
+import sys
+_WEB_DIR = str(Path(__file__).resolve().parent.parent)
+if _WEB_DIR not in sys.path:
+    sys.path.insert(0, _WEB_DIR)
+
+from auth import verify_auth
+import database as db
+
+_BASE = Path(__file__).resolve().parent.parent
 
 router = APIRouter(dependencies=[Depends(verify_auth)])
-templates = Jinja2Templates(directory="web/templates")
+templates = Jinja2Templates(directory=str(_BASE / "templates"))
 
 
 def _all_categories() -> list[dict]:
@@ -28,13 +36,56 @@ def index(request: Request):
 
 
 @router.get("/category/{category_name}", response_class=HTMLResponse)
-def category(request: Request, category_name: str, page: int = Query(default=1, ge=1)):
-    data = db.get_urls_by_category(category_name, page=page)
+def category(
+    request: Request,
+    category_name: str,
+    page: int = Query(default=1, ge=1),
+    sort: str = Query(default=db.SORT_DEFAULT),
+):
+    data = db.get_urls_by_category(category_name, page=page, sort=sort)
     all_categories = _all_categories()
     return templates.TemplateResponse("category.html", {
         "request": request,
         "all_categories": all_categories,
         "active_category": category_name,
+        "sort": sort,
+        "sort_options": db.SORT_OPTIONS,
+        **data,
+    })
+
+
+@router.get("/recent", response_class=HTMLResponse)
+def recent(
+    request: Request,
+    page: int = Query(default=1, ge=1),
+    sort: str = Query(default=db.SORT_DEFAULT),
+):
+    data = db.get_recent_urls(page=page, sort=sort)
+    all_categories = _all_categories()
+    return templates.TemplateResponse("recent.html", {
+        "request": request,
+        "all_categories": all_categories,
+        "active_category": None,
+        "sort": sort,
+        "sort_options": db.SORT_OPTIONS,
+        **data,
+    })
+
+
+@router.get("/uncategorized", response_class=HTMLResponse)
+def uncategorized(
+    request: Request,
+    page: int = Query(default=1, ge=1),
+    sort: str = Query(default=db.SORT_DEFAULT),
+):
+    data = db.get_uncategorized_urls(page=page, sort=sort)
+    all_categories = _all_categories()
+    return templates.TemplateResponse("uncategorized.html", {
+        "request": request,
+        "all_categories": all_categories,
+        "active_category": None,
+        "sort": sort,
+        "sort_options": db.SORT_OPTIONS,
         **data,
     })
 
@@ -45,13 +96,16 @@ def search(
     q: str = Query(default=""),
     category: str = Query(default=""),
     page: int = Query(default=1, ge=1),
+    sort: str = Query(default=db.SORT_DEFAULT),
 ):
-    data = db.search_urls(query=q, category=category, page=page)
+    data = db.search_urls(query=q, category=category, page=page, sort=sort)
     all_categories = _all_categories()
     return templates.TemplateResponse("search.html", {
         "request": request,
         "all_categories": all_categories,
         "active_category": category or None,
         "q": q,
+        "sort": sort,
+        "sort_options": db.SORT_OPTIONS,
         **data,
     })

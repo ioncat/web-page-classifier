@@ -4,13 +4,17 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from web.routers import pages, api
+from pathlib import Path
+
+from routers import pages, api
+
+_BASE = Path(__file__).resolve().parent
 
 app = FastAPI(title="Web Page Classifier", docs_url=None, redoc_url=None)
 
-app.mount("/static", StaticFiles(directory="web/static"), name="static")
+app.mount("/static", StaticFiles(directory=str(_BASE / "static")), name="static")
 
-templates = Jinja2Templates(directory="web/templates")
+templates = Jinja2Templates(directory=str(_BASE / "templates"))
 # Cache-busting: меняется при каждом перезапуске сервера
 templates.env.globals["v"] = str(int(time.time()))
 

@@ -276,13 +276,14 @@ def add_tags(names: list[str]) -> tuple[int, int]:
 
 
 def get_done_unclassified() -> list[dict]:
-    """Возвращает done-записи без присвоенной категории."""
+    """Возвращает done-записи без присвоенной категории (только с title)."""
     with get_conn() as conn:
         rows = conn.execute(
             """SELECT id, url, title, description
                  FROM urls
                 WHERE status = 'done'
                   AND (category IS NULL OR category = '')
+                  AND title IS NOT NULL AND title != ''
                 ORDER BY id"""
         ).fetchall()
     return [dict(row) for row in rows]

@@ -6,15 +6,22 @@ import subprocess
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from web.auth import verify_auth
-from web import database as db
+import sys
+from pathlib import Path
+# Гарантируем, что web/ в sys.path (для запуска из папки web/)
+_WEB_DIR = str(Path(__file__).resolve().parent.parent)
+if _WEB_DIR not in sys.path:
+    sys.path.insert(0, _WEB_DIR)
+
+from auth import verify_auth
+import database as db
 
 router = APIRouter(dependencies=[Depends(verify_auth)])
 
 
 
 # Корень проекта — директория, из которой запускается uvicorn
-_PROJECT_ROOT = pathlib.Path(os.getcwd()).resolve()
+_PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 
 
 def _pipeline_python() -> str:

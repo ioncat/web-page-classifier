@@ -1,0 +1,203 @@
+Unique tags: 373
+Total assignments: 7172
+
+ 656  Искусственный интеллект
+ 596  Управление проектами
+ 541  (no title)
+ 462  Оборудование
+ 453  Программирование
+ 360  История
+ 316  Финансы
+ 300  Образование
+ 258  Карьерный рост
+ 181  Разработка
+ 145  Электроника
+ 145  Облачные технологии
+ 140  DIY
+ 136  Инфраструктура
+ 135  Приватность
+ 131  Сети
+ 119  ИИ-агенты
+ 110  AI-аналитика
+ 108  Игры
+ 101  Дизайн
+  96  Разработка приложений
+  89  История бизнеса
+  89  Научная фантастика
+  79  Автоматизация
+  71  Веб-разработка
+  57  Интерфейс
+  51  Операционные системы
+  43  Техническая автоматизация
+  43  Облачное хранилище
+  42  Музыка
+  37  машинное обучение
+  37  Космология
+  36  Google Search
+  35  MLOps
+  35  Автомобили
+  32  Дроны
+  30  Docker
+  28  Литература
+  26  Качество ПО
+  25  AI and ML
+  24  искусственный интеллект
+  22  Data Science
+  20  Python
+  19  МЕНЮ
+  18  YouTube
+  15  Дата-центры
+  14  AI-ассистенты
+  14  Тренди
+  12  Trading
+  12  SQL
+  11  Векторизация текстов
+  10  ChatGPT
+  10  UX-дизайн
+   9  базы данных
+   9  программирование
+   9  Научпоп
+   9  Category: AI and ML
+   7  кибербезопасность
+   7  экономика
+   7  менеджмент
+   7  Product Management
+   7  URL: https://habr.com/ru/articles/965964/
+   7  Category: Machine Learning
+   7  Политика
+   7  Биология
+   6  разработка программного обеспечения
+   6  URL: https://habr.com/ru/articles/965706/
+   6  URL: https://habr.com/ru/articles/965832/
+   6  URL: https://habr.com/ru/articles/966014/
+   6  Machine Learning
+   6  AI and Machine Learning
+   6  Алкоголь
+   5  анализ данных
+   5  URL: https://habr.com/ru/articles/964738/
+   5  AI
+   4  Интернет вещей
+   4  бизнес
+   4  веб-разработка
+   4  URL: https://habr.com/ru/articles/966028/
+   4  URL: https://habr.com/ru/articles/966048/
+   4  URL: https://habr.com/ru/articles/966238/
+   4  URL: https://habr.com/ru/articles/966442/
+   4  URL: https://habr.com/ru/articles/964020/
+   4  URL: https://habr.com/ru/articles/964778/
+   4  URL: https://habr.com/ru/articles/964830/
+   4  SQL: Языки для управления базами данных
+   4  Category: Data Science
+   4  Programming
+   4  URL: https://habr.com/ru/companies/bothub/articles/971108/
+   3  DevOps
+   3  маркетинг
+   3  Базы данных
+   3  психология
+   3  Агile
+   3  2. ChatGPT
+   3  3. Docker
+   3  4. Python
+   3  5. Trading
+   3  6. UX-дизайн
+   3  7. SQL
+   3  8. Data Science
+   3  9. Искусственный интеллект
+   3  10. ИТ и программирование
+   3  Category: Python
+   3  IT и программирование
+   3  Business Process
+   3  Docker: Управление контейнерами
+   3  URL: https://habr.com/ru/articles/963260/
+   3  URL: https://habr.com/ru/articles/963278/
+   3  UX-дизайн: Дизайн
+   3  Data Science: Исследование и моделирование данных
+   3  IT and Programming
+   3  Python: Языки программирования
+   3  Category: AI-ассистенты
+   3  URL
+   3  but it doesn't seem to provide a specific topic related to mobile app development or testing. The categories for each web page are: AI and ML
+   3  Mobile App Development and Testing
+   3  Spatial Data Management
+   3  Статистика
+   2  История науки
+   2  тестирование
+   2  автоматизация
+   2  компьютерное зрение
+   2  аналитика
+   2  сетевые технологии
+   2  виртуализация
+   2  бизнес-аналитика
+   2  URL: https://habr.com/ru/articles/966258/
+   2  URL: https://habr.com/ru/articles/966270/
+   2  Category: IT и программирование
+   2  URL: https://habr.com/ru/articles/966646/
+   2  The category of the web page is "Mobile Development Weekly #610
+   2  6. Искусственный интеллект
+   2  3. Data Science
+   2  URL: https://habr.com/ru/articles/964074/
+   2  URL: https://habr.com/ru/articles/964920/
+   2  Category: Programming
+   2  Умный дом
+   2  Text-based Tasks
+   2  AI-ассистенты: Автоматические сообщения
+   2  ChatGPT: Автоматические сообщения
+   2  Trading: Торговля
+   2  URL: https://habr.com/ru/articles/963522/
+   2  URL: https://habr.com/ru/articles/963564/
+   2  URL: https://habr.com/ru/articles/963632/
+   2  URL: https://habr.com/ru/art
+   2  The web page 'Telegram-бот для малого бизнеса на Python и aiogram 3.x: пошаговый гайд за вечер' about 'Telegram bot for small business in Python and aiogram 3.x: Step by Step Guide for Evening Huddle' is related to AI and Machine Learning
+   2  The category of the web page "Telegram-бот для малого бизнеса на Python и aiogram 3.x: пошаговый гайд за вечер" is "Telegram Bot Development for Small Business in Python and aiogram 3.x: Step by Step Guide for Evening Huddle
+   2  Title: Разработка LLM: Основы
+   2  UX-Design
+   2  AI-based solutions
+   2  AI-based consulting
+   2  AI and Data Science
+   2  AI and AI
+   2  AI and Python
+   2  Category: Business Process
+   2  programming
+   2  URL: https://habr.com/ru/companies/cloud_ru/articles/965740/
+   2  URL: https://habr.com/ru/companies/cloud_ru/articles/966698/
+   2  URL: https://habr.com/ru/companies/cloud_ru/articles/967788/
+   2  URL: https://habr.com/ru/companies/cloud_ru/articles/968918/
+   2  The web page at https://habr.com/ru/articles/964738/ seems to be about Mobile Development Weekly 610. It provides a lot of information on mobile app development and testing
+   2  AI and Machine Learning Platforms
+   2  URL: https://habr.com/ru/companies/dbraincloud/articles/923532/
+   2  The web page "Telegram-бот для малого бизнеса на Python и aiogram 3.x: пошаговый гайд за вечер" about "Telegram bot for small business in Python and aiogram 3.x: Step by Step Guide for Evening Huddle" is about building a Telegram bot
+   2  URL: https://habr.com/ru/companies/raft/articles/954158/
+   2  Энергетика
+   1  информационные системы
+   1  менеджмент проектов
+   1  промышленность
+   1  архитектура
+   1  переговоры
+   1  алгоритмическая торговля
+   1  образование
+   1  электронная коммерция
+   1  нейронауки
+   1  Пользовательский опыт
+   1  Data Warehousing
+   1  лингвистика
+   1  резервное копирование
+   1  Программное обеспечение
+   1  этика искусственного интеллекта
+   1  торговля
+   1  вайбкодинг
+   1  облачное вычисление
+   1  бизнес-анализ
+   1  Облако
+   1  агротехнологии
+   1  архитектура программного обеспечения
+   1  облачные технологии
+   1  стартапы
+   1  разработка приложений
+   1  финансы
+   1  управление проектами
+   1  интерфейсы
+   1  социология
+   1  бизнес-процессы
+   1  серверы
+   1  Оптимизация системы
+   1  недвижимость

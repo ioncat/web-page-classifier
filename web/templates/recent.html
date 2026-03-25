@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Последние добавленные — Классификатор ссылок{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <div class="flex items-center gap-2 text-sm text-gray-400 mb-1">
+    <a href="/" class="hover:text-blue-600">Все категории</a>
+    <span>/</span>
+  </div>
+  <div class="flex items-center gap-3">
+    <button id="btn-select-mode" class="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 shrink-0">
+      Выбрать
+    </button>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Последние добавленные</h1>
+      <p class="mt-1 text-sm text-gray-500">{{ total }} ссылок · страница {{ page }} из {{ pages }}</p>
+    </div>
+  </div>
+  <div class="mt-3">
+    {% include "_sort_bar.html" %}
+  </div>
+</div>
+
+<!-- URL cards -->
+<div id="cards-list" class="flex flex-col gap-3">
+  {% for item in items %}
+    <div class="url-card bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition-all duration-150"
+         data-id="{{ item.id }}"
+         draggable="true">
+
+      <!-- Row 1: Action buttons + date -->
+      <div class="flex items-center gap-1 mb-2">
+        <input type="checkbox" class="card-checkbox hidden shrink-0 w-4 h-4 accent-blue-600 cursor-pointer">
+
+        <div class="flex gap-1 card-actions">
+          <button class="btn-refetch p-1.5 rounded-lg text-gray-300 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                  title="Обработать: заново получить title и description">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+          </button>
+          <button class="btn-move p-1.5 rounded-lg text-gray-300 hover:text-green-600 hover:bg-green-50 transition-colors"
+                  title="Переместить в категорию">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+            </svg>
+          </button>
+          <button class="btn-delete p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  title="Удалить из базы">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+        </div>
+
+        {% if item.added_at %}
+        <span class="ml-auto text-xs text-gray-400">{{ item.added_at[:16] }}</span>
+        {% endif %}
+      </div>
+
+      <!-- Row 2: Title -->
+      <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer"
+         class="text-base font-semibold text-blue-700 hover:text-blue-900 hover:underline line-clamp-2 leading-snug">
+        {{ item.title or item.url }}
+      </a>
+
+      {% if item.description %}
+      <p class="mt-2 text-sm text-gray-600 line-clamp-3 leading-relaxed">
+        {{ item.description }}
+      </p>
+      {% endif %}
+
+      <!-- Footer: domain + categories -->
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <span class="text-xs text-gray-300 font-mono">#{{ item.id }}</span>
+        <span class="text-xs text-gray-400 font-mono truncate max-w-[180px]">{{ item.domain }}</span>
+        {% for cat in item.categories_list %}
+        <a href="/category/{{ cat | urlencode }}"
+           class="card-cat-badge text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100">
+          {{ cat }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if pages > 1 %}
+<nav class="mt-8 flex items-center justify-center gap-2">
+  {% if page > 1 %}
+  <a href="?page={{ page - 1 }}&sort={{ sort }}"
+     class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300
+            rounded-lg hover:bg-gray-50">
+    ← Назад
+  </a>
+  {% endif %}
+
+  <span class="px-4 py-2 text-sm text-gray-500">
+    {{ page }} / {{ pages }}
+  </span>
+
+  {% if page < pages %}
+  <a href="?page={{ page + 1 }}&sort={{ sort }}"
+     class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300
+            rounded-lg hover:bg-gray-50">
+    Вперёд →
+  </a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endblock %}

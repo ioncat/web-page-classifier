@@ -8,7 +8,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 security = HTTPBasic()
 
 WEB_USER     = os.getenv("WEB_USER", "admin")
-WEB_PASSWORD = os.getenv("WEB_PASSWORD", "changeme")
+WEB_PASSWORD = os.getenv("WEB_PASSWORD", "admin")
 
 
 def verify_auth(credentials: HTTPBasicCredentials = Depends(security)) -> str:
