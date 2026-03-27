@@ -36,6 +36,7 @@ def init_db() -> None:
         for migration in [
             "ALTER TABLE urls ADD COLUMN error_code INTEGER",
             "ALTER TABLE urls ADD COLUMN description TEXT",
+            "ALTER TABLE urls ADD COLUMN manual_override INTEGER DEFAULT 0",
         ]:
             try:
                 conn.execute(migration)
@@ -105,7 +106,7 @@ def get_stats() -> dict[str, int]:
         rows = conn.execute(
             "SELECT status, COUNT(*) as cnt FROM urls GROUP BY status"
         ).fetchall()
-    stats = {"total": 0, "pending": 0, "done": 0, "error": 0}
+    stats = {"total": 0, "pending": 0, "done": 0, "error": 0, "deferred": 0}
     for row in rows:
         stats[row["status"]] = row["cnt"]
         stats["total"] += row["cnt"]
@@ -143,6 +144,81 @@ def get_full_stats() -> dict:
     return stats
 
 
+def get_analytics() -> dict:
+    """Подробная аналитика БД: title/description/category разбивка + топ проблемных доменов."""
+    with get_conn() as conn:
+        r = lambda sql: conn.execute(sql).fetchone()[0]
+
+        done = r("SELECT COUNT(*) FROM urls WHERE status='done'")
+        with_title = r("SELECT COUNT(*) FROM urls WHERE status='done' AND title IS NOT NULL AND title != ''")
+        with_desc = r("SELECT COUNT(*) FROM urls WHERE status='done' AND description IS NOT NULL AND description != ''")
+        classified = r("SELECT COUNT(*) FROM urls WHERE status='done' AND category IS NOT NULL AND category != ''")
+        manual = r("SELECT COUNT(*) FROM urls WHERE status='done' AND COALESCE(manual_override, 0) = 1")
+        unclass_no_title = r(
+            "SELECT COUNT(*) FROM urls WHERE status='done'"
+            " AND (category IS NULL OR category = '')"
+            " AND (title IS NULL OR title = '')"
+        )
+        unclass_with_title = r(
+            "SELECT COUNT(*) FROM urls WHERE status='done'"
+            " AND (category IS NULL OR category = '')"
+            " AND title IS NOT NULL AND title != ''"
+        )
+
+        # Топ доменов без title
+        no_title_domains = conn.execute(
+            """SELECT
+                 CASE
+                   WHEN INSTR(SUBSTR(url, INSTR(url, '://') + 3), '/') > 0
+                   THEN REPLACE(SUBSTR(url, INSTR(url, '://') + 3,
+                        INSTR(SUBSTR(url, INSTR(url, '://') + 3), '/') - 1), 'www.', '')
+                   ELSE REPLACE(SUBSTR(url, INSTR(url, '://') + 3), 'www.', '')
+                 END as domain,
+                 COUNT(*) as cnt
+               FROM urls
+               WHERE status='done' AND (title IS NULL OR title = '')
+               GROUP BY domain ORDER BY cnt DESC LIMIT 10"""
+        ).fetchall()
+
+        # Топ доменов без категории (но с title — потенциал для классификации)
+        unclass_domains = conn.execute(
+            """SELECT
+                 CASE
+                   WHEN INSTR(SUBSTR(url, INSTR(url, '://') + 3), '/') > 0
+                   THEN REPLACE(SUBSTR(url, INSTR(url, '://') + 3,
+                        INSTR(SUBSTR(url, INSTR(url, '://') + 3), '/') - 1), 'www.', '')
+                   ELSE REPLACE(SUBSTR(url, INSTR(url, '://') + 3), 'www.', '')
+                 END as domain,
+                 COUNT(*) as cnt
+               FROM urls
+               WHERE status='done' AND (category IS NULL OR category = '')
+                 AND title IS NOT NULL AND title != ''
+               GROUP BY domain ORDER BY cnt DESC LIMIT 10"""
+        ).fetchall()
+
+        # Deferred разбивка по error_code
+        deferred_by_code = conn.execute(
+            "SELECT error_code, COUNT(*) as cnt FROM urls"
+            " WHERE status='deferred' GROUP BY error_code ORDER BY cnt DESC"
+        ).fetchall()
+
+    return {
+        "done": done,
+        "with_title": with_title,
+        "without_title": done - with_title,
+        "with_desc": with_desc,
+        "without_desc": done - with_desc,
+        "classified": classified,
+        "unclassified": done - classified,
+        "manual_override": manual,
+        "ready_for_llm": unclass_with_title,
+        "unclass_no_title": unclass_no_title,
+        "no_title_domains": [dict(r) for r in no_title_domains],
+        "unclass_domains": [dict(r) for r in unclass_domains],
+        "deferred_by_code": [dict(r) for r in deferred_by_code],
+    }
+
+
 def reset_all_to_pending() -> int:
     """Сбрасывает все записи в pending. Возвращает кол-во затронутых строк."""
     with get_conn() as conn:
@@ -175,6 +251,34 @@ def reset_transient_errors_to_pending() -> int:
             f" WHERE status='error'"
             f"   AND (error_code IS NULL OR error_code IN ({placeholders}))",
             list(TRANSIENT_CODES),
+        )
+        return cur.rowcount
+
+
+def defer_errors(codes: list[int] | None = None) -> int:
+    """Переводит error → deferred. Если codes указаны — только эти error_code.
+    Без codes — все error. Возвращает кол-во затронутых строк.
+    """
+    with get_conn() as conn:
+        if codes:
+            placeholders = ",".join("?" * len(codes))
+            cur = conn.execute(
+                f"UPDATE urls SET status='deferred'"
+                f" WHERE status='error' AND error_code IN ({placeholders})",
+                codes,
+            )
+        else:
+            cur = conn.execute(
+                "UPDATE urls SET status='deferred' WHERE status='error'"
+            )
+        return cur.rowcount
+
+
+def undefer_all() -> int:
+    """Возвращает все deferred → error. Возвращает кол-во затронутых строк."""
+    with get_conn() as conn:
+        cur = conn.execute(
+            "UPDATE urls SET status='error' WHERE status='deferred'"
         )
         return cur.rowcount
 
@@ -276,13 +380,15 @@ def add_tags(names: list[str]) -> tuple[int, int]:
 
 
 def get_done_unclassified() -> list[dict]:
-    """Возвращает done-записи без присвоенной категории (только с title)."""
+    """Возвращает done-записи без присвоенной категории (только с title).
+    Пропускает URL с manual_override=1 (категория назначена вручную)."""
     with get_conn() as conn:
         rows = conn.execute(
             """SELECT id, url, title, description
                  FROM urls
                 WHERE status = 'done'
                   AND (category IS NULL OR category = '')
+                  AND COALESCE(manual_override, 0) = 0
                   AND title IS NOT NULL AND title != ''
                 ORDER BY id"""
         ).fetchall()

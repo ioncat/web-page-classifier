@@ -58,6 +58,9 @@
       {{ cat }}
     </a>
     {% endfor %}
+    {% if item.manual_override %}
+    <span class="text-xs text-amber-500" title="Категория назначена вручную">&#9998;</span>
+    {% endif %}
   </div>
 
 </div>

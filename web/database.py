@@ -10,6 +10,15 @@ from urllib.parse import urlparse
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = os.getenv("DB_PATH", str(_PROJECT_ROOT / "urls.db"))
 
+# Таксономия — загружаем из config/ пайплайна
+import importlib.util
+_tax_path = _PROJECT_ROOT / "config" / "taxonomy.py"
+_tax_spec = importlib.util.spec_from_file_location("taxonomy", str(_tax_path))
+_tax_mod = importlib.util.module_from_spec(_tax_spec)
+_tax_spec.loader.exec_module(_tax_mod)
+TAXONOMY: list[str] = _tax_mod.TAXONOMY
+TAXONOMY_SECTIONS: list[tuple[str, list[str]]] = _tax_mod.TAXONOMY_SECTIONS
+
 PER_PAGE_DEFAULT = 20
 PER_PAGE_MAX = 100
 
@@ -64,7 +73,8 @@ def get_urls_by_category(
         ).fetchone()[0]
 
         rows = conn.execute(
-            f"""SELECT id, url, title, description, category, processed_at, added_at
+            f"""SELECT id, url, title, description, category, processed_at, added_at,
+                       COALESCE(manual_override, 0) as manual_override
                  FROM urls
                 WHERE status='done' AND category=?
                 ORDER BY {_order_clause(sort)}
@@ -113,7 +123,8 @@ def search_urls(
         ).fetchone()[0]
 
         rows = conn.execute(
-            f"""SELECT id, url, title, description, category, processed_at, added_at
+            f"""SELECT id, url, title, description, category, processed_at, added_at,
+                       COALESCE(manual_override, 0) as manual_override
                   FROM urls
                  WHERE {where}
                  ORDER BY {_order_clause(sort)}
@@ -147,7 +158,8 @@ def get_recent_urls(
         ).fetchone()[0]
 
         rows = conn.execute(
-            f"""SELECT id, url, title, description, category, processed_at, added_at
+            f"""SELECT id, url, title, description, category, processed_at, added_at,
+                       COALESCE(manual_override, 0) as manual_override
                  FROM urls
                 WHERE status='done'
                 ORDER BY {_order_clause(sort)}
@@ -179,7 +191,8 @@ def get_uncategorized_urls(
         ).fetchone()[0]
 
         rows = conn.execute(
-            f"""SELECT id, url, title, description, category, processed_at, added_at
+            f"""SELECT id, url, title, description, category, processed_at, added_at,
+                       COALESCE(manual_override, 0) as manual_override
                  FROM urls
                 WHERE status='done' AND (category IS NULL OR category = '')
                 ORDER BY {_order_clause(sort)}
@@ -209,12 +222,12 @@ def get_stats() -> dict:
     return {"total_urls": total, "total_categories": cats}
 
 
-def update_category(url_id: int, new_category: str) -> bool:
-    """Меняет категорию URL. Возвращает True если строка обновлена."""
+def update_category(url_id: int, new_category: str, manual: bool = True) -> bool:
+    """Меняет категорию URL. manual=True ставит manual_override=1 (защита от перезаписи LLM)."""
     with _get_conn() as conn:
         cur = conn.execute(
-            "UPDATE urls SET category = ? WHERE id = ?",
-            (new_category, url_id),
+            "UPDATE urls SET category = ?, manual_override = ? WHERE id = ?",
+            (new_category, 1 if manual else 0, url_id),
         )
     return cur.rowcount > 0
 

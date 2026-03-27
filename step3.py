@@ -6,6 +6,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import ollama
 from rich.console import Console
@@ -37,7 +38,8 @@ from config.settings import (
     TAG_MAX_LEN,
     TAG_MAX_WORDS,
 )
-from config.taxonomy import TAXONOMY
+from config.taxonomy import TAXONOMY, TAXONOMY_SECTIONS
+from config.domain_rules import DOMAIN_RULES, _SECTION_CATS
 
 console = Console()
 
@@ -99,6 +101,7 @@ _TAXONOMY_SET = {t.lower(): t for t in TAXONOMY}
 
 
 _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+_CATEGORY_PREFIX_RE = re.compile(r"(?:категория|катерия|category)\s*[:—–-]\s*(.+)", re.IGNORECASE)
 
 
 def _normalize_category(raw: str) -> str | None:
@@ -119,6 +122,14 @@ def _normalize_category(raw: str) -> str | None:
         if canonical:
             return canonical
 
+    # Извлечь после "Категория:" / "Category:"
+    m = _CATEGORY_PREFIX_RE.search(raw)
+    if m:
+        after = m.group(1).strip().strip("\"'.,;:-*")
+        canonical = _TAXONOMY_SET.get(after.lower())
+        if canonical:
+            return canonical
+
     # Попробовать каждую строку ответа
     for line in raw.splitlines():
         line = line.strip().strip("\"'.,;:-*")
@@ -129,9 +140,16 @@ def _normalize_category(raw: str) -> str | None:
     return None
 
 
-def _build_prompt(title: str, url: str, hints: list[str], description: str | None = None) -> str:
+def _taxonomy_str_for(section: str | None = None) -> str:
+    """Строка таксономии для промпта. Если section задан — только категории раздела."""
+    if section and section in _SECTION_CATS:
+        return TAXONOMY_LINE.format(taxonomy=", ".join(_SECTION_CATS[section]))
+    return _TAXONOMY_STR
+
+
+def _build_prompt(title: str, url: str, hints: list[str], description: str | None = None, section: str | None = None) -> str:
     desc_line = DESCRIPTION_LINE.format(description=description[:200]) if description else ""
-    return SINGLE.format(title=title or "(no title)", taxonomy=_TAXONOMY_STR, description_line=desc_line)
+    return SINGLE.format(title=title or "(no title)", taxonomy=_taxonomy_str_for(section), description_line=desc_line)
 
 
 def _build_batch_prompt(items: list[dict], hints: list[str]) -> str:
@@ -153,15 +171,18 @@ def classify_url(
     hints: list[str],
     no_think: bool = False,
     description: str | None = None,
+    section: str | None = None,
 ) -> str:
     """Запрашивает у Ollama теги для одного URL. Возвращает строку тегов через запятую.
+
+    section — если задан, промпт содержит только категории этого раздела.
 
     Исключения:
         ollama.ResponseError  — API-ошибка (неверная модель, ошибка сервера и т.п.)
         ValueError            — модель вернула пустой ответ
         Exception             — ошибка соединения (Ollama недоступна)
     """
-    prompt = _build_prompt(title or "", url, hints, description=description)
+    prompt = _build_prompt(title or "", url, hints, description=description, section=section)
     options: dict = {"num_predict": NUM_PREDICT_SINGLE, "temperature": OLLAMA_TEMPERATURE, "num_ctx": OLLAMA_NUM_CTX}
     if no_think:
         options["think"] = False
@@ -172,8 +193,7 @@ def classify_url(
     )
     raw = resp.message.content.strip()
 
-    first_line = next((ln for ln in raw.splitlines() if ln.strip()), "")
-    category = _normalize_category(first_line)
+    category = _normalize_category(raw)
 
     if not category:
         raise ValueError(f"Ответ не из таксономии: {raw!r}")
@@ -231,13 +251,14 @@ def _process_one(
     consecutive_conn_errors: int,
     no_think: bool = False,
     description: str | None = None,
+    section: str | None = None,
 ) -> tuple[str | None, int]:
     """Классифицирует один URL. Возвращает (category, новый consecutive_conn_errors).
 
     Поднимает _OllamaDown, если достигнут лимит подряд идущих ошибок соединения.
     """
     try:
-        category = classify_url(client, model, url, title, hints, no_think=no_think, description=description)
+        category = classify_url(client, model, url, title, hints, no_think=no_think, description=description, section=section)
         return category, 0
 
     except ollama.ResponseError as exc:
@@ -451,11 +472,35 @@ def main(
     if no_description:
         rows = [{**r, "description": None} for r in rows]
 
+    # ── Domain rules: известные домены → категория или суженный промпт ──────
+    domain_matched = 0
+    remaining_rows = []
+    for row in rows:
+        domain = urlparse(row["url"]).netloc.removeprefix("www.")
+        rule = DOMAIN_RULES.get(domain)
+        if rule and "category" in rule:
+            # L1 известен — LLM не нужна
+            _sc(row["url"], rule["category"])
+            domain_matched += 1
+            if _verbose:
+                console.print(f"  [dim]{row['url'][:60]}[/dim] → [green]{rule['category']}[/green] [dim](domain rule)[/dim]")
+        else:
+            # Сохраняем section hint для суженного промпта (или None)
+            if rule and "section" in rule:
+                row["_section"] = rule["section"]
+            remaining_rows.append(row)
+
+    if domain_matched:
+        console.print(f"\n[green]Domain rules:[/green] {domain_matched} URL — категория по домену\n")
+    rows = remaining_rows
+
     if not rows:
         console.print(
             "\n[green]Нет URL для классификации.[/green] "
             "Все обработанные записи уже имеют категорию."
         )
+        if domain_matched:
+            _print_summary(done_count=domain_matched, error_count=0, elapsed=time.perf_counter() - _t0)
         return
 
     total_urls = len(rows)
@@ -694,7 +739,7 @@ def main(
                                 try:
                                     cat, conn_errors = _process_one(
                                         client, model, url, title, hints, conn_errors,
-                                        no_think=no_think, description=desc,
+                                        no_think=no_think, description=desc, section=row.get("_section"),
                                     )
                                     _sc(url, cat)
                                     _uh(cat, hints)
@@ -728,7 +773,7 @@ def main(
                             try:
                                 cat, conn_errors = _process_one(
                                     client, model, url, title, hints, conn_errors,
-                                    no_think=no_think, description=desc,
+                                    no_think=no_think, description=desc, section=row.get("_section"),
                                 )
                                 _sc(url, cat)
                                 _uh(cat, hints)
@@ -769,7 +814,7 @@ def main(
                                     try:
                                         cat, conn_errors = _process_one(
                                             client, model, url, title, hints, conn_errors,
-                                            no_think=no_think, description=desc,
+                                            no_think=no_think, description=desc, section=row.get("_section"),
                                         )
                                         _sc(url, cat)
                                         _uh(cat, hints)
@@ -805,7 +850,7 @@ def main(
                                 try:
                                     cat, conn_errors = _process_one(
                                         client, model, url, title, hints, conn_errors,
-                                        no_think=no_think, description=desc,
+                                        no_think=no_think, description=desc, section=row.get("_section"),
                                     )
                                     _sc(url, cat)
                                     _uh(cat, hints)
@@ -833,7 +878,7 @@ def main(
                     try:
                         category, conn_errors = _process_one(
                             client, model, url, title, hints, conn_errors,
-                            no_think=no_think, description=desc,
+                            no_think=no_think, description=desc, section=row.get("_section"),
                         )
                         _sc(url, category)
                         new_in_dict = _uh(category, hints)
@@ -869,7 +914,7 @@ def main(
                         try:
                             category, conn_errors = _process_one(
                                 client, model, url, title, hints, conn_errors,
-                                no_think=no_think, description=desc,
+                                no_think=no_think, description=desc, section=row.get("_section"),
                             )
                             _sc(url, category)
                             new_in_dict = _uh(category, hints)
@@ -892,7 +937,7 @@ def main(
 
     # ── Итоги ─────────────────────────────────────────────────────────────────
     elapsed = time.perf_counter() - _t0
-    _print_summary(done_count, error_count, aborted=aborted, elapsed=elapsed)
+    _print_summary(done_count + domain_matched, error_count, aborted=aborted, elapsed=elapsed)
     if dry_run:
         _append_dryrun_log(model or "auto", elapsed, done_count, limit, batch, workers)
     if aborted:

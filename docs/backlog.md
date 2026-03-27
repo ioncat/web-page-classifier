@@ -154,20 +154,38 @@
 
 ---
 
+## Сессия 10 — Таксономия, очистка БД, manual override (25.03)
+
+| # | Фича | Файлы |
+|---|------|-------|
+| 62 | **`config/taxonomy.py`** — 30 фиксированных категорий. Модель ОБЯЗАНА выбирать только из этого списка. Промпт включает полный список, `_normalize_category()` валидирует ответ | `config/taxonomy.py` (новый), `step3.py` |
+| 63 | **Strict-режим по умолчанию** — step3 использует таксономию: `_TAXONOMY_SET` для быстрой валидации, `_TAXONOMY_STR` в промпте. Категории вне таксономии → ошибка | `step3.py`, `config/prompts.py` |
+| 64 | **Очистка БД** — удалены мусорные категории: `(no title)` (531), мульти-категории с запятыми (12), `МЕНЮ` (19), `Агile` (3), англ./мусорные одиночные (32). Lowercase → Capitalized (132). Удалено 5 осиротевших тегов. Итого обработано 729 URL | ручная SQL-миграция |
+| 65 | **`manual_override`** — новая колонка в `urls`. При ручной смене категории через UI ставится `1`. `get_done_unclassified()` пропускает такие URL | `db.py`, `web/database.py` |
+| 66 | **Модалка с таксономией** — UI показывает 30 категорий из `config/taxonomy.py` (а не текущие из БД). Единый источник для LLM и UI | `web/database.py`, `web/templates/base.html`, `web/routers/pages.py` |
+| 67 | **Иконка ✎ manual override** — на карточке отображается если категория назначена вручную | `web/templates/_url_card.html` |
+| 68 | **Страница `/recent`** — лента всех URL, новые сверху, с пагинацией и сортировкой | `web/routers/pages.py`, `web/database.py`, `web/templates/recent.html` |
+| 69 | **Страница `/uncategorized`** — URL без категории, с пагинацией и сортировкой | `web/routers/pages.py`, `web/database.py`, `web/templates/uncategorized.html` |
+| 70 | **Сортировка** — новые сверху / старые сверху / по алфавиту. Доступна на category, recent, uncategorized, search | `web/database.py`, `web/templates/_sort_bar.html` |
+| 71 | **`OLLAMA_NUM_CTX = 2048`** — уменьшение контекстного окна для лучшей утилизации GPU (35%→34% CPU) | `config/settings.py`, `step3.py` |
+| 72 | **`config/domain_rules.py`** — правила классификации по домену: `{"category": "..."}` пропускает LLM, `{"section": "..."}` сужает промпт до категорий секции. Валидация при импорте. 9 доменов (habr, github, youtube, flibusta, rozetka, amazon и др.) | `config/domain_rules.py` (новый), `step3.py` |
+| 73 | **Section-narrowed prompts** — `_taxonomy_str_for(section)` генерирует сокращённый список категорий для промпта. Для habr.com LLM видит 11 категорий вместо 30 | `step3.py` |
+
+---
+
 ## Запланировано
 
 | # | Фича | Приоритет | Описание |
 |---|------|-----------|----------|
-| P0 | **`--strict` режим (L1 taxonomy)** | критический | Пререквизит для ML-плана. Флаг меняет промпт с «вот подсказки» на «выбери ОДНУ категорию строго из списка taxonomy.json». Детали — см. `docs/ml-plan.md`. |
-| P0 | **`taxonomy.json`** | критический | Файл с 15 L1-категориями, описаниями и примерами. Используется в `--strict` и при обучении ML-модели. |
-| P0 | **`export_dataset.py`** | критический | Экспорт БД в JSONL для обучения: `{"text": "title [SEP] domain", "label": "category"}`. |
-| P1 | **`--fix-category`** | высокий | Ручная правка категории одного URL через CLI. Нужен для валидации датасета. |
-| P1 | **`train_classifier.py`** | высокий | Fine-tune `xlm-roberta-base` на датасете. Обучение ~3 мин на RTX A4000. |
-| P1 | **`step4.py` — ML-классификатор** | высокий | Инференс обученной модели: ~2мс/URL, confidence score, fallback на LLM при низкой уверенности. |
-| P1 | **`--only-ml-classify`, `--ml-confidence`** | высокий | Флаги для step4 в `main.py`. |
-| P2 | **Active learning UI** | средний | Показывает примеры с низкой ML-confidence для ручной проверки. |
-| P2 | **#52 Per-model prompt templates** | средний | Поддержка отдельных промптов для каждой модели: `config/prompts/mistral.txt`, `config/prompts/default.txt`. `--compare-models` выбирает промпт по имени модели. Цель: максимизировать качество под специфику каждой модели (структурированный `###`-формат для Mistral, явные правила `lowercase only`, `no underscores`, `same language as title`). |
-| P2 | **#53 Прогон 3 — батчинг vs качество** | средний | Эксперимент: запустить лучшую модель (mistral-small3.2) с `--batch 1`, `--batch 5`, `--batch 10`, `--batch 20` на одинаковом наборе URL. Сравнить agreement rate и с/URL. Задокументировать drift качества и найти оптимальный размер батча. |
+| P0 | ~~**`--strict` режим**~~ | ✅ готово | Реализовано: таксономия в `config/taxonomy.py`, валидация в `_normalize_category()` |
+| P0 | ~~**`taxonomy.json`**~~ | ✅ готово | Реализовано как `config/taxonomy.py` — 30 категорий |
+| P0 | **`export_dataset.py`** | критический | Экспорт БД в JSONL для обучения: `{"text": "title [SEP] domain", "label": "category"}` |
+| P1 | ~~**`--fix-category`**~~ | ✅ готово | Реализовано через Web UI: модалка + drag&drop + `manual_override` |
+| P1 | **`train_classifier.py`** | высокий | Fine-tune `xlm-roberta-base` на датасете. Обучение ~3 мин на RTX A4000 |
+| P1 | **`step4.py` — ML-классификатор** | высокий | Инференс обученной модели: ~2мс/URL, confidence score, fallback на LLM |
+| P1 | **`--only-ml-classify`, `--ml-confidence`** | высокий | Флаги для step4 в `main.py` |
+| P2 | **Active learning UI** | средний | Показывает примеры с низкой ML-confidence для ручной проверки |
+| P1 | **Удобный интерфейс управления** | высокий | Проблема: слишком много флагов, каждый с параметрами (workers, batch, model...) — невозможно запомнить. **Варианты решения:** (1) Интерактивный CLI — меню со стрелками, wizard-стиль, подсказки по параметрам; (2) Расширить Web UI — добавить страницу управления пайплайном (запуск задач, выбор параметров, просмотр логов); (3) Гибрид — CLI для быстрых операций + Web UI для сложных. Покрыть 100% функциональности, включая все комбинации параметров |
 
 > Полный план ML-разработки: **`docs/ml-plan.md`**
 
@@ -177,8 +195,8 @@
 
 | Показатель | Значение |
 |---|---|
-| Всего фич | **61** (+10 запланировано) |
-| Файлов в проекте | 11 (`main.py`, `step1–3.py`, `compare.py`, `benchmark/benchmark.py`, `db.py`, `config/settings.py`, `config/prompts.py`, `README.md`, `docs/`) |
-| GPU утилизация: старт → финал | 5–10% → **80–90%** |
-| Сессий | 9 (4 дня) |
+| Всего фич | **73** (+5 запланировано) |
+| Файлов в проекте | 13 (`main.py`, `step1–3.py`, `compare.py`, `benchmark/benchmark.py`, `db.py`, `config/settings.py`, `config/prompts.py`, `config/taxonomy.py`, `config/domain_rules.py`, `README.md`, `docs/`) |
+| GPU утилизация: старт → финал | 5–10% → **30–50%** (65% GPU, 35% CPU split) |
+| Сессий | 10 (5 дней) |
 | Коммитов | 30+ |

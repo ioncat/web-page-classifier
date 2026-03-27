@@ -22,6 +22,11 @@ def _all_categories() -> list[dict]:
     return db.get_categories_with_counts()
 
 
+def _common_ctx() -> dict:
+    """Общий контекст для всех шаблонов."""
+    return {"taxonomy": db.TAXONOMY, "taxonomy_sections": db.TAXONOMY_SECTIONS}
+
+
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request):
     categories = _all_categories()
@@ -32,6 +37,7 @@ def index(request: Request):
         "all_categories": categories,
         "stats": stats,
         "active_category": None,
+        **_common_ctx(),
     })
 
 
@@ -51,6 +57,7 @@ def category(
         "sort": sort,
         "sort_options": db.SORT_OPTIONS,
         **data,
+        **_common_ctx(),
     })
 
 
@@ -69,6 +76,7 @@ def recent(
         "sort": sort,
         "sort_options": db.SORT_OPTIONS,
         **data,
+        **_common_ctx(),
     })
 
 
@@ -87,6 +95,7 @@ def uncategorized(
         "sort": sort,
         "sort_options": db.SORT_OPTIONS,
         **data,
+        **_common_ctx(),
     })
 
 
@@ -108,4 +117,5 @@ def search(
         "sort": sort,
         "sort_options": db.SORT_OPTIONS,
         **data,
+        **_common_ctx(),
     })

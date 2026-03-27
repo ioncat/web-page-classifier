@@ -79,20 +79,20 @@ URL:       https://habr.com/ru/articles/805105/
 
 URL:       https://github.com/BerriAI/litellm
 Заголовок: LiteLLM — Call all LLM APIs using OpenAI format
-Категория: Разработка
+Категория: Программирование
 
 URL:       https://en.wikipedia.org/wiki/Transformer_(deep_learning)
 Заголовок: Transformer (deep learning)
-Категория: Data Science
+Категория: Искусственный интеллект
 ```
 
 Статистика после полного прогона:
 
 | Статус | Кол-во |
 |--------|-------:|
-| done + классифицировано | 6 901 |
-| error (постоянные 403/404) | 1 062 |
-| Уникальных категорий | ~85 (после чистки) |
+| done + классифицировано | ~6 050 |
+| done без категории | ~1 570 |
+| Уникальных категорий | 30 (фиксированная таксономия) |
 
 ---
 
@@ -118,7 +118,7 @@ URL:       https://en.wikipedia.org/wiki/Transformer_(deep_learning)
 
 ```mermaid
 flowchart TD
-    A["LLM-разметка<br/>~7000 URL"] --> B["Фаза 1<br/>Фиксация таксономии<br/>taxonomy.json"]
+    A["LLM-разметка<br/>~7000 URL"] --> B["Фаза 1<br/>Фиксация таксономии<br/>config/taxonomy.py"]
     B --> C["Фаза 2<br/>Переразметка --strict<br/>export_dataset.py"]
     C --> D["Фаза 3<br/>Обучение<br/>xlm-roberta-base"]
     D --> E["Фаза 4<br/>step4.py<br/>+ порог уверенности"]
@@ -128,8 +128,8 @@ flowchart TD
 | Фаза | Задача | Статус |
 |------|--------|--------|
 | 0 | Анализ распределения | ✅ готово |
-| 1 | Фиксация таксономии (`taxonomy.json`) | 🔄 в процессе |
-| 2.1 | Режим `--strict` в step3 + переразметка | ⏳ следующий |
+| 1 | Фиксация таксономии (`config/taxonomy.py`) | ✅ готово |
+| 2.1 | Режим `--strict` в step3 + переразметка | ✅ готово |
 | 2.2 | `export_dataset.py` | ⏳ |
 | 2.3 | Ручная валидация (~50 примеров/класс) | ⏳ |
 | 3 | `train_classifier.py`, `xlm-roberta-base` | ⏳ |
@@ -140,13 +140,16 @@ flowchart TD
 
 **Датасет:** ~7 000 размеченных URL, из них ~1 000 верифицируются вручную перед обучением.
 
-**Пример `taxonomy.json`:**
-```json
-[
-  { "name": "Искусственный интеллект", "examples": ["LLM", "RAG", "нейросети"] },
-  { "name": "Программирование",        "examples": ["Python", "алгоритмы", "async"] },
-  { "name": "DevOps и инфраструктура", "examples": ["Docker", "CI/CD", "облако"] }
+**Таксономия (`config/taxonomy.py`)** — 5 разделов (L0), 31 категория (L1):
+```python
+TAXONOMY_SECTIONS = [
+    ("IT и разработка",     [11 категорий]),
+    ("Управление и бизнес", [4 категории]),
+    ("Наука и образование", [3 категории]),
+    ("Дизайн и медиа",     [6 категорий]),
+    ("Прочее",              [7 категорий]),
 ]
+# TAXONOMY — плоский список всех 31 категорий (генерируется автоматически)
 ```
 
 **Цель:** `macro-F1 > 0.80`, инференс без GPU и Ollama.
@@ -155,22 +158,51 @@ flowchart TD
 
 ---
 
+## Domain Rules
+
+Для известных доменов LLM можно обойти или ограничить секцией таксономии.
+Правила задаются в `config/domain_rules.py`:
+
+```python
+DOMAIN_RULES = {
+    # Категория напрямую — LLM не вызывается
+    "youtube.com":       {"category": "Медиа и контент"},
+    "flibusta.is":       {"category": "Книги"},
+
+    # Секция — LLM выбирает из 11 категорий вместо 30
+    "habr.com":          {"section": "IT и разработка"},
+
+    # Оба уровня известны — LLM не вызывается
+    "github.com":        {"section": "IT и разработка", "category": "Программирование"},
+}
+```
+
+| Тип правила | Поведение |
+|---|---|
+| `{"category": "..."}` | Категория присваивается напрямую, LLM не вызывается |
+| `{"section": "..."}` | LLM получает сокращённый промпт — только категории секции |
+| `{"section": "...", "category": "..."}` | Категория напрямую (оба уровня известны) |
+
+Валидация при импорте: категория должна быть в `TAXONOMY`, секция — в `TAXONOMY_SECTIONS`.
+
+---
+
 ## Планы развития
 
 ### Классификация
-- `--strict` режим — LLM выбирает только из `taxonomy.json`, устраняет выдуманные категории
+- ~~`--strict` режим~~ — реализовано: LLM выбирает только из `config/taxonomy.py` (30 категорий)
+- ~~Ручная правка категорий~~ — реализовано: Web UI → модалка с таксономией, `manual_override=1` защищает от перезаписи LLM
 - `step4.py` — ML-классификатор (`xlm-roberta-base`) с fallback на LLM при низкой уверенности
-- `--fix-category URL "Категория"` — ручная правка меток для active learning
 - Active learning UI — сначала показывает примеры с наименьшей уверенностью модели
 
-### Иерархическая таксономия (L1 → L2 → L3)
-Текущая классификация — плоский список L1-категорий. Следующий шаг — многоуровневая структура:
+### Иерархическая таксономия (L0 → L1 → L2)
+Текущая классификация — двухуровневая: **L0 (разделы)** → **L1 (категории)**. L0-разделы задаются в `TAXONOMY_SECTIONS` и используются в sidebar, domain rules и section-narrowed промптах. Следующий шаг — добавить L2:
 ```
-L1: Искусственный интеллект
-  L2: LLM
-    L3: RAG, Fine-tuning, Prompting
-  L2: Компьютерное зрение
-  L2: MLOps
+L0: IT и разработка
+  L1: Искусственный интеллект
+    L2: LLM, Компьютерное зрение, MLOps
+  L1: Программирование
+    L2: Python, Go, Rust
 ```
 Архитектурно: каскадные классификаторы (отдельная модель на каждый уровень) или multi-label подход.
 
@@ -220,7 +252,9 @@ url-parser/
 ├── db.py               # all SQLite operations
 ├── config/
 │   ├── settings.py     # delays, timeouts, Ollama host, token limits
-│   └── prompts.py      # classification prompt templates
+│   ├── prompts.py      # classification prompt templates
+│   ├── taxonomy.py     # 30 категорий — единый справочник
+│   └── domain_rules.py # правила по домену (пропуск LLM / сужение секции)
 ├── benchmark/
 │   ├── benchmark.py    # find optimal batch/workers config
 │   ├── benchmark_log.csv
@@ -244,6 +278,8 @@ url-parser/
 |---|---|
 | `config/settings.py` | путь к БД, задержки краулера, таймауты Ollama, токены, фильтры тегов |
 | `config/prompts.py` | шаблоны промптов классификации (одиночный и батч) |
+| `config/taxonomy.py` | 30 категорий — модель выбирает строго из этого списка |
+| `config/domain_rules.py` | правила по домену: пропуск LLM или сужение промпта до секции |
 
 **Наиболее часто меняемые параметры** (`config/settings.py`):
 
@@ -460,18 +496,25 @@ python main.py --no-progress -v
 
 ## Web UI
 
-Отдельный субпроект для просмотра классифицированных URL в браузере (mobile-first, Basic Auth).
+Отдельный субпроект для просмотра и управления классифицированными URL в браузере (mobile-first, Basic Auth).
+
+Возможности:
+- Просмотр по категориям, лента новых (`/recent`), без категории (`/uncategorized`)
+- Поиск по title / description / URL, сортировка (новые / старые / по алфавиту)
+- Ручная смена категории (модалка с таксономией или drag & drop) — ставит `manual_override=1`
+- Обработка (refetch title/description) через пайплайн — одиночная и массовая
+- Массовое удаление
 
 ```bash
-# Установка зависимостей UI (отдельно от пайплайна)
-pip install -r web/requirements.txt
+# Установка (отдельный venv)
+cd web/
+python -m venv venv
+venv\Scripts\activate       # Windows
+pip install -r requirements.txt
 
-# Запуск локально
-python -m uvicorn web.app:app --port 8000 --reload
-# → http://localhost:8000  (логин: admin / changeme)
-
-# Кастомные credentials
-WEB_USER=myname WEB_PASSWORD=mypass python -m uvicorn web.app:app --port 8000 --reload
+# Запуск из папки web/
+python -m uvicorn app:app --port 8000 --reload
+# → http://localhost:8000
 ```
 
 > Подробная документация: **[`web/README.md`](web/README.md)** · План разработки: **[`web/docs/backlog.md`](web/docs/backlog.md)**
@@ -480,14 +523,14 @@ WEB_USER=myname WEB_PASSWORD=mypass python -m uvicorn web.app:app --port 8000 --
 
 ## Производительность
 
-| `--batch` | `--workers` | `OLLAMA_NUM_PARALLEL` | GPU utilization |
-|:---------:|:-----------:|:---------------------:|:---------------:|
-| 1 | 1 | 1 | ~5–10% (default) |
-| 1 | 4 | 4 | ~30–50% |
-| 10 | 4 | 4 | ~80–90% ✓ |
-| 20 | 4 | 4 | ~85–95% |
+| `--batch` | `--workers` | `OLLAMA_NUM_PARALLEL` | GPU utilization | Качество |
+|:---------:|:-----------:|:---------------------:|:---------------:|:--------:|
+| 1 | 1 | 1 | ~5–10% (default) | высокое |
+| 1 | 4 | 4 | ~30–50% ✓ | высокое |
+| 10 | 4 | 4 | ~80–90% | среднее (context bleed) |
+| 20 | 4 | 4 | ~85–95% | низкое |
 
-> **Рекомендация:** начните с `--batch 10 --workers 4`.
+> **Рекомендация:** `--workers 4` без `--batch` — каждый URL классифицируется изолированно, 4 параллельных запроса к Ollama. Батчинг экономит время, но модель может «заражать» контекстом соседних URL.
 
 ```bash
 # Найти оптимальный batch/workers для вашего железа
@@ -522,6 +565,7 @@ erDiagram
         TEXT processed_at
         TEXT category
         TEXT tagged_by
+        INTEGER manual_override
     }
     tags {
         INTEGER id PK

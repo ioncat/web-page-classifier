@@ -1,4 +1,10 @@
 import argparse
+import sys, io
+
+# Windows: force UTF-8 on stdout/stderr to avoid cp1252 encoding errors with Cyrillic
+if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from rich.console import Console
 from rich.rule import Rule
@@ -12,6 +18,7 @@ from db import (
     add_tags,
     clear_model_results,
     clear_tags,
+    get_analytics,
     get_full_stats,
     init_compare_schema,
     init_db,
@@ -22,6 +29,8 @@ from db import (
     reset_categories_by_domain,
     reset_errors_to_pending,
     reset_transient_errors_to_pending,
+    defer_errors,
+    undefer_all,
     set_url_pending,
     sync_tags_from_categories,
 )
@@ -102,6 +111,17 @@ def parse_args() -> argparse.Namespace:
         help="повторить только временные ошибки (5xx, 429, сетевые); пропустить постоянные (404, 403, 410)",
     )
     parser.add_argument(
+        "--defer-errors",
+        action="store_true",
+        dest="defer_errors",
+        help="перевести все error → deferred (убрать из обычных прогонов, разобрать позже)",
+    )
+    parser.add_argument(
+        "--undefer",
+        action="store_true",
+        help="вернуть все deferred → error (для повторной обработки)",
+    )
+    parser.add_argument(
         "--url",
         metavar="URL",
         default=None,
@@ -131,6 +151,11 @@ def parse_args() -> argparse.Namespace:
         "--stats",
         action="store_true",
         help="показать статистику БД и выйти",
+    )
+    parser.add_argument(
+        "--analytics",
+        action="store_true",
+        help="подробная аналитика: title/description/category + проблемные домены",
     )
     parser.add_argument(
         "--add-tags",
@@ -323,6 +348,72 @@ def _check_conflicts(args: argparse.Namespace) -> None:
     sys.exit(1)
 
 
+def _show_analytics() -> None:
+    from rich.panel import Panel
+    from rich.table import Table
+
+    a = get_analytics()
+
+    # ── Обработанные страницы ──
+    t = Table.grid(padding=(0, 2))
+    t.add_column(style="dim", min_width=38)
+    t.add_column(justify="right", style="bold", min_width=8)
+
+    t.add_row("[bold]Загружено страниц:[/bold]", str(a["done"]))
+    t.add_row("", "")
+    t.add_row("  Есть заголовок:", str(a["with_title"]))
+    t.add_row("[red]  Заголовок не найден:[/red]", f"[red]{a['without_title']}[/red]")
+    t.add_row("  Есть описание:", str(a["with_desc"]))
+    t.add_row("[yellow]  Описание не найдено:[/yellow]", f"[yellow]{a['without_desc']}[/yellow]")
+    t.add_row("", "")
+    t.add_row("[green]  Категория присвоена:[/green]", f"[green]{a['classified']}[/green]")
+    t.add_row("  Без категории:", str(a["unclassified"]))
+    t.add_row("    ↳ можно классифицировать:", str(a["ready_for_llm"]))
+    t.add_row("    ↳ нет заголовка — нечего анализировать:", str(a["unclass_no_title"]))
+    t.add_row("  Категория задана вручную:", str(a["manual_override"]))
+
+    console.print(Panel(t, title="[bold cyan]Обзор базы[/bold cyan]", expand=False))
+
+    # ── Откуда не удалось получить заголовок ──
+    if a["no_title_domains"]:
+        dt = Table(title="Не удалось получить заголовок — откуда", show_lines=False, pad_edge=False)
+        dt.add_column("Сайт", style="cyan")
+        dt.add_column("Кол-во", justify="right", style="bold red")
+        for row in a["no_title_domains"]:
+            dt.add_row(row["domain"], str(row["cnt"]))
+        console.print(dt)
+
+    # ── Ждут классификации ──
+    if a["unclass_domains"]:
+        ut = Table(title="Ждут классификации (заголовок есть) — откуда", show_lines=False, pad_edge=False)
+        ut.add_column("Сайт", style="cyan")
+        ut.add_column("Кол-во", justify="right", style="bold yellow")
+        for row in a["unclass_domains"]:
+            ut.add_row(row["domain"], str(row["cnt"]))
+        console.print(ut)
+
+    # ── Отложенные ошибки ──
+    if a["deferred_by_code"]:
+        _CODE_LABELS = {
+            "403": "403 — доступ запрещён (антибот)",
+            "429": "429 — слишком много запросов",
+            "401": "401 — требуется авторизация",
+            "503": "503 — сервер временно недоступен",
+            "502": "502 — ошибка шлюза",
+            "500": "500 — ошибка сервера",
+            "451": "451 — заблокировано по закону",
+            "network": "Сеть — таймаут или нет ответа",
+        }
+        ft = Table(title="Отложенные ошибки (разберём позже)", show_lines=False, pad_edge=False)
+        ft.add_column("Причина", style="dim")
+        ft.add_column("Кол-во", justify="right", style="bold")
+        for row in a["deferred_by_code"]:
+            code = str(row["error_code"]) if row["error_code"] else "network"
+            label = _CODE_LABELS.get(code, code)
+            ft.add_row(label, str(row["cnt"]))
+        console.print(ft)
+
+
 def _show_stats() -> None:
     from rich.panel import Panel
     from rich.table import Table
@@ -333,28 +424,30 @@ def _show_stats() -> None:
     t.add_column(style="dim", min_width=28)
     t.add_column(justify="right", style="bold", min_width=6)
 
-    t.add_row("Всего URL:", str(s["total"]))
+    t.add_row("Всего ссылок:", str(s["total"]))
     t.add_row("", "")
-    t.add_row("[yellow]Ожидает (pending):[/yellow]",    f"[yellow]{s['pending']}[/yellow]")
-    t.add_row("[green]Обработано (done):[/green]",      f"[green]{s['done']}[/green]")
-    t.add_row("[red]Ошибок (error):[/red]",             f"[red]{s['error']}[/red]")
+    t.add_row("[yellow]В очереди:[/yellow]",              f"[yellow]{s['pending']}[/yellow]")
+    t.add_row("[green]Загружено:[/green]",                f"[green]{s['done']}[/green]")
+    t.add_row("[red]С ошибкой:[/red]",                    f"[red]{s['error']}[/red]")
+    if s["deferred"]:
+        t.add_row("[dim]Отложено на потом:[/dim]",        f"[dim]{s['deferred']}[/dim]")
 
     if s["done"]:
         pct = s["classified"] * 100 // s["done"] if s["done"] else 0
         t.add_row("", "")
         t.add_row(
-            "[cyan]Классифицировано:[/cyan]",
+            "[cyan]Категория присвоена:[/cyan]",
             f"[cyan]{s['classified']}[/cyan]  [dim]{pct}%[/dim]",
         )
         t.add_row("[dim]Без категории:[/dim]", f"[dim]{s['unclassified']}[/dim]")
 
     t.add_row("", "")
-    t.add_row("Тегов в справочнике:", str(s["tags"]))
+    t.add_row("Подсказок в справочнике:", str(s["tags"]))
 
     if s["compared"]:
-        t.add_row("URL в model_results:", str(s["compared"]))
+        t.add_row("Участвует в сравнении моделей:", str(s["compared"]))
 
-    console.print(Panel(t, title="[bold cyan]Статистика БД[/bold cyan]", expand=False))
+    console.print(Panel(t, title="[bold cyan]Сводка[/bold cyan]", expand=False))
 
 
 def main() -> None:
@@ -368,9 +461,13 @@ def main() -> None:
     init_tags_schema()
     init_compare_schema()
 
-    # ── --stats ────────────────────────────────────────────────────────────────
+    # ── --stats / --analytics ─────────────────────────────────────────────────
     if args.stats:
         _show_stats()
+        return
+
+    if args.analytics:
+        _show_analytics()
         return
 
     # ── --compare-models ───────────────────────────────────────────────────────
@@ -565,6 +662,16 @@ def main() -> None:
             f"[yellow]--retry-transient:[/yellow] сброшено [bold]{n}[/bold] "
             f"временных ошибок → pending (404/403/410 пропущены)"
         )
+
+    if args.defer_errors:
+        n = defer_errors()
+        console.print(f"[yellow]--defer-errors:[/yellow] отложено [bold]{n}[/bold] ошибок → deferred")
+        return
+
+    if args.undefer:
+        n = undefer_all()
+        console.print(f"[yellow]--undefer:[/yellow] возвращено [bold]{n}[/bold] записей → error")
+        return
 
     # ── Запуск шагов ──────────────────────────────────────────────────────────
     run_import   = not args.only_parse and not args.only_classify

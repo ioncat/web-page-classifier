@@ -1,6 +1,6 @@
 # Web UI — Бэклог
 
-Веб-интерфейс для просмотра классифицированных URL из `urls.db`.
+Веб-интерфейс для просмотра и управления классифицированными URL из `urls.db`.
 Цель: доступ с любого устройства из интернета, mobile-first.
 
 ---
@@ -24,17 +24,20 @@
 web/
 ├── app.py              # FastAPI точка входа, регистрация роутеров, Jinja2, auth
 ├── auth.py             # HTTP Basic Auth зависимость
-├── database.py         # слой доступа к SQLite (чтение + запись + получение URL по id)
+├── database.py         # слой доступа к SQLite (чтение + запись + таксономия)
 ├── routers/
 │   ├── __init__.py
 │   ├── pages.py        # HTML-роуты → TemplateResponse
 │   └── api.py          # JSON API
 ├── templates/
-│   ├── base.html       # layout, Tailwind CDN, header, sidebar, бургер
+│   ├── base.html       # layout, Tailwind CDN, header, sidebar, модалка категории
 │   ├── index.html      # главная: сетка карточек категорий
-│   ├── category.html   # страница категории: список URL + пагинация
+│   ├── category.html   # страница категории: список URL + пагинация + сортировка
+│   ├── recent.html     # лента новых URL (все, новые сверху)
+│   ├── uncategorized.html # URL без категории
 │   ├── search.html     # результаты поиска + форма с фильтром по категории
-│   └── _url_card.html  # переиспользуемый компонент URL-карточки
+│   ├── _url_card.html  # переиспользуемый компонент URL-карточки
+│   └── _sort_bar.html  # переиспользуемый компонент выбора сортировки
 ├── static/
 │   └── app.js          # бургер-меню, удаление, DnD, модальное окно, массовые операции, refetch
 ├── requirements.txt    # зависимости только для UI (отдельно от пайплайна)
@@ -52,8 +55,10 @@ web/
 | Метод | Путь | Шаблон | Описание |
 |-------|------|--------|---------|
 | GET | `/` | `index.html` | Все категории со счётчиками URL |
-| GET | `/category/{name}` | `category.html` | URL категории, `?page=N` |
-| GET | `/search` | `search.html` | Поиск `?q=...&category=...&page=N` |
+| GET | `/category/{name}` | `category.html` | URL категории, `?page=N&sort=...` |
+| GET | `/recent` | `recent.html` | Все URL, новые сверху, `?page=N&sort=...` |
+| GET | `/uncategorized` | `uncategorized.html` | URL без категории, `?page=N&sort=...` |
+| GET | `/search` | `search.html` | Поиск `?q=...&category=...&page=N&sort=...` |
 
 ### JSON API (`routers/api.py`)
 
@@ -64,7 +69,7 @@ web/
 | GET | `/api/stats` | — | Общая статистика |
 | POST | `/api/urls/{url_id}/refetch` | — | Перезагрузить title + description через пайплайн (step2) |
 | DELETE | `/api/urls/{url_id}` | — | Удалить URL из БД |
-| PATCH | `/api/urls/{url_id}/category` | `category` | Сменить категорию URL |
+| PATCH | `/api/urls/{url_id}/category` | `{"category": "..."}` | Сменить категорию URL (ставит `manual_override=1`) |
 | POST | `/api/bulk-delete` | `{"ids": [...]}` | Удалить список URL за один запрос |
 | POST | `/api/bulk-refetch` | `{"ids": [...]}` | Перезагрузить title + description для списка URL |
 
@@ -82,16 +87,17 @@ web/
 [☐] [🔄 обработать] [↔ переместить] [🗑 удалить]
 [Title — кликабельная внешняя ссылка, target=_blank]
 [description (серый текст, если есть)]
-#id  domain.com  [badge: категория]
+#id  domain.com  [badge: категория]  [✎ если manual_override]
 ```
 
 Карточка разбита на ряды: кнопки действий — первый ряд (выравнивание по левому краю), title — второй ряд.
 
-- `category` может содержать несколько тегов через запятую → каждый отдельным badge
+- `category` отображается badge-ом
 - Hover-эффект, touch-friendly padding
 - Кнопка 🔄 обработки: `fetch POST /api/urls/{id}/refetch` → перезагрузка title + description → reload страницы
 - Кнопка 🗑 удаления: `fetch DELETE /api/urls/{id}` → карточка исчезает без перезагрузки
-- Кнопка ↔ "Переместить": модальное окно (мобайл) или drag на sidebar (десктоп) → `PATCH /api/urls/{id}/category`
+- Кнопка ↔ "Переместить": модальное окно с таксономией (30 категорий) или drag на sidebar → `PATCH /api/urls/{id}/category` → `manual_override=1`
+- Иконка ✎ рядом с badge если категория назначена вручную
 
 ---
 
@@ -103,55 +109,54 @@ web/
 - [x] `web/auth.py` — Basic Auth через `secrets.compare_digest`, env vars
 - [x] `web/app.py` — FastAPI, роут `/health`, монтирование static/templates
 - [x] `web/requirements.txt` — отдельный от пайплайна
-- [x] Smoke test: `python -c "from web.app import app"` → OK
 
 ### Фаза 2 — Шаблоны и главная ✅
 - [x] `base.html` — sticky header, sidebar (desktop), drawer + overlay (mobile)
-- [x] `index.html` — сетка категорий `grid-cols-2 md:grid-cols-3 lg:grid-cols-4`
+- [x] `index.html` — сетка категорий
 - [x] `_url_card.html` — title, description, domain, category badges
-- [x] `category.html` — список карточек + пагинация ссылками
+- [x] `category.html` — список карточек + пагинация
 - [x] `search.html` — форма + фильтр по категории + результаты + пагинация
 - [x] `app.js` — бургер toggle (drawer + overlay)
 - [x] Роуты `GET /`, `/category/{name}`, `/search`
-- [x] JSON API `GET /api/categories`, `/api/urls`, `/api/stats`
-- [x] Запуск: `python -m uvicorn web.app:app --port 8000 --reload` → 200 OK
+- [x] JSON API
 
 ### Фаза 3 — Управление данными ✅
 - [x] `DELETE /api/urls/{id}` — удаление URL из БД
-- [x] Кнопка 🗑 на карточке + confirm → анимация исчезновения карточки без перезагрузки
+- [x] Кнопка 🗑 на карточке + confirm → анимация исчезновения
 - [x] `PATCH /api/urls/{id}/category` — смена категории
-- [x] DnD (десктоп): `draggable="true"` + drag events, sidebar подсвечивается зелёным при наведении
+- [x] DnD (десктоп): `draggable="true"` + drag events, sidebar подсвечивается зелёным
 - [x] Модальное окно (мобайл + десктоп): кнопка ↔ → список категорий → PATCH → обновление badge
-- [x] Без SortableJS — нативный HTML5 DnD достаточен для десктопа
-- [x] Счётчики категорий в sidebar обновляются live после удаления / перемещения
+- [x] Счётчики категорий в sidebar обновляются live
 
 ### Фаза 4 — Массовые операции ✅
-- [x] `POST /api/bulk-delete` — удаление списка URL за один запрос
-- [x] `database.delete_urls_bulk(ids)` — DELETE ... WHERE id IN (...)
-- [x] Режим выбора: кнопка «Выбрать» на страницах категории и поиска
-- [x] Чекбоксы на карточках — скрыты по умолчанию, видны только в режиме выбора
-- [x] Нижняя панель действий (`#bulk-bar`): счётчик, «Выбрать все», «Отмена», «Удалить выбранные»
-- [x] После массового удаления: анимация карточек, обновление счётчиков в sidebar, выход из режима выбора
+- [x] `POST /api/bulk-delete` — массовое удаление
+- [x] Режим выбора: кнопка «Выбрать», чекбоксы, нижняя панель действий
+- [x] «Выбрать все», «Отмена», «Удалить выбранные»
 
 ### Фаза 4.5 — Refetch (обработка пайплайном из UI) ✅
-- [x] `POST /api/urls/{id}/refetch` — перезагрузка title + description для одного URL
-- [x] `POST /api/bulk-refetch` — то же для списка URL
-- [x] `database.get_url_by_id()`, `database.get_urls_by_ids()` — получение URL по id
-- [x] Вызов пайплайна через subprocess: `set_url_pending()` + `step2.main(urls=[...])` (без step1/step3)
-- [x] Автоопределение Python-интерпретатора пайплайна (`venv/Scripts/python.exe`, env `PIPELINE_PYTHON`)
-- [x] Обход проблемы Rich в pipe-режиме: `TERM=dumb`, `NO_COLOR=1`, `PYTHONIOENCODING=utf-8`
-- [x] Кнопка 🔄 на карточке — обработать один URL (спиннер → reload)
-- [x] «Обработать выбранные» в массовом режиме (bulk-bar)
+- [x] `POST /api/urls/{id}/refetch` — одиночная обработка
+- [x] `POST /api/bulk-refetch` — массовая обработка
+- [x] Вызов пайплайна через subprocess (без step1/step3)
+- [x] Автоопределение Python-интерпретатора пайплайна
 
-### Фаза 5 — Полировка
+### Фаза 5 — Таксономия и ручная классификация ✅
+- [x] `config/taxonomy.py` — 30 фиксированных категорий
+- [x] Модалка смены категории показывает таксономию (не текущие из БД)
+- [x] `manual_override` колонка — защита от перезаписи LLM
+- [x] Иконка ✎ на карточке при ручной классификации
+- [x] Страница `/recent` — лента новых URL с сортировкой
+- [x] Страница `/uncategorized` — URL без категории
+- [x] Сортировка (новые / старые / по алфавиту) на всех страницах
+- [x] Ссылки «Новые» и «Без категории» в header
+
+### Фаза 6 — Полировка
 - [ ] Проверка на реальном мобильном устройстве
 - [ ] Пустые состояния (нет URL в категории, нет результатов поиска)
 
-### Фаза 6 — Деплой (Railway / Render)
+### Фаза 7 — Деплой (Railway / Render)
 - [ ] PostgreSQL: схема, миграция
 - [ ] `web/sync.py` — скрипт SQLite → PostgreSQL
 - [ ] `Procfile` / настройки Railway
-- [ ] Команда: `uvicorn web.app:app --host 0.0.0.0 --port $PORT`
 - [ ] CI/CD: деплой при push в `master`
 
 ---
@@ -163,10 +168,11 @@ web/
 | SSR + пагинация ссылками (не AJAX) | Работает без JS, URL меняется (можно поделиться) |
 | Tailwind CDN (без сборки) | Ноль конфигурации, нет node_modules |
 | Отдельный `web/database.py` | Слой доступа к SQLite — чтение + управление записями |
-| `LIKE` поиск (не FTS) | 7650 записей — достаточно быстро, индекс не нужен |
+| `LIKE` поиск (не FTS) | ~7600 записей — достаточно быстро, индекс не нужен |
 | Basic Auth через env vars | Личный инструмент, минимальная сложность |
 | Нативный HTML5 DnD (без SortableJS) | Достаточно для десктопа, ноль зависимостей |
-| Модальное окно для смены категории | Работает на мобайле и десктопе, не требует DnD |
+| Модалка с таксономией | 30 категорий из `config/taxonomy.py` — единый источник для LLM и UI |
+| `manual_override` флаг | Ручные назначения защищены от перезаписи LLM; потенциальные обучающие данные |
 | Refetch через subprocess | UI не зависит от пайплайна (разные venv); вызывает step2 через CLI |
 | `web/requirements.txt` отдельно | UI и пайплайн — разные проекты, разные окружения |
 
@@ -179,10 +185,6 @@ web/
 | `requirements.txt` | Пайплайн (локально) | `requests`, `ollama`, `rich`, `beautifulsoup4`, `openpyxl` |
 | `web/requirements.txt` | Веб UI (сервер) | `fastapi`, `uvicorn[standard]`, `jinja2`, `python-multipart` |
 
-```bash
-pip install -r web/requirements.txt
-```
-
 ---
 
 ## Статус
@@ -194,5 +196,6 @@ pip install -r web/requirements.txt
 | Фаза 3 — Управление данными | ✅ готово |
 | Фаза 4 — Массовые операции | ✅ готово |
 | Фаза 4.5 — Refetch из UI | ✅ готово |
-| Фаза 5 — Полировка | ⬜ не начата |
-| Фаза 6 — Деплой | ⬜ не начата |
+| Фаза 5 — Таксономия и ручная классификация | ✅ готово |
+| Фаза 6 — Полировка | ⬜ не начата |
+| Фаза 7 — Деплой | ⬜ не начата |
