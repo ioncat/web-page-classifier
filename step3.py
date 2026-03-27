@@ -23,7 +23,7 @@ from rich.progress import (
 from rich.prompt import IntPrompt
 from rich.table import Table
 
-from db import add_tags, get_done_unclassified, get_tags, init_db, init_tags_schema, set_category
+from db import get_done_unclassified, init_db, set_category
 from config.settings import (
     BAD_TAG_PREFIXES,
     BAD_TAG_WORDS,
@@ -292,18 +292,6 @@ def _is_valid_tag(tag: str) -> bool:
     return True
 
 
-def _update_hints(category: str, hints: list[str]) -> int:
-    """Добавляет теги из category в справочник и в список hints текущего запуска.
-    Возвращает количество новых тегов (не было в справочнике ранее).
-    """
-    new_tags = [t.strip() for t in category.split(",") if t.strip() and _is_valid_tag(t.strip())]
-    added, _ = add_tags(new_tags)
-    for tag in new_tags:
-        if tag not in hints:
-            hints.append(tag)
-    return added
-
-
 # ── Вывод итогов ──────────────────────────────────────────────────────────────
 def _print_summary(done_count: int, error_count: int, aborted: bool = False, elapsed: float = 0.0) -> None:
     summary = Table(
@@ -402,13 +390,7 @@ def main(
         if not dry_run:
             set_category(url, cat, model=model)
 
-    def _uh(cat: str, h: list) -> int:
-        if not dry_run:
-            return _update_hints(cat, h)
-        return 0
-
     init_db()
-    init_tags_schema()
 
     # ── Подключение к Ollama ───────────────────────────────────────────────────
     client = _build_client()
@@ -451,19 +433,12 @@ def main(
     else:
         model = _select_model_interactively(available)
 
-    # ── Теги-подсказки из справочника ─────────────────────────────────────────
-    hints = get_tags()
-    if hints:
-        preview = ", ".join(hints[:10]) + ("..." if len(hints) > 10 else "")
-        console.print(
-            f"Тегов-подсказок: [bold]{len(hints)}[/bold] — [dim]{preview}[/dim]\n"
-            "[dim](модель может использовать их или создать собственные)[/dim]"
-        )
-    else:
-        console.print(
-            "[dim]Справочник тегов пуст — модель создаст теги самостоятельно.[/dim]\n"
-            "[dim]Совет: добавьте подсказки через --add-tags тег1,тег2,...[/dim]"
-        )
+    # ── Таксономия ───────────────────────────────────────────────────────────
+    hints = list(TAXONOMY)
+    preview = ", ".join(hints[:10]) + ("..." if len(hints) > 10 else "")
+    console.print(
+        f"Категорий в таксономии: [bold]{len(hints)}[/bold] — [dim]{preview}[/dim]"
+    )
 
     # ── URL для классификации ─────────────────────────────────────────────────
     rows = get_done_unclassified()
@@ -525,7 +500,6 @@ def main(
     if workers > 1:
         # ── Параллельный режим (ThreadPoolExecutor) ────────────────────────────
         _abort  = threading.Event()
-        _h_lock = threading.Lock()
         _ce_cnt = [0]
         _ce_lk  = threading.Lock()
 
@@ -557,8 +531,6 @@ def main(
                             results.append((row["url"], None))
                             continue
                     _sc(row["url"], cat)
-                    with _h_lock:
-                        _uh(cat, hints)
                     results.append((row["url"], cat))
                 with _ce_lk:
                     _ce_cnt[0] = 0
@@ -639,8 +611,6 @@ def main(
                     cat = classify_url(client, model, url, title, list(hints), no_think=no_think,
                                        description=row.get("description"))
                     _sc(url, cat)
-                    with _h_lock:
-                        _uh(cat, hints)
                     with _ce_lk:
                         _ce_cnt[0] = 0
                     return "ok", url, cat
@@ -742,7 +712,6 @@ def main(
                                         no_think=no_think, description=desc, section=row.get("_section"),
                                     )
                                     _sc(url, cat)
-                                    _uh(cat, hints)
                                     done_count += 1
                                     if _verbose:
                                         print(f"  OK(fb) {url[:60]}\n    {cat}")
@@ -754,7 +723,6 @@ def main(
                                     _handle_error(str(exc), is_plain=True)
                             else:
                                 _sc(url, cat)
-                                _uh(cat, hints)
                                 done_count += 1
                                 if _verbose:
                                     print(f"  OK  {url[:60]}\n    {cat}")
@@ -776,7 +744,6 @@ def main(
                                     no_think=no_think, description=desc, section=row.get("_section"),
                                 )
                                 _sc(url, cat)
-                                _uh(cat, hints)
                                 done_count += 1
                                 if _verbose:
                                     print(f"  OK  {url[:60]}\n    {cat}")
@@ -817,7 +784,6 @@ def main(
                                             no_think=no_think, description=desc, section=row.get("_section"),
                                         )
                                         _sc(url, cat)
-                                        _uh(cat, hints)
                                         done_count += 1
                                         if _verbose:
                                             console.log(f"[green]OK(fb)[/green] {cat}")
@@ -829,7 +795,6 @@ def main(
                                         _handle_error(str(exc), is_plain=False)
                                 else:
                                     _sc(url, cat)
-                                    _uh(cat, hints)
                                     done_count += 1
                                     if _verbose:
                                         console.log(f"[green]OK[/green] {cat}")
@@ -853,7 +818,6 @@ def main(
                                         no_think=no_think, description=desc, section=row.get("_section"),
                                     )
                                     _sc(url, cat)
-                                    _uh(cat, hints)
                                     done_count += 1
                                     if _verbose:
                                         console.log(f"[green]OK(fb)[/green] {cat}")
@@ -881,11 +845,9 @@ def main(
                             no_think=no_think, description=desc, section=row.get("_section"),
                         )
                         _sc(url, category)
-                        new_in_dict = _uh(category, hints)
                         done_count += 1
                         if _verbose:
-                            suffix = f" (+{new_in_dict} в справочник)" if new_in_dict else ""
-                            print(f"  Tags: {category}{suffix}")
+                            print(f"  {category}")
                     except _OllamaDown as exc:
                         console.print(f"\n[bold red]Прерывание:[/bold red] {exc}")
                         aborted = True
@@ -917,15 +879,9 @@ def main(
                                 no_think=no_think, description=desc, section=row.get("_section"),
                             )
                             _sc(url, category)
-                            new_in_dict = _uh(category, hints)
                             done_count += 1
                             if _verbose:
-                                suffix = (
-                                    f" [dim](+{new_in_dict} в справочник)[/dim]"
-                                    if new_in_dict
-                                    else ""
-                                )
-                                console.log(f"[green]OK[/green] {category}{suffix}")
+                                console.log(f"[green]OK[/green] {category}")
                         except _OllamaDown as exc:
                             console.log(f"[bold red]Прерывание:[/bold red] {exc}")
                             aborted = True

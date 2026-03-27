@@ -37,6 +37,8 @@ def init_db() -> None:
             "ALTER TABLE urls ADD COLUMN error_code INTEGER",
             "ALTER TABLE urls ADD COLUMN description TEXT",
             "ALTER TABLE urls ADD COLUMN manual_override INTEGER DEFAULT 0",
+            "ALTER TABLE urls ADD COLUMN category  TEXT",
+            "ALTER TABLE urls ADD COLUMN tagged_by TEXT",
         ]:
             try:
                 conn.execute(migration)
@@ -114,7 +116,7 @@ def get_stats() -> dict[str, int]:
 
 
 def get_full_stats() -> dict:
-    """Расширенная статистика: статусы + классификация + теги + сравнение."""
+    """Расширенная статистика: статусы + классификация + сравнение."""
     stats = get_stats()
     with get_conn() as conn:
         # Классифицировано среди done
@@ -124,13 +126,6 @@ def get_full_stats() -> dict:
         ).fetchone()
         stats["classified"] = row["cnt"]
         stats["unclassified"] = stats["done"] - stats["classified"]
-
-        # Тегов в справочнике
-        try:
-            row = conn.execute("SELECT COUNT(*) as cnt FROM tags").fetchone()
-            stats["tags"] = row["cnt"]
-        except sqlite3.OperationalError:
-            stats["tags"] = 0
 
         # URL, участвовавших в сравнении моделей
         try:
@@ -333,51 +328,7 @@ def get_errors() -> list[dict]:
     return [dict(row) for row in rows]
 
 
-# ── Теги и классификация ──────────────────────────────────────────────────────
-
-def init_tags_schema() -> None:
-    """Создаёт таблицу tags и добавляет колонки category / tagged_by в urls (идемпотентно)."""
-    with get_conn() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS tags (
-                id   INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE NOT NULL
-            )
-        """)
-        for col_def in (
-            "ALTER TABLE urls ADD COLUMN category  TEXT",
-            "ALTER TABLE urls ADD COLUMN tagged_by TEXT",
-        ):
-            try:
-                conn.execute(col_def)
-            except sqlite3.OperationalError:
-                pass  # колонка уже существует
-
-
-def get_tags() -> list[str]:
-    """Возвращает список тегов из справочника."""
-    with get_conn() as conn:
-        rows = conn.execute("SELECT name FROM tags ORDER BY name").fetchall()
-    return [row["name"] for row in rows]
-
-
-def add_tags(names: list[str]) -> tuple[int, int]:
-    """Добавляет теги в справочник, пропуская дубликаты.
-    Возвращает (добавлено, пропущено).
-    """
-    added = 0
-    skipped = 0
-    with get_conn() as conn:
-        for name in names:
-            cur = conn.execute(
-                "INSERT OR IGNORE INTO tags (name) VALUES (?)", (name.strip(),)
-            )
-            if cur.rowcount:
-                added += 1
-            else:
-                skipped += 1
-    return added, skipped
-
+# ── Классификация ────────────────────────────────────────────────────────────
 
 def get_done_unclassified() -> list[dict]:
     """Возвращает done-записи без присвоенной категории (только с title).
@@ -404,32 +355,8 @@ def set_category(url: str, category: str, model: str | None = None) -> None:
         )
 
 
-def sync_tags_from_categories() -> tuple[int, int]:
-    """Читает все category из urls и добавляет уникальные теги в справочник.
-    Возвращает (добавлено, уже было).
-    """
-    with get_conn() as conn:
-        rows = conn.execute(
-            "SELECT category FROM urls WHERE category IS NOT NULL AND category != ''"
-        ).fetchall()
-
-    # Собираем все теги из всех строк
-    all_tags: set[str] = set()
-    for row in rows:
-        for tag in row["category"].split(","):
-            tag = tag.strip()
-            if tag:
-                all_tags.add(tag)
-
-    if not all_tags:
-        return 0, 0
-
-    return add_tags(sorted(all_tags))
-
-
 def reset_categories() -> int:
     """Сбрасывает category и tagged_by для всех done-записей (подготовка к ре-тэггингу).
-    Справочник tags НЕ затрагивается — накопленные теги остаются как подсказки.
     Возвращает кол-во затронутых строк.
     """
     with get_conn() as conn:
@@ -462,15 +389,6 @@ def reset_categories_by_domain(domain: str) -> int:
             f"UPDATE urls SET category = NULL, tagged_by = NULL WHERE url IN ({placeholders})",
             urls_in_domain,
         )
-        return cur.rowcount
-
-
-def clear_tags() -> int:
-    """Полностью очищает справочник тегов (таблицу tags).
-    Возвращает кол-во удалённых строк.
-    """
-    with get_conn() as conn:
-        cur = conn.execute("DELETE FROM tags")
         return cur.rowcount
 
 

@@ -14,14 +14,14 @@
 
 - **Личная база знаний** — автоматически категоризировать тысячи сохранённых закладок
 - **RSS / новостные фиды** — разметка потока статей в реальном времени
-- **Корпоративная документация** — структурировать внутренние ссылки по темам
+- **Корпоративная документация** — автоматическая классификация страниц по темам
 - **Обучающий датасет** — собрать размеченные данные для downstream ML-задач
 
 ## Решение
 
 1. **Парсинг** заголовков и мета-описаний страниц (plain HTTP + `<title>`, `og:description`, `meta[name=description]`, обход JS anti-bot challenge)
 2. **Разметка** локальной LLM через Ollama — без API-ключей, работает на GPU
-3. **Фиксация таксономии**: закрытый список категорий, переразметка через `--strict`
+3. **Фиксация таксономии**: закрытый список категорий в `config/taxonomy.py`, LLM выбирает строго из него
 4. **Обучение** лёгкого ML-классификатора на LLM-разметке
 5. **Инференс** — 4000 URL за ~2 сек без GPU и Ollama
 
@@ -49,7 +49,7 @@ flowchart LR
 |-----|------|----------------|
 | **Step 1** Импорт | `step1.py` | Regex извлекает URL из текста, дедуплицирует, добавляет со статусом `pending` |
 | **Step 2** Парсинг | `step2.py` | Загружает страницу, достаёт `<title>` и `og:description`, ставит `done` или `error`. Обходит JS anti-bot challenge (cookie `challenge_passed`) |
-| **Step 3** Классификация | `step3.py` | Отправляет `title + domain` в Ollama LLM, пишет категорию в `urls.category` |
+| **Step 3** Классификация | `step3.py` | Отправляет `title + description + domain` в Ollama LLM, пишет категорию в `urls.category` |
 | **Step 4** ML *(скоро)* | `step4.py` | Fine-tuned `xlm-roberta-base`, ~500 URL/сек на CPU, fallback на LLM при низкой уверенности |
 
 **Машина состояний URL:**
@@ -92,7 +92,7 @@ URL:       https://en.wikipedia.org/wiki/Transformer_(deep_learning)
 |--------|-------:|
 | done + классифицировано | ~6 050 |
 | done без категории | ~1 570 |
-| Уникальных категорий | 30 (фиксированная таксономия) |
+| Уникальных категорий | 31 (фиксированная таксономия) |
 
 ---
 
@@ -169,7 +169,7 @@ DOMAIN_RULES = {
     "youtube.com":       {"category": "Медиа и контент"},
     "flibusta.is":       {"category": "Книги"},
 
-    # Секция — LLM выбирает из 11 категорий вместо 30
+    # Секция — LLM выбирает из 11 категорий вместо 31
     "habr.com":          {"section": "IT и разработка"},
 
     # Оба уровня известны — LLM не вызывается
@@ -190,7 +190,7 @@ DOMAIN_RULES = {
 ## Планы развития
 
 ### Классификация
-- ~~`--strict` режим~~ — реализовано: LLM выбирает только из `config/taxonomy.py` (30 категорий)
+- ~~`--strict` режим~~ — реализовано: LLM выбирает только из `config/taxonomy.py` (31 категория)
 - ~~Ручная правка категорий~~ — реализовано: Web UI → модалка с таксономией, `manual_override=1` защищает от перезаписи LLM
 - `step4.py` — ML-классификатор (`xlm-roberta-base`) с fallback на LLM при низкой уверенности
 - Active learning UI — сначала показывает примеры с наименьшей уверенностью модели
@@ -232,7 +232,7 @@ python main.py
 # Или по шагам
 python main.py --only-import
 python main.py --only-parse --workers 4
-python main.py --only-classify --model mistral-small3.2:24b --batch 10 --workers 4
+python main.py --only-classify --model mistral-small3.2:24b --workers 4
 
 # Протестировать один URL без записи в БД
 python main.py --url https://habr.com/ru/articles/805105/ --dry-run
@@ -253,7 +253,7 @@ url-parser/
 ├── config/
 │   ├── settings.py     # delays, timeouts, Ollama host, token limits
 │   ├── prompts.py      # classification prompt templates
-│   ├── taxonomy.py     # 30 категорий — единый справочник
+│   ├── taxonomy.py     # 31 категория — единый справочник
 │   └── domain_rules.py # правила по домену (пропуск LLM / сужение секции)
 ├── benchmark/
 │   ├── benchmark.py    # find optimal batch/workers config
@@ -278,7 +278,7 @@ url-parser/
 |---|---|
 | `config/settings.py` | путь к БД, задержки краулера, таймауты Ollama, токены, фильтры тегов |
 | `config/prompts.py` | шаблоны промптов классификации (одиночный и батч) |
-| `config/taxonomy.py` | 30 категорий — модель выбирает строго из этого списка |
+| `config/taxonomy.py` | 31 категория — модель выбирает строго из этого списка |
 | `config/domain_rules.py` | правила по домену: пропуск LLM или сужение промпта до секции |
 
 **Наиболее часто меняемые параметры** (`config/settings.py`):
@@ -348,14 +348,6 @@ MAX_CONSECUTIVE_CONN_ERRORS    # подряд ошибок Ollama → остан
 
 > `--batch` работает **только** со step3 (`--only-classify` / `--re-tag`).
 > В режиме `--compare-models` батчинг не поддерживается.
-
-### Управление тегами-подсказками
-
-| Флаг | Что делает |
-|---|---|
-| `--add-tags TAGS` | добавить теги в справочник вручную (через запятую) |
-| `--sync-tags` | импортировать теги из `category` в справочник и выйти |
-| `--clear-tags` | очистить таблицу `tags` и выйти |
 
 ### Сравнение моделей
 
@@ -442,19 +434,6 @@ python main.py --only-classify --no-description
 
 # Перетэггировать всё другой моделью
 python main.py --re-tag --model mistral-small3.2:24b
-```
-
-### Теги-подсказки
-
-```bash
-# Добавить начальные подсказки
-python main.py --add-tags "python, machine learning, devops, frontend, security"
-
-# Наполнить справочник из уже классифицированных URL
-python main.py --sync-tags
-
-# Полный сброс: очистить справочник + перетэггировать с нуля
-python main.py --clear-tags && python main.py --re-tag
 ```
 
 ### Сравнение моделей
@@ -566,10 +545,6 @@ erDiagram
         TEXT category
         TEXT tagged_by
         INTEGER manual_override
-    }
-    tags {
-        INTEGER id PK
-        TEXT name UK
     }
     model_results {
         INTEGER url_id FK

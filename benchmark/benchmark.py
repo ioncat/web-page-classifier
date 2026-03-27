@@ -31,7 +31,7 @@ from rich.rule import Rule
 from rich.table import Table
 
 import step3
-from db import DB_PATH, get_conn, init_db, init_tags_schema
+from db import DB_PATH, get_conn, init_db
 
 console = Console()
 
@@ -142,7 +142,6 @@ def main() -> None:
     console.print(Panel("[bold cyan]Benchmark: batch × workers[/bold cyan]"))
 
     init_db()
-    init_tags_schema()
 
     # ── Набор URL для теста ───────────────────────────────────────────────────
     url_ids = _get_benchmark_ids(args.limit)

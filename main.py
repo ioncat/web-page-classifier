@@ -15,14 +15,11 @@ import step2
 import step3
 from db import (
     accept_model as db_accept_model,
-    add_tags,
     clear_model_results,
-    clear_tags,
     get_analytics,
     get_full_stats,
     init_compare_schema,
     init_db,
-    init_tags_schema,
     insert_urls,
     reset_all_to_pending,
     reset_categories,
@@ -32,7 +29,6 @@ from db import (
     defer_errors,
     undefer_all,
     set_url_pending,
-    sync_tags_from_categories,
 )
 
 console = Console()
@@ -48,11 +44,8 @@ def parse_args() -> argparse.Namespace:
   python main.py --only-classify                         только классификация (step3)
   python main.py --only-classify --model llama3          классификация конкретной моделью
   python main.py --list-models                           показать доступные модели Ollama
-  python main.py --add-tags python,ai,tutorial           добавить теги в справочник
-  python main.py --sync-tags                             импортировать теги из category в справочник
   python main.py --re-tag                                сбросить категории и перетэггировать заново
   python main.py --re-tag --model mistral                то же, другой моделью
-  python main.py --clear-tags                            очистить справочник тегов
   python main.py --only-parse --limit 50                 первые 50 pending URL
   python main.py --retry-failed                          повторить все URL с ошибками
   python main.py --retry-transient                       повторить только 5xx/429/сетевые (пропустить 404/403)
@@ -158,30 +151,10 @@ def parse_args() -> argparse.Namespace:
         help="подробная аналитика: title/description/category + проблемные домены",
     )
     parser.add_argument(
-        "--add-tags",
-        metavar="TAGS",
-        default=None,
-        dest="add_tags",
-        help="добавить теги-подсказки в справочник (через запятую: тег1,тег2,...)",
-    )
-    parser.add_argument(
-        "--sync-tags",
-        action="store_true",
-        dest="sync_tags",
-        help="синхронизировать справочник из накопленных category в БД и выйти",
-    )
-    parser.add_argument(
         "--re-tag",
         action="store_true",
         dest="re_tag",
-        help="сбросить category/tagged_by у всех done-URL и запустить step3 заново "
-             "(справочник тегов сохраняется как подсказки)",
-    )
-    parser.add_argument(
-        "--clear-tags",
-        action="store_true",
-        dest="clear_tags",
-        help="очистить справочник тегов (таблицу tags) и выйти",
+        help="сбросить category/tagged_by у всех done-URL и запустить step3 заново",
     )
 
     # ── Сравнение моделей ─────────────────────────────────────────────────────
@@ -441,9 +414,6 @@ def _show_stats() -> None:
         )
         t.add_row("[dim]Без категории:[/dim]", f"[dim]{s['unclassified']}[/dim]")
 
-    t.add_row("", "")
-    t.add_row("Подсказок в справочнике:", str(s["tags"]))
-
     if s["compared"]:
         t.add_row("Участвует в сравнении моделей:", str(s["compared"]))
 
@@ -458,7 +428,6 @@ def main() -> None:
     _check_conflicts(args)
 
     init_db()
-    init_tags_schema()
     init_compare_schema()
 
     # ── --stats / --analytics ─────────────────────────────────────────────────
@@ -520,36 +489,18 @@ def main() -> None:
         console.print(Rule("[bold green]Готово[/bold green]", style="green"))
         return
 
-    # ── --clear-tags ───────────────────────────────────────────────────────────
-    if args.clear_tags:
-        n = clear_tags()
-        console.print(f"[yellow]--clear-tags:[/yellow] удалено [bold]{n}[/bold] тегов из справочника")
-        console.print(Rule("[bold green]Готово[/bold green]", style="green"))
-        return
-
-    # ── --sync-tags ────────────────────────────────────────────────────────────
-    if args.sync_tags:
-        added, skipped = sync_tags_from_categories()
-        console.print(
-            f"[cyan]--sync-tags:[/cyan] добавлено [bold green]{added}[/bold green] новых тегов, "
-            f"[dim]{skipped}[/dim] уже были в справочнике"
-        )
-        console.print(Rule("[bold green]Готово[/bold green]", style="green"))
-        return
-
     # ── --re-tag ───────────────────────────────────────────────────────────────
     if args.re_tag:
         if args.domain:
             n = reset_categories_by_domain(args.domain)
             console.print(
                 f"[yellow]--re-tag:[/yellow] сброшено категорий: [bold]{n}[/bold] "
-                f"[dim](домен: {args.domain}, справочник тегов сохранён)[/dim]"
+                f"[dim](домен: {args.domain})[/dim]"
             )
         else:
             n = reset_categories()
             console.print(
-                f"[yellow]--re-tag:[/yellow] сброшено категорий: [bold]{n}[/bold] "
-                f"[dim](справочник тегов сохранён как подсказки)[/dim]"
+                f"[yellow]--re-tag:[/yellow] сброшено категорий: [bold]{n}[/bold]"
             )
         # Сразу запускаем step3 с теми же параметрами
         console.print()
@@ -586,15 +537,6 @@ def main() -> None:
         step3.main(list_models_flag=True)
         return
 
-    # ── --add-tags ─────────────────────────────────────────────────────────────
-    if args.add_tags:
-        names = [t.strip() for t in args.add_tags.split(",") if t.strip()]
-        added, skipped = add_tags(names)
-        console.print(
-            f"[cyan]--add-tags:[/cyan] добавлено [bold green]{added}[/bold green], "
-            f"пропущено [dim]{skipped}[/dim] (дубликаты)"
-        )
-
     # ── Режим одного URL ──────────────────────────────────────────────────────
     if args.url:
         if args.dry_run:
@@ -622,10 +564,9 @@ def main() -> None:
                 if not model:
                     console.print("[red]Нет доступных моделей Ollama[/red]")
                     return
-                from db import get_tags
-                hints = get_tags()
+                from config.taxonomy import TAXONOMY
                 category = step3.classify_url(
-                    client, model, args.url, title or "", hints,
+                    client, model, args.url, title or "", TAXONOMY,
                     no_think=args.no_think,
                     description=None if args.no_description else description,
                 )
