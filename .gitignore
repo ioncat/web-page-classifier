@@ -24,6 +24,10 @@ benchmark/dryrun_log.csv
 google_searches.csv
 *_searches.csv
 
+# Экспорты и архив (рабочие артефакты)
+exports/
+archive/
+
 # Временные файлы Office
 ~$*
 
@@ -35,5 +39,10 @@ models/
 .idea/
 .vscode/
 
+# Web UI venv (отдельный от корневого)
+web/venv/
+web/.env
+
 # Личные заметки
 docs/retrospective.md
+docs/project-overview.md
