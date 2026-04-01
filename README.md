@@ -1,6 +1,6 @@
 # Web Page Classification Pipeline
 
-Конвейер тематической классификации веб-страниц: локальная LLM определяет категорию по URL и метаданным, формируя обучающий датасет для ML-классификатора.
+**Web scraping + LLM annotation pipeline** — конвейер сбора и классификации веб-страниц. Локальная LLM (Ollama) определяет категорию по заголовку, описанию и домену, формируя размеченный датасет для обучения ML-классификатора.
 
 ---
 
@@ -17,13 +17,14 @@
 - **Корпоративная документация** — автоматическая классификация страниц по темам
 - **Обучающий датасет** — собрать размеченные данные для downstream ML-задач
 
-## Решение
+## Архитектура
 
-1. **Парсинг** заголовков и мета-описаний страниц (plain HTTP + `<title>`, `og:description`, `meta[name=description]`, обход JS anti-bot challenge)
-2. **Разметка** локальной LLM через Ollama — без API-ключей, работает на GPU
-3. **Фиксация таксономии**: закрытый список категорий в `config/taxonomy.py`, LLM выбирает строго из него
-4. **Обучение** лёгкого ML-классификатора на LLM-разметке
-5. **Инференс** — 4000 URL за ~2 сек без GPU и Ollama
+**Data enrichment pipeline** (Extract → Transform → Load) с идемпотентностью и модульностью:
+
+1. **Extract** — парсинг заголовков и мета-описаний со страниц (plain HTTP + `<title>`, `og:description`, `meta[name=description]`, обход JS anti-bot challenge)
+2. **Transform** — LLM-аннотация через Ollama (без API-ключей, на GPU). Таксономия фиксирована: 31 категория в `config/taxonomy.py`, LLM выбирает строго из неё
+3. **Load** — запись в SQLite с состояниями (pending/done/error)
+4. **ML Training** *(планируется)* — обучение `xlm-roberta-base` на размеченном датасете, инференс 4000 URL/сек без GPU
 
 ## Пайплайн
 
@@ -45,12 +46,12 @@ flowchart LR
 
 ## Как работает
 
-| Шаг | Файл | Что происходит |
-|-----|------|----------------|
-| **Step 1** Импорт | `step1.py` | Regex извлекает URL из текста, дедуплицирует, добавляет со статусом `pending` |
-| **Step 2** Парсинг | `step2.py` | Загружает страницу, достаёт `<title>` и `og:description`, ставит `done` или `error`. Обходит JS anti-bot challenge (cookie `challenge_passed`) |
-| **Step 3** Классификация | `step3.py` | Отправляет `title + description + domain` в Ollama LLM, пишет категорию в `urls.category` |
-| **Step 4** ML *(скоро)* | `step4.py` | Fine-tuned `xlm-roberta-base`, ~500 URL/сек на CPU, fallback на LLM при низкой уверенности |
+| Шаг | Файл | Фаза | Что происходит |
+|-----|------|------|----------------|
+| **Step 1** Импорт | `step1.py` | Load | Regex извлекает URL из текста, дедуплицирует, добавляет в БД со статусом `pending` |
+| **Step 2** Парсинг | `step2.py` | Extract + Transform | HTTP-запрос → HTML-парсинг (`<title>`, `og:description`), обход JS anti-bot (cookie `challenge_passed`). Статус → `done` или `error` |
+| **Step 3** Классификация | `step3.py` | Transform | `title + description + domain` → Ollama LLM → категория. Пишет в `urls.category`, `urls.tagged_by` |
+| **Step 4** ML *(скоро)* | `step4.py` | Transform (Infer) | Fine-tuned `xlm-roberta-base`, ~500 URL/сек на CPU, fallback на LLM при низкой уверенности |
 
 **Машина состояний URL:**
 
