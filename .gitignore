@@ -1,48 +1,33 @@
-# База данных
-urls.db
+# docs-ru branch: DOCUMENTATION ONLY
+# This branch contains ONLY Russian documentation, no code files
 
-# Python
+# Ignore everything by default
+/*
+!/.*
+
+# Explicitly whitelist only documentation files and essential config
+!.gitignore
+!CLAUDE.md
+!README.md
+!docs/
+!web/
+!web/README.md
+!web/docs/
+
+# Ensure all markdown files in docs and web/docs are tracked
+!docs/**
+!web/docs/**
+!web/README.md
+
+# Explicitly ignore code files and other artifacts that shouldn't be here
+web/requirements.txt
+web/venv/
+web/app.py
+web/routers/
+web/static/
+web/templates/
+web/.env
+*.py
 __pycache__/
-*.py[cod]
-*.pyo
-*.egg-info/
 .venv/
 venv/
-env/
-
-# Логи и данные
-log.txt
-raw_links.txt
-input.csv
-output.csv
-
-# Результаты работы скриптов
-results*.xlsx
-results*.csv
-dataset*.jsonl
-benchmark/dryrun_log.csv
-google_searches.csv
-*_searches.csv
-
-# Экспорты и архив (рабочие артефакты)
-exports/
-archive/
-
-# Временные файлы Office
-~$*
-
-# Модели (ML-классификатор)
-models/
-
-# IDE / Claude
-.claude/
-.idea/
-.vscode/
-
-# Web UI venv (отдельный от корневого)
-web/venv/
-web/.env
-
-# Личные заметки
-docs/retrospective.md
-docs/project-overview.md
