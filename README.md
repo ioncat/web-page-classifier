@@ -33,10 +33,10 @@ flowchart LR
     A([raw_links.txt]) --> B
 
     subgraph pipeline ["Pipeline"]
-        B["Step 1<br/>Import"]
-        B --> C["Step 2<br/>Title parsing"]
-        C --> D["Step 3<br/>LLM classification"]
-        D --> E["Step 4<br/>ML classifier<br/>🔜"]
+        B["Step 1: Import"]
+        B --> C["Step 2: Title parsing"]
+        C --> D["Step 3: LLM classification"]
+        D --> E["Step 4: ML classifier 🔜"]
     end
 
     pipeline --> F[(urls.db)]
@@ -119,11 +119,11 @@ Each model was run through `--compare-models`, results saved to `model_results`.
 
 ```mermaid
 flowchart TD
-    A["LLM labeling<br/>~7000 URLs"] --> B["Phase 1<br/>Fix taxonomy<br/>config/taxonomy.py"]
-    B --> C["Phase 2<br/>Re-label --strict<br/>export_dataset.py"]
-    C --> D["Phase 3<br/>Training<br/>xlm-roberta-base"]
-    D --> E["Phase 4<br/>step4.py<br/>+ confidence threshold"]
-    E --> F["Phase 5<br/>Active learning<br/>monthly retraining"]
+    A["LLM labeling (7000 URLs)"] --> B["Phase 1: Fix taxonomy (config/taxonomy.py)"]
+    B --> C["Phase 2: Re-label --strict (export_dataset.py)"]
+    C --> D["Phase 3: Training (xlm-roberta-base)"]
+    D --> E["Phase 4: step4.py + confidence threshold"]
+    E --> F["Phase 5: Active learning (monthly retraining)"]
 ```
 
 | Phase | Task | Status |
