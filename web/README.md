@@ -1,134 +1,126 @@
 # Web UI — web-page-classifier
 
-Web interface for browsing and managing classified URLs.
+Веб-интерфейс для просмотра и управления классифицированными URL.
 Mobile-first.
 
-## Stack
+## Стек
 
 - **Backend:** FastAPI + Jinja2
 - **Frontend:** Tailwind CSS (CDN) + vanilla JS
-- **Database:** SQLite locally → PostgreSQL in cloud
+- **БД:** SQLite локально → PostgreSQL в облаке
 
-## Installation
+## Установка
 
-Web UI is a separate project with its own virtualenv:
+Web UI — отдельный проект со своим virtualenv:
 
 ```bash
 cd web/
 python -m venv venv
 
-# Activation (PowerShell)
+# Активация (PowerShell)
 .\venv\Scripts\Activate.ps1
 
-# Activation (cmd)
+# Активация (cmd)
 .\venv\Scripts\activate.bat
 
 pip install -r requirements.txt
 ```
 
-> Pipeline and Web UI are separate projects with separate environments. `venv/` at project root not needed for web UI.
+> Пайплайн и Web UI — разные проекты с разными окружениями. `venv/` в корне проекта для веб UI не нужен.
 
-## Environment Variables
+## Переменные окружения
 
-| Variable | Default | Description |
+| Переменная | По умолчанию | Описание |
 |------------|-------------|---------|
-| `WEB_USER` | — | Login for Basic Auth |
-| `WEB_PASSWORD` | — | Password for Basic Auth |
-| `DB_PATH` | `../urls.db` | Path to SQLite DB (relative to `web/`) |
-| `PIPELINE_PYTHON` | `../venv/Scripts/python.exe` (auto) | Path to pipeline Python interpreter for refetch |
+| `WEB_USER` | — | Логин для Basic Auth |
+| `WEB_PASSWORD` | — | Пароль для Basic Auth |
+| `DB_PATH` | `../urls.db` | Путь к SQLite БД (относительно `web/`) |
+| `PIPELINE_PYTHON` | `../venv/Scripts/python.exe` (авто) | Путь к Python-интерпретатору пайплайна для refetch |
 
-Locally can set in `.env` or directly in terminal:
+Локально можно задать в `.env` или напрямую в терминале:
 
 ```bash
 export WEB_USER=admin
 export WEB_PASSWORD=secret
 ```
 
-## Features
+## Возможности
 
-- **Browse** URLs by categories, search by title / description / URL, sorting (newest / oldest / alphabetical)
-- **Recent feed** (`/recent`) — all URLs, newest first, with sorting
-- **Uncategorized** (`/uncategorized`) — URLs awaiting classification
-- **Sorting** — newest first / oldest first / alphabetical (on all pages)
-- **Delete** URLs from DB (button on card)
-- **Change category** — from fixed taxonomy (31 categories):
-  - Desktop: drag card to category in sidebar (highlights green)
-  - Mobile / desktop: button ↔ → modal with taxonomy category list
-  - Sets `manual_override=1` — LLM won't overwrite manual choice on `--only-classify`
-  - Icon ✎ on card shows category assigned manually
-- **Processing (refetch)** — reload title and description via pipeline:
-  - Button on card — process one URL
-  - Bulk: "Select" → check → "Process selected"
-  - Calls `set_url_pending()` + `step2.main()` via subprocess (pipeline venv)
-  - No import (step1), no classification (step3) — only fetch metadata
-- **Bulk operations**: "Select" button → check needed → delete / process
-  - "Select all" — checks all cards on page
-  - Category counters in sidebar update instantly, no reload
+- **Просмотр** URL по категориям, поиск по title / description / URL
+- **Лента новых** (`/recent`) — все URL, новые сверху, с сортировкой
+- **Без категории** (`/uncategorized`) — URL ожидающие классификации
+- **Сортировка** — новые сверху / старые сверху / по алфавиту (на всех страницах)
+- **Удаление** URL из БД (кнопка на карточке)
+- **Перемещение в категорию** — из фиксированной таксономии (31 категория):
+  - Десктоп: перетащи карточку на категорию в sidebar (подсветится зелёным)
+  - Мобайл / десктоп: кнопка ↔ → модальное окно со списком категорий таксономии
+  - Ставит `manual_override=1` — LLM не перезапишет ручной выбор при `--only-classify`
+  - Иконка ✎ на карточке показывает, что категория назначена вручную
+- **Обработка (refetch)** — перезагрузка title и description через пайплайн:
+  - Кнопка на карточке — обработать один URL
+  - Массовое: «Выбрать» → отметить → «Обработать выбранные»
+  - Вызывает `set_url_pending()` + `step2.main()` через subprocess (пайплайн venv)
+  - Без импорта (step1), без классификации (step3) — только fetch метаданных
+- **Массовые операции**: кнопка «Выбрать» → отметить нужные → удалить / обработать
+  - «Выбрать все» — отмечает все карточки на странице
+  - Счётчики категорий в sidebar обновляются сразу, без перезагрузки
 
-## Run Locally
+## Запуск локально
 
-Run from `web/` folder with activated venv:
+Запускать из папки `web/` с активированным venv:
 
 ```bash
 cd web/
 .\venv\Scripts\Activate.ps1           # PowerShell
-# or
+# или
 .\venv\Scripts\activate.bat           # cmd
 
 python -m uvicorn app:app --port 8000 --reload
 
-# Open in browser
+# Открыть в браузере
 http://localhost:8000
-# Default login: admin / changeme
+# Логин по умолчанию: admin / changeme
 
-# After changes — restart server (Ctrl+C, then again):
-# static cached in browser; cache-busting on restart
+# После изменений — перезапустить сервер (Ctrl+C, затем снова):
+# статика кэшируется браузером; cache-busting срабатывает при перезапуске
 ```
 
-## Structure
+## Структура
 
 ```
 web/
-├── app.py              # FastAPI entry point
+├── app.py              # точка входа FastAPI
 ├── auth.py             # HTTP Basic Auth
-├── database.py         # SQLite queries (read + manage + taxonomy)
+├── database.py         # запросы к SQLite (чтение + управление + таксономия)
 ├── routers/
-│   ├── pages.py        # HTML routes (/, /category, /recent, /uncategorized, /search)
+│   ├── pages.py        # HTML-роуты (/, /category, /recent, /uncategorized, /search)
 │   └── api.py          # JSON API (CRUD + refetch + bulk)
 ├── templates/
-│   ├── base.html       # base layout + category change modal (taxonomy)
-│   ├── index.html      # main (categories)
-│   ├── category.html   # category view
-│   ├── recent.html     # recent feed
-│   ├── uncategorized.html  # uncategorized URLs
-│   ├── search.html     # search results
-│   └── components/
-│       ├── card.html       # URL card (draggable, with buttons)
-│       ├── sidebar.html    # sidebar with categories + counters
-│       └── modal.html      # category select modal
+│   ├── base.html       # базовый layout + модалка смены категории (таксономия)
+│   ├── index.html      # главная (категории)
+│   ├── category.html   # страница категории
+│   ├── recent.html     # лента новых URL
+│   ├── uncategorized.html # URL без категории
+│   ├── search.html     # поиск
+│   ├── _url_card.html  # компонент карточки URL
+│   └── _sort_bar.html  # компонент выбора сортировки
 ├── static/
-│   ├── style.css       # Tailwind + custom (drag & drop, animations)
-│   └── app.js          # vanilla JS (drag, AJAX, bulk ops, notifications)
-├── requirements.txt
-└── .env                # local settings (user/password)
+│   └── app.js          # бургер-меню, удаление, DnD, модальное окно, массовые операции, refetch
+├── requirements.txt    # зависимости только для UI
+└── docs/
+    └── backlog.md      # план разработки
 ```
 
-## Customization
+## Таксономия
 
-**Colors and theme:** `static/style.css`
-**Categories sidebar:** auto-generated from DB + `config/taxonomy.py`
-**Auth:** set `WEB_USER` and `WEB_PASSWORD` env vars
+Модалка смены категории показывает 31 категорию из `config/taxonomy.py`, сгруппированные по 5 разделам (единый справочник для LLM и UI). При ручной смене категории ставится `manual_override=1` — LLM пропускает такие URL при `--only-classify`.
 
-## Deployment Notes
-
-- **Locally:** SQLite in project folder (`../urls.db` relative to `web/`)
-- **Cloud:** switch `database.py` to PostgreSQL connection, keep API same
-- **HTTPS:** deploy behind Nginx/Apache with SSL, or use Gunicorn + systemd
-- **Authentication:** Basic Auth fine for personal tool; for team use add JWT/OAuth
-
-Example Gunicorn run:
+## Деплой (Railway / Render)
 
 ```bash
-cd web/
-gunicorn -w 4 -b 0.0.0.0:8000 app:app
+uvicorn app:app --host 0.0.0.0 --port $PORT
 ```
+
+Переменные `WEB_USER`, `WEB_PASSWORD`, `DB_PATH` задаются в настройках сервиса.
+
+> Подробный план разработки: [`docs/backlog.md`](docs/backlog.md)
