@@ -1,42 +1,42 @@
 # Web Page Classification Pipeline
 
-**Web scraping + LLM annotation pipeline** — конвейер сбора и классификации веб-страниц. Локальная LLM (Ollama) определяет категорию по заголовку, описанию и домену, формируя размеченный датасет для обучения ML-классификатора.
+**Web scraping + LLM annotation pipeline** — a pipeline for collecting and classifying web pages. A local LLM (Ollama) determines the category based on title, description, and domain, generating a labeled dataset for training an ML classifier.
 
 ---
 
-## Проблема
+## Problem
 
-Большие коллекции веб-ссылок (статьи, документация, видео, репозитории) быстро теряют структуру и становятся трудно управляемыми. Ручная категоризация не масштабируется, а использование LLM напрямую для классификации медленно и дорого.
+Large collections of web links (articles, documentation, videos, repositories) quickly lose structure and become difficult to manage. Manual categorization does not scale, and using LLM directly for classification is slow and expensive.
 
-Цель проекта — создать локальный конвейер, который автоматически извлекает метаданные страниц, формирует размеченный датасет и обучает лёгкий классификатор для быстрой и масштабируемой категоризации веб-контента.
+The project goal is to create a local pipeline that automatically extracts page metadata, generates a labeled dataset, and trains a lightweight classifier for fast and scalable web content categorization.
 
-## Применение
+## Use Cases
 
-- **Личная база знаний** — автоматически категоризировать тысячи сохранённых закладок
-- **RSS / новостные фиды** — разметка потока статей в реальном времени
-- **Корпоративная документация** — автоматическая классификация страниц по темам
-- **Обучающий датасет** — собрать размеченные данные для downstream ML-задач
+- **Personal knowledge base** — automatically categorize thousands of saved bookmarks
+- **RSS / news feeds** — label article streams in real time
+- **Corporate documentation** — automatic page classification by topic
+- **Training dataset** — collect labeled data for downstream ML tasks
 
-## Архитектура
+## Architecture
 
-**Data enrichment pipeline** (Extract → Transform → Load) с идемпотентностью и модульностью:
+**Data enrichment pipeline** (Extract → Transform → Load) with idempotency and modularity:
 
-1. **Extract** — парсинг заголовков и мета-описаний со страниц (plain HTTP + `<title>`, `og:description`, `meta[name=description]`, обход JS anti-bot challenge)
-2. **Transform** — LLM-аннотация через Ollama (без API-ключей, на GPU). Таксономия фиксирована: 31 категория в `config/taxonomy.py`, LLM выбирает строго из неё
-3. **Load** — запись в SQLite с состояниями (pending/done/error)
-4. **ML Training** *(планируется)* — обучение `xlm-roberta-base` на размеченном датасете, инференс 4000 URL/сек без GPU
+1. **Extract** — parsing titles and meta-descriptions from pages (plain HTTP + `<title>`, `og:description`, `meta[name=description]`, bypass JS anti-bot challenges)
+2. **Transform** — LLM annotation via Ollama (no API keys, GPU-powered). Fixed taxonomy: 31 categories in `config/taxonomy.py`, LLM selects strictly from it
+3. **Load** — writing to SQLite with states (pending/done/error)
+4. **ML Training** *(planned)* — training `xlm-roberta-base` on labeled dataset, inference 4000 URLs/sec without GPU
 
-## Пайплайн
+## Pipeline
 
 ```mermaid
 flowchart LR
     A([raw_links.txt]) --> B
 
-    subgraph pipeline ["Пайплайн"]
-        B["Step 1<br/>Импорт"]
-        B --> C["Step 2<br/>Парсинг заголовков"]
-        C --> D["Step 3<br/>LLM-классификация"]
-        D --> E["Step 4<br/>ML-классификатор<br/>🔜"]
+    subgraph pipeline ["Pipeline"]
+        B["Step 1<br/>Import"]
+        B --> C["Step 2<br/>Title parsing"]
+        C --> D["Step 3<br/>LLM classification"]
+        D --> E["Step 4<br/>ML classifier<br/>🔜"]
     end
 
     pipeline --> F[(urls.db)]
@@ -44,16 +44,16 @@ flowchart LR
 
 ---
 
-## Как работает
+## How It Works
 
-| Шаг | Файл | Фаза | Что происходит |
+| Step | File | Phase | What happens |
 |-----|------|------|----------------|
-| **Step 1** Импорт | `step1.py` | Load | Regex извлекает URL из текста, дедуплицирует, добавляет в БД со статусом `pending` |
-| **Step 2** Парсинг | `step2.py` | Extract + Transform | HTTP-запрос → HTML-парсинг (`<title>`, `og:description`), обход JS anti-bot (cookie `challenge_passed`). Статус → `done` или `error` |
-| **Step 3** Классификация | `step3.py` | Transform | `title + description + domain` → Ollama LLM → категория. Пишет в `urls.category`, `urls.tagged_by` |
-| **Step 4** ML *(скоро)* | `step4.py` | Transform (Infer) | Fine-tuned `xlm-roberta-base`, ~500 URL/сек на CPU, fallback на LLM при низкой уверенности |
+| **Step 1** Import | `step1.py` | Load | Regex extracts URLs from text, deduplicates, adds to DB with `pending` status |
+| **Step 2** Parsing | `step2.py` | Extract + Transform | HTTP request → HTML parsing (`<title>`, `og:description`), bypass JS anti-bot (cookie `challenge_passed`). Status → `done` or `error` |
+| **Step 3** Classification | `step3.py` | Transform | `title + description + domain` → Ollama LLM → category. Writes to `urls.category`, `urls.tagged_by` |
+| **Step 4** ML *(coming soon)* | `step4.py` | Transform (Infer) | Fine-tuned `xlm-roberta-base`, ~500 URLs/sec on CPU, fallback to LLM on low confidence |
 
-**Машина состояний URL:**
+**URL state machine:**
 
 ```mermaid
 stateDiagram-v2
@@ -66,52 +66,52 @@ stateDiagram-v2
     done    --> pending   : --force / --re-tag
 ```
 
-Каждый шаг **идемпотентен** — повторный запуск без флагов пропускает уже обработанные URL.
+Each step is **idempotent** — re-running without flags skips already processed URLs.
 
 ---
 
-## Пример вывода
+## Example Output
 
 ```
 URL:       https://habr.com/ru/articles/805105/
-Заголовок: Как я построил RAG-систему для поиска по документам
-Категория: Искусственный интеллект
-Модель:    mistral-small3.2:24b
+Title:     How I built a RAG system for document search
+Category:  Artificial Intelligence
+Model:     mistral-small3.2:24b
 
 URL:       https://github.com/BerriAI/litellm
-Заголовок: LiteLLM — Call all LLM APIs using OpenAI format
-Категория: Программирование
+Title:     LiteLLM — Call all LLM APIs using OpenAI format
+Category:  Programming
 
 URL:       https://en.wikipedia.org/wiki/Transformer_(deep_learning)
-Заголовок: Transformer (deep learning)
-Категория: Искусственный интеллект
+Title:     Transformer (deep learning)
+Category:  Artificial Intelligence
 ```
 
-Статистика после полного прогона:
+Statistics after full run:
 
-| Статус | Кол-во |
+| Status | Count |
 |--------|-------:|
-| done + классифицировано | ~6 050 |
-| done без категории | ~1 570 |
-| Уникальных категорий | 31 (фиксированная таксономия) |
+| done + classified | ~6,050 |
+| done, no category | ~1,570 |
+| Unique categories | 31 (fixed taxonomy) |
 
 ---
 
-## Выбор модели
+## Model Selection
 
-Для классификации протестировано **7 моделей Ollama** на реальном корпусе (250 URL, habr.com).
+**7 Ollama models** were tested on real corpus (250 URLs, habr.com) for classification.
 
-Каждая модель прогонялась через `--compare-models`, результаты сохранялись в `model_results`. После прогона — side-by-side сравнение классификаций через `--compare` и подсчёт **agreement rate** (доля URL, где тег модели совпал с plurality по всем моделям).
+Each model was run through `--compare-models`, results saved to `model_results`. After run — side-by-side comparison of classifications via `--compare` and **agreement rate** calculation (share of URLs where model tag matched plurality across all models).
 
-| Модель | Agreement | Скорость |
+| Model | Agreement | Speed |
 |--------|:---------:|:--------:|
-| **mistral-small3.2:24b** | **54.8%** 🥇 | 1.2 с/URL |
-| qwen3-coder-next | 51.6% | 6.1 с/URL |
-| gemma2:9b | 49.2% | 0.16 с/URL |
-| cas/aya-expanse-8b | 43.6% | 0.14 с/URL |
-| mistral | 29.6% ❌ | 0.23 с/URL |
+| **mistral-small3.2:24b** | **54.8%** 🥇 | 1.2 sec/URL |
+| qwen3-coder-next | 51.6% | 6.1 sec/URL |
+| gemma2:9b | 49.2% | 0.16 sec/URL |
+| cas/aya-expanse-8b | 43.6% | 0.14 sec/URL |
+| mistral | 29.6% ❌ | 0.23 sec/URL |
 
-`mistral` дисквалифицирован: использует подчёркивания (`machine_learning`) и смешивает языки. Подробнее: [`docs/models-compare.md`](docs/models-compare.md)
+`mistral` is disqualified: uses underscores (`machine_learning`) and mixes languages. Details: [`docs/models-compare.md`](docs/models-compare.md)
 
 ---
 
@@ -119,129 +119,129 @@ URL:       https://en.wikipedia.org/wiki/Transformer_(deep_learning)
 
 ```mermaid
 flowchart TD
-    A["LLM-разметка<br/>~7000 URL"] --> B["Фаза 1<br/>Фиксация таксономии<br/>config/taxonomy.py"]
-    B --> C["Фаза 2<br/>Переразметка --strict<br/>export_dataset.py"]
-    C --> D["Фаза 3<br/>Обучение<br/>xlm-roberta-base"]
-    D --> E["Фаза 4<br/>step4.py<br/>+ порог уверенности"]
-    E --> F["Фаза 5<br/>Active learning<br/>переобучение раз в месяц"]
+    A["LLM labeling<br/>~7000 URLs"] --> B["Phase 1<br/>Fix taxonomy<br/>config/taxonomy.py"]
+    B --> C["Phase 2<br/>Re-label --strict<br/>export_dataset.py"]
+    C --> D["Phase 3<br/>Training<br/>xlm-roberta-base"]
+    D --> E["Phase 4<br/>step4.py<br/>+ confidence threshold"]
+    E --> F["Phase 5<br/>Active learning<br/>monthly retraining"]
 ```
 
-| Фаза | Задача | Статус |
+| Phase | Task | Status |
 |------|--------|--------|
-| 0 | Анализ распределения | ✅ готово |
-| 1 | Фиксация таксономии (`config/taxonomy.py`) | ✅ готово |
-| 2.1 | Режим `--strict` в step3 + переразметка | ✅ готово |
+| 0 | Distribution analysis | ✅ done |
+| 1 | Fix taxonomy (`config/taxonomy.py`) | ✅ done |
+| 2.1 | `--strict` mode in step3 + re-label | ✅ done |
 | 2.2 | `export_dataset.py` | ⏳ |
-| 2.3 | Ручная валидация (~50 примеров/класс) | ⏳ |
+| 2.3 | Manual validation (~50 examples/class) | ⏳ |
 | 3 | `train_classifier.py`, `xlm-roberta-base` | ⏳ |
 | 4 | `step4.py` + `--only-ml-classify` | ⏳ |
-| 5 | Active learning, ежемесячное переобучение | ⏳ |
+| 5 | Active learning, monthly retraining | ⏳ |
 
-**Признаки модели:** `f"{title} [SEP] {domain}"` — domain даёт важный контекст (`github.com` → код, `habr.com` → технический блог).
+**Model features:** `f"{title} [SEP] {domain}"` — domain provides important context (`github.com` → code, `habr.com` → technical blog).
 
-**Датасет:** ~7 000 размеченных URL, из них ~1 000 верифицируются вручную перед обучением.
+**Dataset:** ~7,000 labeled URLs, ~1,000 manually verified before training.
 
-**Таксономия (`config/taxonomy.py`)** — 5 разделов (L0), 31 категория (L1):
+**Taxonomy (`config/taxonomy.py`)** — 5 sections (L0), 31 categories (L1):
 ```python
 TAXONOMY_SECTIONS = [
-    ("IT и разработка",     [11 категорий]),
-    ("Управление и бизнес", [4 категории]),
-    ("Наука и образование", [3 категории]),
-    ("Дизайн и медиа",     [6 категорий]),
-    ("Прочее",              [7 категорий]),
+    ("IT and development",      [11 categories]),
+    ("Management and business", [4 categories]),
+    ("Science and education",   [3 categories]),
+    ("Design and media",        [6 categories]),
+    ("Other",                   [7 categories]),
 ]
-# TAXONOMY — плоский список всех 31 категорий (генерируется автоматически)
+# TAXONOMY — flat list of all 31 categories (auto-generated)
 ```
 
-**Цель:** `macro-F1 > 0.80`, инференс без GPU и Ollama.
+**Goal:** `macro-F1 > 0.80`, inference without GPU and Ollama.
 
-Подробная архитектура: [`docs/ml-plan.md`](docs/ml-plan.md)
+Detailed architecture: [`docs/ml-plan.md`](docs/ml-plan.md)
 
 ---
 
 ## Domain Rules
 
-Для известных доменов LLM можно обойти или ограничить секцией таксономии.
-Правила задаются в `config/domain_rules.py`:
+For known domains, LLM can be bypassed or limited to a taxonomy section.
+Rules are set in `config/domain_rules.py`:
 
 ```python
 DOMAIN_RULES = {
-    # Категория напрямую — LLM не вызывается
-    "youtube.com":       {"category": "Медиа и контент"},
-    "flibusta.is":       {"category": "Книги"},
+    # Category assigned directly — LLM is not called
+    "youtube.com":       {"category": "Media and content"},
+    "flibusta.is":       {"category": "Books"},
 
-    # Секция — LLM выбирает из 11 категорий вместо 31
-    "habr.com":          {"section": "IT и разработка"},
+    # Section — LLM selects from 11 categories instead of 31
+    "habr.com":          {"section": "IT and development"},
 
-    # Оба уровня известны — LLM не вызывается
-    "github.com":        {"section": "IT и разработка", "category": "Программирование"},
+    # Both levels known — LLM is not called
+    "github.com":        {"section": "IT and development", "category": "Programming"},
 }
 ```
 
-| Тип правила | Поведение |
+| Rule type | Behavior |
 |---|---|
-| `{"category": "..."}` | Категория присваивается напрямую, LLM не вызывается |
-| `{"section": "..."}` | LLM получает сокращённый промпт — только категории секции |
-| `{"section": "...", "category": "..."}` | Категория напрямую (оба уровня известны) |
+| `{"category": "..."}` | Category assigned directly, LLM is not called |
+| `{"section": "..."}` | LLM gets shortened prompt — only section categories |
+| `{"section": "...", "category": "..."}` | Category assigned directly (both levels known) |
 
-Валидация при импорте: категория должна быть в `TAXONOMY`, секция — в `TAXONOMY_SECTIONS`.
+Validation on import: category must be in `TAXONOMY`, section must be in `TAXONOMY_SECTIONS`.
 
 ---
 
-## Планы развития
+## Development Plans
 
-### Классификация
-- ~~`--strict` режим~~ — реализовано: LLM выбирает только из `config/taxonomy.py` (31 категория)
-- ~~Ручная правка категорий~~ — реализовано: Web UI → модалка с таксономией, `manual_override=1` защищает от перезаписи LLM
-- `step4.py` — ML-классификатор (`xlm-roberta-base`) с fallback на LLM при низкой уверенности
-- Active learning UI — сначала показывает примеры с наименьшей уверенностью модели
+### Classification
+- ~~`--strict` mode~~ — implemented: LLM selects only from `config/taxonomy.py` (31 categories)
+- ~~Manual category editing~~ — implemented: Web UI → modal with taxonomy, `manual_override=1` protects from LLM overwrite
+- `step4.py` — ML classifier (`xlm-roberta-base`) with fallback to LLM on low confidence
+- Active learning UI — show examples with lowest model confidence first
 
-### Иерархическая таксономия (L0 → L1 → L2)
-Текущая классификация — двухуровневая: **L0 (разделы)** → **L1 (категории)**. L0-разделы задаются в `TAXONOMY_SECTIONS` и используются в sidebar, domain rules и section-narrowed промптах. Следующий шаг — добавить L2:
+### Hierarchical Taxonomy (L0 → L1 → L2)
+Current classification is two-level: **L0 (sections)** → **L1 (categories)**. L0 sections are set in `TAXONOMY_SECTIONS` and used in sidebar, domain rules, and section-narrowed prompts. Next step — add L2:
 ```
-L0: IT и разработка
-  L1: Искусственный интеллект
-    L2: LLM, Компьютерное зрение, MLOps
-  L1: Программирование
+L0: IT and development
+  L1: Artificial Intelligence
+    L2: LLM, Computer Vision, MLOps
+  L1: Programming
     L2: Python, Go, Rust
 ```
-Архитектурно: каскадные классификаторы (отдельная модель на каждый уровень) или multi-label подход.
+Architecture: cascading classifiers (separate model per level) or multi-label approach.
 
-### Обогащение признаков
-Step2 извлекает `<title>` и мета-описание (`og:description` → `meta[name=description]`).
-Описание передаётся в LLM-промпт (step3) и войдёт в обучающий датасет как дополнительный признак.
-Планируется также:
-- `<meta property="og:title">` — альтернативный заголовок
-- Вход ML-классификатора: `f"{title} [SEP] {description[:200]} [SEP] {domain}"`
+### Feature Enrichment
+Step2 extracts `<title>` and meta-description (`og:description` → `meta[name=description]`).
+Description is passed to LLM prompt (step3) and will enter training dataset as additional feature.
+Also planned:
+- `<meta property="og:title">` — alternative title
+- ML classifier input: `f"{title} [SEP] {description[:200]} [SEP] {domain}"`
 
-Это даст ML-классификатору больше контекста и повысит точность на страницах с коротким или неинформативным title.
+This gives ML classifier more context and improves accuracy on pages with short or uninformative titles.
 
 ---
 
-## Быстрый старт
+## Quick Start
 
 ```bash
 pip install -r requirements.txt
 
-# Запустить Ollama
+# Run Ollama
 ollama serve
 ollama pull mistral-small3.2:24b
 
-# Полный прогон
+# Full run
 python main.py
 
-# Или по шагам
+# Or step by step
 python main.py --only-import
 python main.py --only-parse --workers 4
 python main.py --only-classify --model mistral-small3.2:24b --workers 4
 
-# Протестировать один URL без записи в БД
+# Test single URL without DB write
 python main.py --url https://habr.com/ru/articles/805105/ --dry-run
 ```
 
 ---
 
-## Структура проекта
+## Project Structure
 
 ```
 url-parser/
@@ -254,8 +254,8 @@ url-parser/
 ├── config/
 │   ├── settings.py     # delays, timeouts, Ollama host, token limits
 │   ├── prompts.py      # classification prompt templates
-│   ├── taxonomy.py     # 31 категория — единый справочник
-│   └── domain_rules.py # правила по домену (пропуск LLM / сужение секции)
+│   ├── taxonomy.py     # 31 categories — single source of truth
+│   └── domain_rules.py # rules by domain (skip LLM / narrow section)
 ├── benchmark/
 │   ├── benchmark.py    # find optimal batch/workers config
 │   ├── benchmark_log.csv
@@ -271,204 +271,204 @@ url-parser/
 
 ---
 
-## Конфигурация
+## Configuration
 
-Все настройки вынесены в `config/` — редактируй эти файлы, не трогая код:
+All settings are in `config/` — edit these files, not the code:
 
-| Файл | Что настраивается |
+| File | What's configured |
 |---|---|
-| `config/settings.py` | путь к БД, задержки краулера, таймауты Ollama, токены, фильтры тегов |
-| `config/prompts.py` | шаблоны промптов классификации (одиночный и батч) |
-| `config/taxonomy.py` | 31 категория — модель выбирает строго из этого списка |
-| `config/domain_rules.py` | правила по домену: пропуск LLM или сужение промпта до секции |
+| `config/settings.py` | DB path, crawler delays, Ollama timeouts, tokens, tag filters |
+| `config/prompts.py` | classification prompt templates (single and batch) |
+| `config/taxonomy.py` | 31 categories — model selects strictly from this list |
+| `config/domain_rules.py` | rules by domain: skip LLM or narrow prompt to section |
 
-**Наиболее часто меняемые параметры** (`config/settings.py`):
+**Most frequently changed parameters** (`config/settings.py`):
 
 ```python
-DELAY_MIN / DELAY_MAX          # пауза между HTTP-запросами (step2)
-OLLAMA_HOST                    # адрес Ollama (по умолчанию localhost:11434)
-OLLAMA_TEMPERATURE             # температура генерации (0.0 = детерминированный вывод)
-NUM_PREDICT_SINGLE             # макс. токенов ответа на один URL (по умолчанию 80)
-NUM_PREDICT_PER_URL            # то же для батча (по умолчанию 30 × кол-во URL)
-MAX_CONSECUTIVE_CONN_ERRORS    # подряд ошибок Ollama → остановить (по умолчанию 3)
+DELAY_MIN / DELAY_MAX          # pause between HTTP requests (step2)
+OLLAMA_HOST                    # Ollama address (default localhost:11434)
+OLLAMA_TEMPERATURE             # generation temperature (0.0 = deterministic)
+NUM_PREDICT_SINGLE             # max response tokens per URL (default 80)
+NUM_PREDICT_PER_URL            # same for batch (default 30 × number of URLs)
+MAX_CONSECUTIVE_CONN_ERRORS    # consecutive Ollama errors → stop (default 3)
 ```
 
-**Промпты** (`config/prompts.py`) — плейсхолдеры:
+**Prompts** (`config/prompts.py`) — placeholders:
 - `SINGLE` → `{title}`, `{hints_line}`
 - `BATCH_HEADER` → `{hints_line}`
 - `BATCH_ITEM` → `{i}`, `{title}`
-- `HINTS_LINE` → `{hints}` (список категорий через запятую)
+- `HINTS_LINE` → `{hints}` (comma-separated category list)
 
 ---
 
-## Флаги
+## Flags
 
-### Управление пайплайном
+### Pipeline Control
 
-| Флаг | Что делает |
+| Flag | What it does |
 |---|---|
-| `--only-import` | запустить только step1 (импорт URL) |
-| `--only-parse` | запустить только step2 (парсинг заголовков) |
-| `--only-classify` | запустить только step3 (классификация через Ollama) |
-| `--refetch-description` | дозаполнить `description` у done-URL где он пустой (не трогает `status` и `title`); идемпотентен — повторный запуск берёт только оставшиеся пустые |
-| `--re-tag` | сбросить `category`/`tagged_by` у всех done-URL и запустить step3 заново |
+| `--only-import` | run only step1 (URL import) |
+| `--only-parse` | run only step2 (title parsing) |
+| `--only-classify` | run only step3 (classification via Ollama) |
+| `--refetch-description` | fill missing `description` for done URLs (doesn't touch `status` and `title`); idempotent — re-run gets only remaining empty |
+| `--re-tag` | reset `category`/`tagged_by` for all done URLs and re-run step3 |
 
-### Фильтрация и входные данные
+### Filtering and Input
 
-| Флаг | Что делает |
+| Flag | What it does |
 |---|---|
-| `--input FILE` | входной файл для step1 (по умолчанию: `raw_links.txt`) |
-| `--url URL` | добавить один URL и обработать его (parse + запись в БД) |
-| `--url URL --dry-run` | получить заголовок + категорию одного URL без записи в БД |
-| `--domain DOMAIN` | обрабатывать только URL этого домена (нечувствительно к `www.` и регистру) |
-| `--limit N` | обработать не более N URL за один запуск |
-| `--force` | сбросить все записи в `pending` и начать заново |
-| `--retry-failed` | повторить все URL со статусом `error` |
-| `--retry-transient` | повторить только временные ошибки (5xx, 429, сетевые); пропустить постоянные (404, 403, 410) |
+| `--input FILE` | input file for step1 (default: `raw_links.txt`) |
+| `--url URL` | add and process one URL (parse + DB write) |
+| `--url URL --dry-run` | get title + category for one URL without DB write |
+| `--domain DOMAIN` | process only URLs from this domain (case-insensitive, www-insensitive) |
+| `--limit N` | process at most N URLs per run |
+| `--force` | reset all records to `pending` and start over |
+| `--retry-failed` | retry all URLs with `error` status |
+| `--retry-transient` | retry only transient errors (5xx, 429, network); skip permanent (404, 403, 410) |
 
-### Параллельность
+### Parallelism
 
-| Флаг | Что делает | По умолчанию |
+| Flag | What it does | Default |
 |---|---|---|
-| `--workers N` | кол-во параллельных потоков | 1 |
+| `--workers N` | number of parallel threads | 1 |
 
-- **Step2:** воркеры распределяются по доменам round-robin — одновременно идут только разные домены, снижая риск бана
-- **Step3:** параллельные запросы к Ollama (для GPU-параллелизма также нужен `OLLAMA_NUM_PARALLEL=N`)
+- **Step2:** workers distributed by domain round-robin — only different domains run concurrently, reducing ban risk
+- **Step3:** parallel Ollama requests (for GPU parallelism also set `OLLAMA_NUM_PARALLEL=N`)
 
-### Классификация (step3 / Ollama)
+### Classification (step3 / Ollama)
 
-| Флаг | Что делает | По умолчанию |
+| Flag | What it does | Default |
 |---|---|---|
-| `--model MODEL` | модель Ollama | первая доступная |
-| `--list-models` | показать список доступных моделей и выйти | — |
-| `--batch N` | кол-во URL в одном запросе к модели (батчинг) | 1 |
-| `--no-think` | отключить thinking-режим модели (`think: false`) | выкл. |
-| `--no-description` | не передавать `og:description` в промпт (быстрее, ~50% меньше токенов) | выкл. |
+| `--model MODEL` | Ollama model | first available |
+| `--list-models` | show available models and exit | — |
+| `--batch N` | number of URLs per model request (batching) | 1 |
+| `--no-think` | disable model thinking mode (`think: false`) | off |
+| `--no-description` | don't pass `og:description` in prompt (faster, ~50% fewer tokens) | off |
 
-> `--no-think` нужен для thinking-моделей: `qwen3`, `deepseek-r1`, `minimax-m2` и др.
+> `--no-think` needed for thinking models: `qwen3`, `deepseek-r1`, `minimax-m2`, etc.
 
-> `--batch` работает **только** со step3 (`--only-classify` / `--re-tag`).
-> В режиме `--compare-models` батчинг не поддерживается.
+> `--batch` works **only** with step3 (`--only-classify` / `--re-tag`).
+> In `--compare-models` mode batching is not supported.
 
-### Сравнение моделей
+### Model Comparison
 
-| Флаг | Что делает |
+| Flag | What it does |
 |---|---|
-| `--compare-models M1 M2 …` | прогнать несколько моделей, результаты → `model_results` (не трогает `urls.category`) |
-| `--compare-models … --workers N` | ускорить — N параллельных запросов внутри каждой модели |
-| `--compare` | показать side-by-side таблицу результатов в терминале |
-| `--compare --export FILE.csv` | то же + экспорт в CSV |
-| `--compare --export-xlsx FILE.xlsx` | то же + экспорт в XLSX (жёлтые строки = расхождения между моделями) |
-| `--accept-model MODEL` | скопировать результаты модели в `urls.category` (финальный выбор) |
-| `--compare-clear` | очистить таблицу `model_results` |
+| `--compare-models M1 M2 …` | run multiple models, results → `model_results` (doesn't touch `urls.category`) |
+| `--compare-models … --workers N` | speed up — N parallel requests per model |
+| `--compare` | show side-by-side results table in terminal |
+| `--compare --export FILE.csv` | same + export to CSV |
+| `--compare --export-xlsx FILE.xlsx` | same + export to XLSX (yellow rows = model disagreements) |
+| `--accept-model MODEL` | copy model results to `urls.category` (final choice) |
+| `--compare-clear` | clear `model_results` table |
 
-### Диагностика и отладка
+### Diagnostics and Debug
 
-| Флаг | Что делает |
+| Flag | What it does |
 |---|---|
-| `--stats` | показать статистику БД (total / pending / done / error / classified) и выйти |
-| `--dry-run` | запустить step3 без записи в БД — вывести категории в консоль; логирует в `benchmark/dryrun_log.csv`; с `--url` — тест одного URL без изменений в БД |
-| `--no-progress` | отключить progress bar, plain вывод (удобно для логов) |
-| `-v, --verbose` | показывать заголовок / категорию / ошибку по каждому URL |
+| `--stats` | show DB statistics (total / pending / done / error / classified) and exit |
+| `--dry-run` | run step3 without DB write — output categories to console; logs to `benchmark/dryrun_log.csv`; with `--url` — test one URL without DB changes |
+| `--no-progress` | disable progress bar, plain output (good for logs) |
+| `-v, --verbose` | show title / category / error for each URL |
 
 ---
 
-## Примеры
+## Examples
 
-### Основной пайплайн
+### Main Pipeline
 
 ```bash
-# Полный прогон
+# Full run
 python main.py
 
-# Дозаполнить description у уже обработанных URL (не перепарсивает title)
-# Итоги показывают 3 строки: "Записано" / "Тег отсутствует" / "Ошибка HTTP"
-# Реальное покрытие зависит от сайтов: ~49% URL имеют <meta description>
+# Fill missing description for already processed URLs (doesn't re-parse title)
+# Summary shows 3 lines: "Saved" / "No tag" / "HTTP error"
+# Real coverage depends on sites: ~49% URLs have <meta description>
 python main.py --refetch-description --workers 4
 
-# То же, только для одного домена
+# Same, only for one domain
 python main.py --refetch-description --domain habr.com --workers 4
 
-# Другой входной файл, первые 100 URL
+# Different input file, first 100 URLs
 python main.py --input links.txt --limit 100
 
-# Добавить и сразу обработать один URL (записывается в БД)
+# Add and process one URL immediately (saved to DB)
 python main.py --url https://habr.com/ru/articles/805105/
 
-# Протестировать один URL без записи в БД (parse + classify)
+# Test one URL without DB write (parse + classify)
 python main.py --url https://habr.com/ru/articles/805105/ --dry-run
 python main.py --url https://habr.com/ru/articles/805105/ --dry-run --model mistral-small3.2:24b
 
-# Только habr.com
+# Only habr.com
 python main.py --domain habr.com
 
-# Повторить все ошибки
+# Retry all errors
 python main.py --retry-failed
 
-# Повторить только временные ошибки (5xx/429/сетевые), пропустить 404/403/410
+# Retry only transient errors (5xx/429/network), skip 404/403/410
 python main.py --retry-transient --workers 5
 
-# Сбросить всё и начать заново
+# Reset everything and start over
 python main.py --force
 
-# Параллельный парсинг — 4 потока, разные домены одновременно
+# Parallel parsing — 4 threads, different domains concurrently
 python main.py --only-parse --workers 4
 ```
 
-### Классификация
+### Classification
 
 ```bash
-# Посмотреть доступные модели
+# See available models
 python main.py --list-models
 
-# Классифицировать конкретной моделью
+# Classify with specific model
 python main.py --only-classify --model mistral-small3.2:24b
 
-# Thinking-модели (qwen3, deepseek-r1, minimax-m2) — обязательно с --no-think
+# Thinking models (qwen3, deepseek-r1, minimax-m2) — must use --no-think
 python main.py --only-classify --model qwen3:8b --no-think
 
-# Батчинг + параллельность (быстрее на больших объёмах)
+# Batching + parallelism (faster on large volumes)
 python main.py --only-classify --batch 10 --workers 4
 
-# Без мета-описания — быстрее, меньше токенов (для сравнения производительности)
+# Without meta-description — faster, fewer tokens (for performance testing)
 python main.py --only-classify --no-description
 
-# Перетэггировать всё другой моделью
+# Re-tag everything with different model
 python main.py --re-tag --model mistral-small3.2:24b
 ```
 
-### Сравнение моделей
+### Model Comparison
 
 ```bash
-# Прогнать три модели
+# Run three models
 python main.py --compare-models llama3 mistral gemma2
 
-# Только первые 20 URL конкретного домена
+# Only first 20 URLs of specific domain
 python main.py --compare-models llama3 mistral --domain habr.com --limit 20
 
-# Посмотреть результаты
+# View results
 python main.py --compare
 
-# Экспортировать в XLSX (жёлтые строки = расхождения, синяя шапка)
+# Export to XLSX (yellow rows = disagreements, blue header)
 python main.py --compare --export-xlsx compare_results.xlsx
 
-# Применить лучшую модель
+# Apply best model
 python main.py --accept-model mistral-small3.2:24b
 ```
 
-### Диагностика и отладка
+### Diagnostics and Debug
 
 ```bash
-# Статистика БД
+# DB statistics
 python main.py --stats
 
-# Проверить промпт на 20 URL без записи в БД
+# Test prompt on 20 URLs without DB write
 python main.py --only-classify --dry-run --limit 20
 
-# Dry-run по конкретному домену
+# Dry-run for specific domain
 python main.py --only-classify --dry-run --domain habr.com --limit 50
 
-# Plain вывод с деталями по каждому URL
+# Plain output with details per URL
 python main.py --no-progress -v
 ```
 
@@ -476,48 +476,48 @@ python main.py --no-progress -v
 
 ## Web UI
 
-Отдельный субпроект для просмотра и управления классифицированными URL в браузере (mobile-first, Basic Auth).
+Separate sub-project for browsing and managing classified URLs in browser (mobile-first, Basic Auth).
 
-Возможности:
-- Просмотр по категориям, лента новых (`/recent`), без категории (`/uncategorized`)
-- Поиск по title / description / URL, сортировка (новые / старые / по алфавиту)
-- Ручная смена категории (модалка с таксономией или drag & drop) — ставит `manual_override=1`
-- Обработка (refetch title/description) через пайплайн — одиночная и массовая
-- Массовое удаление
+Features:
+- Browse by categories, recent feed (`/recent`), uncategorized (`/uncategorized`)
+- Search by title / description / URL, sorting (newest / oldest / alphabetical)
+- Manual category change (modal with taxonomy or drag & drop) — sets `manual_override=1`
+- Processing (refetch title/description) via pipeline — single and bulk
+- Bulk deletion
 
 ```bash
-# Установка (отдельный venv)
+# Setup (separate venv)
 cd web/
 python -m venv venv
 venv\Scripts\activate       # Windows
 pip install -r requirements.txt
 
-# Запуск из папки web/
+# Run from web/ folder
 python -m uvicorn app:app --port 8000 --reload
 # → http://localhost:8000
 ```
 
-> Подробная документация: **[`web/README.md`](web/README.md)** · План разработки: **[`web/docs/backlog.md`](web/docs/backlog.md)**
+> Detailed docs: **[`web/README.md`](web/README.md)** · Development plan: **[`web/docs/backlog.md`](web/docs/backlog.md)**
 
 ---
 
-## Производительность
+## Performance
 
-| `--batch` | `--workers` | `OLLAMA_NUM_PARALLEL` | GPU utilization | Качество |
+| `--batch` | `--workers` | `OLLAMA_NUM_PARALLEL` | GPU utilization | Quality |
 |:---------:|:-----------:|:---------------------:|:---------------:|:--------:|
-| 1 | 1 | 1 | ~5–10% (default) | высокое |
-| 1 | 4 | 4 | ~30–50% ✓ | высокое |
-| 10 | 4 | 4 | ~80–90% | среднее (context bleed) |
-| 20 | 4 | 4 | ~85–95% | низкое |
+| 1 | 1 | 1 | ~5–10% (default) | high |
+| 1 | 4 | 4 | ~30–50% ✓ | high |
+| 10 | 4 | 4 | ~80–90% | medium (context bleed) |
+| 20 | 4 | 4 | ~85–95% | low |
 
-> **Рекомендация:** `--workers 4` без `--batch` — каждый URL классифицируется изолированно, 4 параллельных запроса к Ollama. Батчинг экономит время, но модель может «заражать» контекстом соседних URL.
+> **Recommendation:** `--workers 4` without `--batch` — each URL classified independently, 4 parallel Ollama requests. Batching saves time, but model can "contaminate" context from neighboring URLs.
 
 ```bash
-# Найти оптимальный batch/workers для вашего железа
+# Find optimal batch/workers for your hardware
 python benchmark/benchmark.py --model mistral-small3.2:24b --limit 30
 ```
 
-Запустить Ollama с GPU-параллелизмом:
+Run Ollama with GPU parallelism:
 
 ```bash
 # Windows (PowerShell)
@@ -529,7 +529,7 @@ OLLAMA_NUM_PARALLEL=4 ollama serve
 
 ---
 
-## Схема БД
+## DB Schema
 
 ```mermaid
 erDiagram
@@ -555,20 +555,20 @@ erDiagram
     urls ||--o{ model_results : "url_id"
 ```
 
-### Полезные SQL-запросы
+### Useful SQL Queries
 
 ```sql
--- Статистика по статусам
+-- Statistics by status
 SELECT status, COUNT(*) FROM urls GROUP BY status;
 
--- Топ категорий
+-- Top categories
 SELECT category, COUNT(*) FROM urls WHERE category IS NOT NULL
 GROUP BY category ORDER BY COUNT(*) DESC LIMIT 20;
 
--- Только временные ошибки (можно ретраить)
+-- Only transient errors (retryable)
 SELECT url, error_code FROM urls
 WHERE status = 'error' AND (error_code IS NULL OR error_code IN (429, 500, 502, 503, 504));
 
--- URL с присвоенными тегами
+-- URLs with assigned tags
 SELECT url, title, category, tagged_by FROM urls WHERE category IS NOT NULL;
 ```
