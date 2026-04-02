@@ -20,7 +20,6 @@
 !web/README.md
 
 # Explicitly ignore code files and other artifacts that shouldn't be here
-web/requirements.txt
 web/venv/
 web/app.py
 web/routers/
