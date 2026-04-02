@@ -239,6 +239,24 @@ python main.py --only-classify --model mistral-small3.2:24b --workers 4
 python main.py --url https://habr.com/ru/articles/805105/ --dry-run
 ```
 
+### View Russian and English Documentation Simultaneously
+
+This project maintains two versions of documentation: Russian (main development) and English (for public GitHub).
+
+```bash
+# Create separate folders for each version (git worktree)
+git worktree add ../web-page-classifier-ru docs-ru
+
+# Now open both folders in VS Code side-by-side:
+# 📁 E:\My files\0 My_Dev\web-page-classifier\      ← master (ENGLISH)
+# 📁 E:\My files\0 My_Dev\web-page-classifier-ru\   ← docs-ru (RUSSIAN)
+
+# Or open in file explorer:
+explorer "../web-page-classifier-ru"
+```
+
+**Result:** Two independent folders on disk containing Russian and English documentation versions from a single repository.
+
 ---
 
 ## Project Structure
