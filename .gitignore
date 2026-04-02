@@ -34,10 +34,11 @@ archive/
 # Модели (ML-классификатор)
 models/
 
-# IDE / Claude
+# IDE / Claude (internal settings, not for public repo)
 .claude/
 .idea/
 .vscode/
+CLAUDE.md
 
 # Web UI venv (отдельный от корневого)
 web/venv/
