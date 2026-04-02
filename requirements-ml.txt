@@ -1,6 +1,0 @@
-torch
-transformers
-scikit-learn
-matplotlib
-seaborn
-accelerate
