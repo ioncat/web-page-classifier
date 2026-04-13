@@ -1,5 +1,5 @@
-# База данных
-urls.db
+# Данные (БД, входные файлы, артефакты)
+data/
 
 # Python
 __pycache__/
@@ -10,29 +10,14 @@ __pycache__/
 venv/
 env/
 
-# Логи и данные
-log.txt
-raw_links.txt
-input.csv
-output.csv
-
-# Результаты работы скриптов
-results*.xlsx
-results*.csv
-dataset*.jsonl
-benchmark/dryrun_log.csv
-google_searches.csv
-*_searches.csv
-
-# Экспорты и архив (рабочие артефакты)
-exports/
-archive/
-
 # Временные файлы Office
 ~$*
 
-# Модели (ML-классификатор)
-models/
+# Логи benchmark (pipeline)
+pipeline/benchmark/dryrun_log.csv
+
+# Архив (рабочие артефакты, не для публичного репо)
+archive/
 
 # IDE / Claude (internal settings, not for public repo)
 .claude/

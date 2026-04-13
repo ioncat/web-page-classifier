@@ -17,7 +17,12 @@ import json
 import sys
 import io
 from collections import Counter
+from pathlib import Path
 from urllib.parse import urlparse
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_DEFAULT_OUTPUT = str(_REPO_ROOT / "data" / "dataset.jsonl")
 
 from rich.console import Console
 from rich.table import Table
@@ -71,7 +76,7 @@ def _build_text(title: str, description: str | None, domain: str,
 
 
 def export(
-    output: str = "dataset.jsonl",
+    output: str = _DEFAULT_OUTPUT,
     include_description: bool = True,
     min_per_class: int = 0,
     stats_only: bool = False,
@@ -164,9 +169,9 @@ def main() -> None:
     )
     parser.add_argument(
         "-o", "--output",
-        default="dataset.jsonl",
+        default=_DEFAULT_OUTPUT,
         metavar="FILE",
-        help="выходной файл (по умолчанию: dataset.jsonl)",
+        help="выходной файл (по умолчанию: data/dataset.jsonl)",
     )
     parser.add_argument(
         "--no-description",

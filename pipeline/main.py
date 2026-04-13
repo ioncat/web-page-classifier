@@ -1,5 +1,7 @@
 import argparse
 import sys, io
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # Windows: force UTF-8 on stdout/stderr to avoid cp1252 encoding errors with Cyrillic
 if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
@@ -9,6 +11,7 @@ if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
 from rich.console import Console
 from rich.rule import Rule
 
+from config.settings import DEFAULT_INPUT_FILE
 import compare
 import step1
 import step2
@@ -74,8 +77,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input",
         metavar="FILE",
-        default="raw_links.txt",
-        help="входной файл для step1 (по умолчанию: raw_links.txt)",
+        default=DEFAULT_INPUT_FILE,
+        help="входной файл для step1 (по умолчанию: data/raw_links.txt)",
     )
 
     # ── Step 2 / парсинг ─────────────────────────────────────────────────────

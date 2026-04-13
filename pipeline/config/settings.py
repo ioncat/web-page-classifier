@@ -3,11 +3,15 @@
 # Редактируй этот файл для изменения поведения пайплайна.
 # =============================================================================
 
+from pathlib import Path
+_PIPELINE_ROOT = Path(__file__).resolve().parent.parent  # config/ → pipeline/
+_REPO_ROOT = _PIPELINE_ROOT.parent                       # pipeline/ → repo root
+
 # ── База данных ───────────────────────────────────────────────────────────────
-DB_PATH = "urls.db"
+DB_PATH = str(_REPO_ROOT / "data" / "urls.db")
 
 # ── Step 1 — импорт ───────────────────────────────────────────────────────────
-DEFAULT_INPUT_FILE = "raw_links.txt"
+DEFAULT_INPUT_FILE = str(_REPO_ROOT / "data" / "raw_links.txt")
 
 # ── Step 2 — парсинг заголовков ───────────────────────────────────────────────
 REQUEST_TIMEOUT = (5, 10)   # (connect, read) в секундах
@@ -79,4 +83,4 @@ COMPARE_MAX_TITLE_LEN = 45
 COMPARE_MAX_TAG_LEN   = 32
 
 # ── Dry-run лог ───────────────────────────────────────────────────────────────
-DRY_RUN_LOG = "benchmark/dryrun_log.csv"
+DRY_RUN_LOG = str(_PIPELINE_ROOT / "benchmark" / "dryrun_log.csv")

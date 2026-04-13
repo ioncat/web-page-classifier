@@ -29,7 +29,7 @@ def _pipeline_python() -> str:
     env = os.getenv("PIPELINE_PYTHON")
     if env:
         return str(pathlib.Path(env).resolve())
-    for candidate in ("venv/Scripts/python.exe", "venv/bin/python"):
+    for candidate in ("pipeline/venv/Scripts/python.exe", "pipeline/venv/bin/python"):
         p = _PROJECT_ROOT / candidate
         if p.exists():
             return str(p)
@@ -56,7 +56,7 @@ def _run_refetch_for_url(url: str, timeout: int = 60) -> dict:
             capture_output=True,
             text=True,
             timeout=timeout,
-            cwd=str(_PROJECT_ROOT),
+            cwd=str(_PROJECT_ROOT / "pipeline"),
             env=env,
         )
         return {

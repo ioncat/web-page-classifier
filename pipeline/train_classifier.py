@@ -23,6 +23,11 @@ import io
 import os
 import time
 from collections import Counter
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_DEFAULT_DATASET = str(_REPO_ROOT / "data" / "dataset.jsonl")
+_DEFAULT_OUTPUT  = str(_REPO_ROOT / "data" / "models" / "url_classifier")
 
 import numpy as np
 import torch
@@ -159,8 +164,8 @@ def save_confusion_matrix(y_true, y_pred, label_names, output_path: str):
 # ── Основная функция ────────────────────────────────────────────────────────
 
 def train(
-    dataset_path: str = "dataset.jsonl",
-    output_dir: str = "models/url_classifier",
+    dataset_path: str = _DEFAULT_DATASET,
+    output_dir: str = _DEFAULT_OUTPUT,
     base_model: str = "xlm-roberta-base",
     epochs: int = 10,
     batch_size: int = 32,
@@ -376,12 +381,12 @@ def main():
         description="Fine-tune классификатор URL на основе xlm-roberta-base",
     )
     parser.add_argument(
-        "--dataset", default="dataset.jsonl", metavar="FILE",
-        help="путь к JSONL-датасету (по умолчанию: dataset.jsonl)",
+        "--dataset", default=_DEFAULT_DATASET, metavar="FILE",
+        help="путь к JSONL-датасету (по умолчанию: data/dataset.jsonl)",
     )
     parser.add_argument(
-        "--output", default="models/url_classifier", metavar="DIR",
-        help="папка для сохранения модели (по умолчанию: models/url_classifier)",
+        "--output", default=_DEFAULT_OUTPUT, metavar="DIR",
+        help="папка для сохранения модели (по умолчанию: data/models/url_classifier)",
     )
     parser.add_argument(
         "--base-model", default="xlm-roberta-base", metavar="MODEL",

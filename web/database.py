@@ -8,11 +8,11 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = os.getenv("DB_PATH", str(_PROJECT_ROOT / "urls.db"))
+DB_PATH = os.getenv("DB_PATH", str(_PROJECT_ROOT / "data" / "urls.db"))
 
 # Таксономия — загружаем из config/ пайплайна
 import importlib.util
-_tax_path = _PROJECT_ROOT / "config" / "taxonomy.py"
+_tax_path = _PROJECT_ROOT / "pipeline" / "config" / "taxonomy.py"
 _tax_spec = importlib.util.spec_from_file_location("taxonomy", str(_tax_path))
 _tax_mod = importlib.util.module_from_spec(_tax_spec)
 _tax_spec.loader.exec_module(_tax_mod)
