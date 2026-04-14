@@ -7,6 +7,8 @@ webDir = root & "\web"
 tmpBat = fso.GetSpecialFolder(2) & "\wpc_web_launch.bat"
 Set f = fso.OpenTextFile(tmpBat, 2, True)
 f.WriteLine "@echo off"
+f.WriteLine ":: Убиваем процесс на порту 8000 если висит"
+f.WriteLine "for /f ""tokens=5"" %%a in ('netstat -aon ^| findstr "":8000 "" ^| findstr ""LISTENING"" 2^>nul') do taskkill /f /pid %%a >nul 2>&1"
 f.WriteLine "cd /d """ & webDir & """"
 f.WriteLine "call venv\Scripts\activate"
 f.WriteLine "python -m uvicorn app:app --port 8000 --reload"
