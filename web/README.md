@@ -34,8 +34,8 @@ pip install -r requirements.txt
 |------------|-------------|---------|
 | `WEB_USER` | — | Login for Basic Auth |
 | `WEB_PASSWORD` | — | Password for Basic Auth |
-| `DB_PATH` | `../urls.db` | Path to SQLite DB (relative to `web/`) |
-| `PIPELINE_PYTHON` | `../venv/Scripts/python.exe` (auto) | Path to pipeline Python interpreter for refetch |
+| `DB_PATH` | `../data/urls.db` | Path to SQLite DB (relative to `web/`) |
+| `PIPELINE_PYTHON` | `../pipeline/venv/Scripts/python.exe` (auto) | Path to pipeline Python interpreter for refetch |
 
 Locally can set in `.env` or directly in terminal:
 
@@ -116,12 +116,12 @@ web/
 ## Customization
 
 **Colors and theme:** `static/style.css`
-**Categories sidebar:** auto-generated from DB + `config/taxonomy.py`
+**Categories sidebar:** auto-generated from DB + `pipeline/config/taxonomy.py`
 **Auth:** set `WEB_USER` and `WEB_PASSWORD` env vars
 
 ## Deployment Notes
 
-- **Locally:** SQLite in project folder (`../urls.db` relative to `web/`)
+- **Locally:** SQLite in project folder (`../data/urls.db` relative to `web/`)
 - **Cloud:** switch `database.py` to PostgreSQL connection, keep API same
 - **HTTPS:** deploy behind Nginx/Apache with SSL, or use Gunicorn + systemd
 - **Authentication:** Basic Auth fine for personal tool; for team use add JWT/OAuth

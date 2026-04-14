@@ -22,7 +22,7 @@ The project goal is to create a local pipeline that automatically extracts page 
 **Data enrichment pipeline** (Extract → Transform → Load) with idempotency and modularity:
 
 1. **Extract** — parsing titles and meta-descriptions from pages (plain HTTP + `<title>`, `og:description`, `meta[name=description]`, bypass JS anti-bot challenges)
-2. **Transform** — LLM annotation via Ollama (no API keys, GPU-powered). Fixed taxonomy: 31 categories in `config/taxonomy.py`, LLM selects strictly from it
+2. **Transform** — LLM annotation via Ollama (no API keys, GPU-powered). Fixed taxonomy: 31 categories in `pipeline/config/taxonomy.py`, LLM selects strictly from it
 3. **Load** — writing to SQLite with states (pending/done/error)
 4. **ML Training** *(planned)* — training `xlm-roberta-base` on labeled dataset, inference 4000 URLs/sec without GPU
 
@@ -30,7 +30,7 @@ The project goal is to create a local pipeline that automatically extracts page 
 
 ```mermaid
 flowchart LR
-    A([raw_links.txt]) --> B
+    A([data/raw_links.txt]) --> B
 
     subgraph pipeline ["Pipeline"]
         B["Step 1: Import"]
@@ -39,7 +39,7 @@ flowchart LR
         D --> E["Step 4: ML classifier 🔜"]
     end
 
-    pipeline --> F[(urls.db)]
+    pipeline --> F[(data/urls.db)]
 ```
 
 ---
@@ -48,10 +48,10 @@ flowchart LR
 
 | Step | File | Phase | What happens |
 |-----|------|------|----------------|
-| **Step 1** Import | `step1.py` | Load | Regex extracts URLs from text, deduplicates, adds to DB with `pending` status |
-| **Step 2** Parsing | `step2.py` | Extract + Transform | HTTP request → HTML parsing (`<title>`, `og:description`), bypass JS anti-bot (cookie `challenge_passed`). Status → `done` or `error` |
-| **Step 3** Classification | `step3.py` | Transform | `title + description + domain` → Ollama LLM → category. Writes to `urls.category`, `urls.tagged_by` |
-| **Step 4** ML *(coming soon)* | `step4.py` | Transform (Infer) | Fine-tuned `xlm-roberta-base`, ~500 URLs/sec on CPU, fallback to LLM on low confidence |
+| **Step 1** Import | `pipeline/step1.py` | Load | Regex extracts URLs from text, deduplicates, adds to DB with `pending` status |
+| **Step 2** Parsing | `pipeline/step2.py` | Extract + Transform | HTTP request → HTML parsing (`<title>`, `og:description`), bypass JS anti-bot (cookie `challenge_passed`). Status → `done` or `error` |
+| **Step 3** Classification | `pipeline/step3.py` | Transform | `title + description + domain` → Ollama LLM → category. Writes to `urls.category`, `urls.tagged_by` |
+| **Step 4** ML *(coming soon)* | `pipeline/step4.py` | Transform (Infer) | Fine-tuned `xlm-roberta-base`, ~500 URLs/sec on CPU, fallback to LLM on low confidence |
 
 **URL state machine:**
 
@@ -111,7 +111,7 @@ Each model was run through `--compare-models`, results saved to `model_results`.
 | cas/aya-expanse-8b | 43.6% | 0.14 sec/URL |
 | mistral | 29.6% ❌ | 0.23 sec/URL |
 
-`mistral` is disqualified: uses underscores (`machine_learning`) and mixes languages. Details: [`docs/models-compare.md`](docs/models-compare.md)
+`mistral` is disqualified: uses underscores (`machine_learning`) and mixes languages. Details: [`docs/discovery/models-compare.md`](docs/discovery/models-compare.md)
 
 ---
 
@@ -119,8 +119,8 @@ Each model was run through `--compare-models`, results saved to `model_results`.
 
 ```mermaid
 flowchart TD
-    A["LLM labeling (7000 URLs)"] --> B["Phase 1: Fix taxonomy (config/taxonomy.py)"]
-    B --> C["Phase 2: Re-label --strict (export_dataset.py)"]
+    A["LLM labeling (7000 URLs)"] --> B["Phase 1: Fix taxonomy (pipeline/config/taxonomy.py)"]
+    B --> C["Phase 2: Re-label --strict (pipeline/export_dataset.py)"]
     C --> D["Phase 3: Training (xlm-roberta-base)"]
     D --> E["Phase 4: step4.py + confidence threshold"]
     E --> F["Phase 5: Active learning (monthly retraining)"]
@@ -129,9 +129,9 @@ flowchart TD
 | Phase | Task | Status |
 |------|--------|--------|
 | 0 | Distribution analysis | ✅ done |
-| 1 | Fix taxonomy (`config/taxonomy.py`) | ✅ done |
+| 1 | Fix taxonomy (`pipeline/config/taxonomy.py`) | ✅ done |
 | 2.1 | `--strict` mode in step3 + re-label | ✅ done |
-| 2.2 | `export_dataset.py` | ⏳ |
+| 2.2 | `pipeline/export_dataset.py` | ⏳ |
 | 2.3 | Manual validation (~50 examples/class) | ⏳ |
 | 3 | `train_classifier.py`, `xlm-roberta-base` | ⏳ |
 | 4 | `step4.py` + `--only-ml-classify` | ⏳ |
@@ -141,7 +141,7 @@ flowchart TD
 
 **Dataset:** ~7,000 labeled URLs, ~1,000 manually verified before training.
 
-**Taxonomy (`config/taxonomy.py`)** — 5 sections (L0), 31 categories (L1):
+**Taxonomy (`pipeline/config/taxonomy.py`)** — 5 sections (L0), 31 categories (L1):
 ```python
 TAXONOMY_SECTIONS = [
     ("IT and development",      [11 categories]),
@@ -155,14 +155,14 @@ TAXONOMY_SECTIONS = [
 
 **Goal:** `macro-F1 > 0.80`, inference without GPU and Ollama.
 
-Detailed architecture: [`docs/ml-plan.md`](docs/ml-plan.md)
+Detailed architecture: [`docs/discovery/ml-plan.md`](docs/discovery/ml-plan.md)
 
 ---
 
 ## Domain Rules
 
 For known domains, LLM can be bypassed or limited to a taxonomy section.
-Rules are set in `config/domain_rules.py`:
+Rules are set in `pipeline/config/domain_rules.py`:
 
 ```python
 DOMAIN_RULES = {
@@ -221,22 +221,22 @@ This gives ML classifier more context and improves accuracy on pages with short 
 ## Quick Start
 
 ```bash
-pip install -r requirements.txt
+pip install -r pipeline/requirements.txt
 
 # Run Ollama
 ollama serve
 ollama pull mistral-small3.2:24b
 
 # Full run
-python main.py
+python pipeline/main.py
 
 # Or step by step
-python main.py --only-import
-python main.py --only-parse --workers 4
-python main.py --only-classify --model mistral-small3.2:24b --workers 4
+python pipeline/main.py --only-import
+python pipeline/main.py --only-parse --workers 4
+python pipeline/main.py --only-classify --model mistral-small3.2:24b --workers 4
 
 # Test single URL without DB write
-python main.py --url https://habr.com/ru/articles/805105/ --dry-run
+python pipeline/main.py --url https://habr.com/ru/articles/805105/ --dry-run
 ```
 
 ### View Russian and English Documentation Simultaneously
@@ -262,45 +262,63 @@ explorer "../web-page-classifier-ru"
 ## Project Structure
 
 ```
-url-parser/
-├── main.py             # entry point, CLI (argparse)
-├── step1.py            # import URLs from file → DB
-├── step2.py            # fetch <title> + og:description for each URL
-├── step3.py            # LLM classification via Ollama
-├── compare.py          # side-by-side model comparison
-├── db.py               # all SQLite operations
-├── config/
-│   ├── settings.py     # delays, timeouts, Ollama host, token limits
-│   ├── prompts.py      # classification prompt templates
-│   ├── taxonomy.py     # 31 categories — single source of truth
-│   └── domain_rules.py # rules by domain (skip LLM / narrow section)
-├── benchmark/
-│   ├── benchmark.py    # find optimal batch/workers config
-│   ├── benchmark_log.csv
-│   └── dryrun_log.csv
-├── docs/
-│   ├── ml-plan.md      # ML classifier architecture & plan
-│   ├── models-compare.md
-│   └── backlog.md
-├── requirements.txt
-├── raw_links.txt       # input file
-└── urls.db             # SQLite database (auto-created)
+web-page-classifier/
+├── pipeline/
+│   ├── main.py             # entry point, CLI (argparse)
+│   ├── step1.py            # import URLs from file → DB
+│   ├── step2.py            # fetch <title> + og:description for each URL
+│   ├── step3.py            # LLM classification via Ollama
+│   ├── compare.py          # side-by-side model comparison
+│   ├── db.py               # all SQLite operations
+│   ├── export_dataset.py   # export labeled data to JSONL
+│   ├── train_classifier.py # fine-tune xlm-roberta-base
+│   ├── config/
+│   │   ├── settings.py     # delays, timeouts, Ollama host, token limits
+│   │   ├── prompts.py      # classification prompt templates
+│   │   ├── taxonomy.py     # 31 categories — single source of truth
+│   │   └── domain_rules.py # rules by domain (skip LLM / narrow section)
+│   ├── benchmark/
+│   │   ├── benchmark.py    # find optimal batch/workers config
+│   │   ├── benchmark_log.csv
+│   │   └── dryrun_log.csv
+│   └── requirements.txt
+├── web/                    # Web UI (separate venv)
+│   ├── app.py
+│   ├── database.py
+│   ├── routers/
+│   ├── templates/
+│   ├── static/
+│   └── requirements.txt
+├── data/                   # gitignored
+│   ├── urls.db             # SQLite database (auto-created)
+│   ├── raw_links.txt       # input file
+│   ├── dataset.jsonl       # exported labeled data
+│   ├── exports/            # CSV/XLSX exports
+│   └── models/             # trained ML models
+└── docs/
+    ├── discovery/
+    │   ├── ml-plan.md
+    │   ├── models-compare.md
+    │   └── backlog.md
+    └── web/
+        └── discovery/
+            └── backlog.md
 ```
 
 ---
 
 ## Configuration
 
-All settings are in `config/` — edit these files, not the code:
+All settings are in `pipeline/config/` — edit these files, not the code:
 
 | File | What's configured |
 |---|---|
-| `config/settings.py` | DB path, crawler delays, Ollama timeouts, tokens, tag filters |
-| `config/prompts.py` | classification prompt templates (single and batch) |
-| `config/taxonomy.py` | 31 categories — model selects strictly from this list |
-| `config/domain_rules.py` | rules by domain: skip LLM or narrow prompt to section |
+| `pipeline/config/settings.py` | DB path, crawler delays, Ollama timeouts, tokens, tag filters |
+| `pipeline/config/prompts.py` | classification prompt templates (single and batch) |
+| `pipeline/config/taxonomy.py` | 31 categories — model selects strictly from this list |
+| `pipeline/config/domain_rules.py` | rules by domain: skip LLM or narrow prompt to section |
 
-**Most frequently changed parameters** (`config/settings.py`):
+**Most frequently changed parameters** (`pipeline/config/settings.py`):
 
 ```python
 DELAY_MIN / DELAY_MAX          # pause between HTTP requests (step2)
@@ -311,7 +329,7 @@ NUM_PREDICT_PER_URL            # same for batch (default 30 × number of URLs)
 MAX_CONSECUTIVE_CONN_ERRORS    # consecutive Ollama errors → stop (default 3)
 ```
 
-**Prompts** (`config/prompts.py`) — placeholders:
+**Prompts** (`pipeline/config/prompts.py`) — placeholders:
 - `SINGLE` → `{title}`, `{hints_line}`
 - `BATCH_HEADER` → `{hints_line}`
 - `BATCH_ITEM` → `{i}`, `{title}`
@@ -385,7 +403,7 @@ MAX_CONSECUTIVE_CONN_ERRORS    # consecutive Ollama errors → stop (default 3)
 | Flag | What it does |
 |---|---|
 | `--stats` | show DB statistics (total / pending / done / error / classified) and exit |
-| `--dry-run` | run step3 without DB write — output categories to console; logs to `benchmark/dryrun_log.csv`; with `--url` — test one URL without DB changes |
+| `--dry-run` | run step3 without DB write — output categories to console; logs to `pipeline/benchmark/dryrun_log.csv`; with `--url` — test one URL without DB changes |
 | `--no-progress` | disable progress bar, plain output (good for logs) |
 | `-v, --verbose` | show title / category / error for each URL |
 
@@ -397,97 +415,97 @@ MAX_CONSECUTIVE_CONN_ERRORS    # consecutive Ollama errors → stop (default 3)
 
 ```bash
 # Full run
-python main.py
+python pipeline/main.py
 
 # Fill missing description for already processed URLs (doesn't re-parse title)
 # Summary shows 3 lines: "Saved" / "No tag" / "HTTP error"
 # Real coverage depends on sites: ~49% URLs have <meta description>
-python main.py --refetch-description --workers 4
+python pipeline/main.py --refetch-description --workers 4
 
 # Same, only for one domain
-python main.py --refetch-description --domain habr.com --workers 4
+python pipeline/main.py --refetch-description --domain habr.com --workers 4
 
 # Different input file, first 100 URLs
-python main.py --input links.txt --limit 100
+python pipeline/main.py --input links.txt --limit 100
 
 # Add and process one URL immediately (saved to DB)
-python main.py --url https://habr.com/ru/articles/805105/
+python pipeline/main.py --url https://habr.com/ru/articles/805105/
 
 # Test one URL without DB write (parse + classify)
-python main.py --url https://habr.com/ru/articles/805105/ --dry-run
-python main.py --url https://habr.com/ru/articles/805105/ --dry-run --model mistral-small3.2:24b
+python pipeline/main.py --url https://habr.com/ru/articles/805105/ --dry-run
+python pipeline/main.py --url https://habr.com/ru/articles/805105/ --dry-run --model mistral-small3.2:24b
 
 # Only habr.com
-python main.py --domain habr.com
+python pipeline/main.py --domain habr.com
 
 # Retry all errors
-python main.py --retry-failed
+python pipeline/main.py --retry-failed
 
 # Retry only transient errors (5xx/429/network), skip 404/403/410
-python main.py --retry-transient --workers 5
+python pipeline/main.py --retry-transient --workers 5
 
 # Reset everything and start over
-python main.py --force
+python pipeline/main.py --force
 
 # Parallel parsing — 4 threads, different domains concurrently
-python main.py --only-parse --workers 4
+python pipeline/main.py --only-parse --workers 4
 ```
 
 ### Classification
 
 ```bash
 # See available models
-python main.py --list-models
+python pipeline/main.py --list-models
 
 # Classify with specific model
-python main.py --only-classify --model mistral-small3.2:24b
+python pipeline/main.py --only-classify --model mistral-small3.2:24b
 
 # Thinking models (qwen3, deepseek-r1, minimax-m2) — must use --no-think
-python main.py --only-classify --model qwen3:8b --no-think
+python pipeline/main.py --only-classify --model qwen3:8b --no-think
 
 # Batching + parallelism (faster on large volumes)
-python main.py --only-classify --batch 10 --workers 4
+python pipeline/main.py --only-classify --batch 10 --workers 4
 
 # Without meta-description — faster, fewer tokens (for performance testing)
-python main.py --only-classify --no-description
+python pipeline/main.py --only-classify --no-description
 
 # Re-tag everything with different model
-python main.py --re-tag --model mistral-small3.2:24b
+python pipeline/main.py --re-tag --model mistral-small3.2:24b
 ```
 
 ### Model Comparison
 
 ```bash
 # Run three models
-python main.py --compare-models llama3 mistral gemma2
+python pipeline/main.py --compare-models llama3 mistral gemma2
 
 # Only first 20 URLs of specific domain
-python main.py --compare-models llama3 mistral --domain habr.com --limit 20
+python pipeline/main.py --compare-models llama3 mistral --domain habr.com --limit 20
 
 # View results
-python main.py --compare
+python pipeline/main.py --compare
 
 # Export to XLSX (yellow rows = disagreements, blue header)
-python main.py --compare --export-xlsx compare_results.xlsx
+python pipeline/main.py --compare --export-xlsx compare_results.xlsx
 
 # Apply best model
-python main.py --accept-model mistral-small3.2:24b
+python pipeline/main.py --accept-model mistral-small3.2:24b
 ```
 
 ### Diagnostics and Debug
 
 ```bash
 # DB statistics
-python main.py --stats
+python pipeline/main.py --stats
 
 # Test prompt on 20 URLs without DB write
-python main.py --only-classify --dry-run --limit 20
+python pipeline/main.py --only-classify --dry-run --limit 20
 
 # Dry-run for specific domain
-python main.py --only-classify --dry-run --domain habr.com --limit 50
+python pipeline/main.py --only-classify --dry-run --domain habr.com --limit 50
 
 # Plain output with details per URL
-python main.py --no-progress -v
+python pipeline/main.py --no-progress -v
 ```
 
 ---
@@ -515,7 +533,7 @@ python -m uvicorn app:app --port 8000 --reload
 # → http://localhost:8000
 ```
 
-> Detailed docs: **[`web/README.md`](web/README.md)** · Development plan: **[`web/docs/backlog.md`](web/docs/backlog.md)**
+> Detailed docs: **[`web/README.md`](web/README.md)** · Development plan: **[`docs/web/discovery/backlog.md`](docs/web/discovery/backlog.md)**
 
 ---
 
@@ -532,7 +550,7 @@ python -m uvicorn app:app --port 8000 --reload
 
 ```bash
 # Find optimal batch/workers for your hardware
-python benchmark/benchmark.py --model mistral-small3.2:24b --limit 30
+python pipeline/benchmark/benchmark.py --model mistral-small3.2:24b --limit 30
 ```
 
 Run Ollama with GPU parallelism:
