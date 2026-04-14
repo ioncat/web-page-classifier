@@ -226,7 +226,23 @@ pip install -r pipeline/requirements.txt
 # Run Ollama
 ollama serve
 ollama pull mistral-small3.2:24b
+```
 
+**Windows — use launchers (no manual venv activation needed):**
+
+```bat
+pipeline.bat                                             :: full run
+pipeline.bat --only-import
+pipeline.bat --only-parse --workers 4
+pipeline.bat --only-classify --model mistral-small3.2:24b --workers 4
+pipeline.bat --url https://habr.com/ru/articles/805105/ --dry-run
+
+web.bat                                                  :: open Web UI in new window
+```
+
+**Cross-platform:**
+
+```bash
 # Full run
 python pipeline/main.py
 
@@ -521,14 +537,17 @@ Features:
 - Processing (refetch title/description) via pipeline — single and bulk
 - Bulk deletion
 
+```bat
+:: Windows — one command from repo root:
+web.bat
+```
+
 ```bash
-# Setup (separate venv)
+# Or manually (separate venv):
 cd web/
 python -m venv venv
 venv\Scripts\activate       # Windows
 pip install -r requirements.txt
-
-# Run from web/ folder
 python -m uvicorn app:app --port 8000 --reload
 # → http://localhost:8000
 ```
