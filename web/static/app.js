@@ -57,14 +57,31 @@ function getCardCategories(card) {
 }
 
 function updateCardBadges(card, category) {
-  const footer = card.querySelector('.card-cat-badge')?.parentElement;
+  // Find footer: either from existing badge or from last div (for uncategorized URLs)
+  let footer = card.querySelector('.card-cat-badge')?.parentElement;
+  if (!footer) {
+    footer = card.querySelector('> div:last-of-type');  // Footer div for uncategorized URLs
+  }
   if (!footer) return;
+
+  // Remove all existing badges
   card.querySelectorAll('.card-cat-badge').forEach(b => b.remove());
+
+  // Add new badge
   const badge = document.createElement('a');
   badge.href = `/category/${encodeURIComponent(category)}`;
   badge.className = 'card-cat-badge text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100';
   badge.textContent = category;
   footer.appendChild(badge);
+
+  // Add manual override indicator if not present
+  if (!footer.querySelector('.manual-override-icon')) {
+    const icon = document.createElement('span');
+    icon.className = 'manual-override-icon text-xs text-amber-500';
+    icon.title = 'Категория назначена вручную';
+    icon.textContent = '✎';
+    footer.appendChild(icon);
+  }
 }
 
 // Обновить счётчик категории в sidebar: delta = +1 или -1
