@@ -18,12 +18,22 @@
     </div>
   </div>
   <div class="mt-3">
+    <form method="get" action="/search" class="flex gap-2 mb-3">
+      <input type="hidden" name="category" value="{{ category }}">
+      <input type="text" name="q"
+             placeholder="Поиск в «{{ category }}»…"
+             class="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <button type="submit"
+              class="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+        Найти
+      </button>
+    </form>
     {% include "_sort_bar.html" %}
   </div>
 </div>
 
 <!-- URL cards -->
-<div id="cards-list" class="flex flex-col gap-3">
+<div id="cards-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
   {% for item in items %}
     {% include "_url_card.html" %}
   {% endfor %}

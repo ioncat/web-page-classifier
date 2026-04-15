@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Настройки — Классификатор ссылок{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+  <h1 class="text-3xl font-bold">Настройки</h1>
+  <p class="mt-2 text-sm">Управление внешним видом приложения</p>
+</div>
+
+<!-- Skins Section -->
+<div class="mb-8">
+  <h2 class="text-xl font-semibold mb-4">Оформление (Skin)</h2>
+  <p class="text-sm mb-4">Выберите стиль интерфейса:</p>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    <!-- Minimalism Skin -->
+    <div class="skin-card border-2 cursor-pointer rounded-lg p-6 transition-all"
+         data-skin="minimalism"
+         onclick="setSkinAndReload('minimalism')">
+      <div class="flex items-start gap-4">
+        <div class="w-16 h-16 rounded-lg flex-shrink-0 minimalism-preview"></div>
+        <div>
+          <h3 class="font-semibold text-lg">Минимализм</h3>
+          <p class="text-sm">Светлый, чистый стиль с динамичным фоном. Свежий и современный.</p>
+          <span id="skin-badge-minimalism" class="inline-block mt-3 text-xs font-medium px-3 py-1 rounded-full">Активен</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cyberpunk Skin -->
+    <div class="skin-card border-2 cursor-pointer rounded-lg p-6 transition-all"
+         data-skin="cyberpunk"
+         onclick="setSkinAndReload('cyberpunk')">
+      <div class="flex items-start gap-4">
+        <div class="w-16 h-16 rounded-lg flex-shrink-0 cyberpunk-preview"></div>
+        <div>
+          <h3 class="font-semibold text-lg">Киберпанк</h3>
+          <p class="text-sm">Тёмный стиль с neon-бордерами. Высокий контраст, современно.</p>
+          <span id="skin-badge-cyberpunk" class="inline-block mt-3 text-xs font-medium px-3 py-1 rounded-full">Активен</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Soft UI (Coming Soon) -->
+    <div class="skin-card border-2 opacity-50 cursor-not-allowed rounded-lg p-6">
+      <div class="flex items-start gap-4">
+        <div class="w-16 h-16 rounded-lg flex-shrink-0 softui-preview"></div>
+        <div>
+          <h3 class="font-semibold text-lg">Soft UI</h3>
+          <p class="text-sm">Мягкие углы, деликатные тени. Современный и уютный.</p>
+          <span class="inline-block mt-3 text-xs font-medium px-3 py-1 rounded-full bg-gray-200 text-gray-600">Скоро</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Neumorphism (Coming Soon) -->
+    <div class="skin-card border-2 opacity-50 cursor-not-allowed rounded-lg p-6">
+      <div class="flex items-start gap-4">
+        <div class="w-16 h-16 rounded-lg flex-shrink-0 neumorphism-preview"></div>
+        <div>
+          <h3 class="font-semibold text-lg">Neumorphism</h3>
+          <p class="text-sm">Выступающие и вдавленные элементы. Тонкий 3D эффект.</p>
+          <span class="inline-block mt-3 text-xs font-medium px-3 py-1 rounded-full bg-gray-200 text-gray-600">Скоро</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Back Link -->
+<div class="mt-8 pt-8 border-t">
+  <a href="/" class="text-sm font-medium hover:underline">← Вернуться на главную</a>
+</div>
+
+<style>
+  /* Minimalism: Skin card styling */
+  html[data-skin="minimalism"] .skin-card[data-skin="minimalism"] {
+    border-color: #2563eb;
+    background-color: rgba(37, 99, 235, 0.05);
+  }
+
+  html[data-skin="minimalism"] .skin-card[data-skin="minimalism"]:hover {
+    background-color: rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 16px rgba(37, 99, 235, 0.2);
+  }
+
+  html[data-skin="minimalism"] #skin-badge-minimalism {
+    background-color: rgba(37, 99, 235, 0.15);
+    color: #2563eb;
+  }
+
+  /* Cyberpunk: Skin card styling */
+  html[data-skin="cyberpunk"] .skin-card[data-skin="cyberpunk"] {
+    border-color: #00ff88;
+    background-color: rgba(0, 255, 136, 0.05);
+  }
+
+  html[data-skin="cyberpunk"] .skin-card[data-skin="cyberpunk"]:hover {
+    background-color: rgba(0, 255, 136, 0.1);
+    box-shadow: 0 0 16px rgba(0, 255, 136, 0.3);
+  }
+
+  html[data-skin="cyberpunk"] #skin-badge-cyberpunk {
+    background-color: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+  }
+
+  /* Skin preview boxes */
+  .cyberpunk-preview {
+    background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0a0e27 100%);
+    border: 1px solid #00ff88;
+    box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+  }
+
+  .minimalism-preview {
+    background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 50%, #ffffff 100%);
+    border: 1px solid #d1d5db;
+  }
+
+  .softui-preview {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 50%, #ffffff 100%);
+    border: none;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  }
+
+  .neumorphism-preview {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 50%, #f5f7fa 100%);
+    border: none;
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1), inset 0 -1px 2px rgba(0, 0, 0, 0.05);
+  }
+</style>
+
+<script>
+  function setSkinAndReload(skinName) {
+    if (window.SkinSwitcher) {
+      window.SkinSwitcher.setSkin(skinName);
+      // Reload page to fully apply skin
+      location.reload();
+    }
+  }
+</script>
+{% endblock %}

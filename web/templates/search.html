@@ -45,7 +45,7 @@
   <div class="mb-4">
     {% include "_sort_bar.html" %}
   </div>
-  <div id="cards-list" class="flex flex-col gap-3">
+  <div id="cards-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
     {% for item in items %}
       {% include "_url_card.html" %}
     {% endfor %}
