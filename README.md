@@ -2,6 +2,8 @@
 
 **Web scraping + LLM annotation pipeline** — a pipeline for collecting and classifying web pages. A local LLM (Ollama) determines the category based on title, description, and domain, generating a labeled dataset for training an ML classifier.
 
+> **🚧 Active development.** The project is under active development — features, CLI flags, and taxonomy may change between sessions.
+
 ---
 
 ## Problem
