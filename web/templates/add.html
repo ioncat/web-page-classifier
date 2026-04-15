@@ -66,6 +66,16 @@
                 title="Модель Ollama для классификации">
           <option value="">Загрузка моделей...</option>
         </select>
+        <label class="flex items-center gap-1 text-xs text-gray-500" title="URL в одном LLM-запросе">
+          batch
+          <input id="batch-input" type="number" min="1" max="100" value="1"
+                 class="w-14 px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </label>
+        <label class="flex items-center gap-1 text-xs text-gray-500" title="Параллельные потоки">
+          workers
+          <input id="workers-input" type="number" min="1" max="16" value="1"
+                 class="w-14 px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </label>
         <button id="btn-run"
                 class="px-5 py-2 text-sm font-medium text-white bg-green-600 rounded-lg
                        hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -204,11 +214,15 @@
       'h-2.5 rounded-full transition-all duration-500 bg-blue-600';
 
     const model = document.getElementById('model-select').value || null;
+    const batch = parseInt(document.getElementById('batch-input').value, 10) || 1;
+    const workers = parseInt(document.getElementById('workers-input').value, 10) || 1;
+    localStorage.setItem('pipeline_batch', batch);
+    localStorage.setItem('pipeline_workers', workers);
     try {
       const r = await fetch('/api/pipeline/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model }),
+        body: JSON.stringify({ model, batch, workers }),
       });
       if (!r.ok) {
         const d = await r.json();
@@ -277,6 +291,14 @@
 
   function escHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Восстановить batch/workers из localStorage
+  {
+    const b = localStorage.getItem('pipeline_batch');
+    const w = localStorage.getItem('pipeline_workers');
+    if (b) document.getElementById('batch-input').value = b;
+    if (w) document.getElementById('workers-input').value = w;
   }
 
   // Загрузить список моделей Ollama

@@ -256,13 +256,68 @@
 | 89 | **`POST /api/add/urls`** — принимает сырой текст, парсит URL, вставляет в БД, возвращает {added, duplicates, invalid} | `web/routers/api.py`, `web/database.py` |
 | 90 | **Запуск пайплайна из UI** — кнопка "Запустить пайплайн" запускает `--only-parse` + `--only-classify` как фоновый subprocess; статус хранится in-memory; прогресс-бар с polling раз в 2 сек | `web/routers/api.py` |
 | 91 | **`GET /api/pipeline/status`** — возвращает {status, step, progress, error}; `POST /api/pipeline/run` — запускает фоновый процесс | `web/routers/api.py` |
+| 92 | **Контролы `--batch` / `--workers` на `/add`** — два поля ввода рядом с селектором модели (дефолт `1/1`), сохранение в `localStorage`, передача в `--only-parse --workers N` и `--only-classify --batch N --workers N`. Санитизация 1..100 / 1..16 на бэкенде. | `web/templates/add.html`, `web/routers/api.py` |
 
 ### Запланировано
 
 | # | Фича | Файлы |
 |---|------|-------|
-| 92 | **Контролы `--batch` / `--workers` на `/add`** — два поля ввода рядом с селектором модели, дефолты: `batch=10`, `workers=4` (золотой путь из `models-compare.md`: ~1.2 сек/URL на `mistral-small3.2:24b`). Текущий запуск через UI идёт с `batch=1 workers=1` → ~2× медленнее. Значения сохраняются в `localStorage`, передаются в `--only-classify`. Для step2 — отдельный `workers` (там распределение по доменам). | `web/templates/add.html`, `web/routers/api.py` |
 | 93 | **Dark-тема для Minimalism** — третий скин рядом с Minimalism / Cyberpunk: мягкие тёмные фоны, читаемый текст, сохранение «cards on field» концепции (карточки чуть светлее фона, контрастные границы). Без неона и анимаций — «ночной» вариант обычной темы для чтения с выключенным светом. Переключатель в `/settings`. Опционально — авто-активация по `prefers-color-scheme: dark`. | `web/static/dark.css` (new), `web/templates/settings.html`, `web/static/skin-switcher.js` |
+| 94 | **Страница `/benchmark`** — недеструктивная обёртка над `pipeline/benchmark/benchmark.py`. См. детальный план ниже. | `web/templates/benchmark.html`, `web/routers/api.py`, `web/routers/pages.py`, `web/database.py` |
+
+### Детальный план #94 — `/benchmark`
+
+**Цель:** эмпирически подобрать `batch`/`workers` через Web UI, без потери данных в БД. Замыкает цикл с #92 — ручки получают шкалу.
+
+**Backend** (`web/database.py`, `web/routers/api.py`):
+1. `benchmark_snapshot(ids: list[int])` — `CREATE TABLE IF NOT EXISTS _bench_backup(id, category, tagged_by)`, `INSERT` текущих значений для выбранных id. Транзакционно.
+2. `benchmark_restore()` — `UPDATE urls SET category, tagged_by FROM _bench_backup`, `DROP TABLE _bench_backup`. Транзакционно.
+3. `benchmark_has_snapshot()` — bool; вызывается при загрузке `/benchmark` для предупреждения о незавершённом прогоне.
+4. `POST /api/benchmark/run {model, limit, configs[]}` — создаёт snapshot → запускает `benchmark.py` subprocess с флагами (`--model`, `--limit`, `--no-warmup` опционально) → парсит stdout для прогресса и финальной таблицы → restore. При любой ошибке всё равно делает restore в `finally`.
+5. `POST /api/benchmark/restore` — ручной откат если snapshot завис.
+6. `GET /api/benchmark/status` — `{status, current_config, current_progress, results[], winner}`.
+
+**Запуск subprocess**:
+- Использовать тот же потоковый паттерн, что в `_do_run_pipeline` (Popen + encoding=utf-8 + PYTHONUNBUFFERED).
+- Парсить прогресс из `[N/M]` строк (как уже есть).
+- Финальная таблица benchmark.py выводится через Rich — проще читать `benchmark_log.csv` (где строки с датой/моделью/url_per_sec/config) после завершения.
+- Альтернатива: benchmark.py можно расширить флагом `--json` для машинного вывода. Решить при реализации.
+
+**Frontend** (`web/templates/benchmark.html` + nav link):
+1. Форма:
+   - Модель (dropdown из `/api/models`, как на `/add`).
+   - Лимит: radio 20 / 30 / 60 (дефолт 30).
+   - Чекбоксы на 10 конфигов из `CONFIGS` (дефолт: все отмечены).
+   - Toggle «Без warmup» (пробрасывает `--no-warmup`).
+2. Если `benchmark_has_snapshot()`: баннер «Остался snapshot с прошлого прогона» + кнопка «Восстановить».
+3. Кнопка «Запустить»:
+   - Блокируется если ни одного чекбокса.
+   - Предупреждение modal: «N URL на время прогона потеряют category, после окончания восстановятся».
+4. Live-область:
+   - Таблица: `config | статус | URL/с | сек`, одна строка на выбранный конфиг; активная подсвечена, прогресс-бар снизу.
+   - Лог-хвост `last_line`, как на `/add`.
+5. По завершении:
+   - Победитель отмечен ✓, строка зелёная.
+   - Кнопка «Применить победителя» → `localStorage.setItem('pipeline_batch', X)`, `localStorage.setItem('pipeline_workers', Y)` + toast.
+   - Ссылка «Открыть `/add`» для применения.
+
+**Edge cases**:
+- `_bench_backup` уже существует на старте `/api/benchmark/run` → 409 «Остался snapshot, восстановите сначала».
+- Недостаточно URL с `title NOT NULL` для выбранного лимита → 400 с текстом.
+- Падение benchmark.py посреди прогона → restore в `finally`, статус `error`.
+- Отсутствие Ollama → `/api/models` вернёт ошибку, кнопка «Запустить» disabled.
+
+**Коммиты** (по шагам):
+1. `feat: snapshot/restore для бенчмарка в database.py` (snapshot + restore + has_snapshot + тесты вручную).
+2. `feat: runner бенчмарка + API роуты` (_bench_state, /run, /status, /restore).
+3. `feat: страница /benchmark (UI)` (template, nav link, JS).
+4. `feat: кнопка "Применить победителя"` (чтение results, запись в localStorage).
+
+**Критерии готовности**:
+- [ ] Прогон одного конфига на 20 URL: snapshot → бенч → restore; `SELECT category FROM urls WHERE id IN (...)` до/после совпадает.
+- [ ] Прогон всех 10 конфигов показывает таблицу с победителем.
+- [ ] Крэш сервера во время прогона: `_bench_backup` остаётся, UI предлагает восстановить.
+- [ ] «Применить победителя» меняет дефолты на `/add`.
 
 ## Итог
 

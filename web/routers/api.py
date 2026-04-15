@@ -44,7 +44,11 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _do_run_pipeline(model: str | None = None) -> None:
+def _do_run_pipeline(
+    model: str | None = None,
+    batch: int | None = None,
+    workers: int | None = None,
+) -> None:
     """Фоновый поток: step2 (parse) → step3 (classify).
     Потоково читает stdout, парсит "[N/M]" для прогресса.
     """
@@ -58,13 +62,21 @@ def _do_run_pipeline(model: str | None = None) -> None:
         "PYTHONUNBUFFERED": "1",
     }
 
+    parse_flags = ["--only-parse", "--no-progress"]
+    if workers and workers > 1:
+        parse_flags += ["--workers", str(workers)]
+
     classify_flags = ["--only-classify", "--no-progress"]
     if model:
         classify_flags += ["--model", model]
+    if batch and batch > 1:
+        classify_flags += ["--batch", str(batch)]
+    if workers and workers > 1:
+        classify_flags += ["--workers", str(workers)]
 
     steps = [
-        ("parse",    ["--only-parse", "--no-progress"], 0,  50),
-        ("classify", classify_flags,                    50, 100),
+        ("parse",    parse_flags,    0,  50),
+        ("classify", classify_flags, 50, 100),
     ]
 
     for step_name, flags, base, cap in steps:
@@ -357,12 +369,21 @@ def add_extract(body: AddUrlsBody):
 
 class PipelineRunBody(BaseModel):
     model: str | None = None
+    batch: int | None = None
+    workers: int | None = None
 
 
 @router.post("/pipeline/run")
 def pipeline_run(body: PipelineRunBody | None = None):
     """Запускает step2+step3 в фоновом потоке."""
-    model = (body.model if body else None) or None
+    model = body.model if body else None
+    batch = body.batch if body else None
+    workers = body.workers if body else None
+    # Санитизация
+    if batch is not None and not (1 <= batch <= 100):
+        raise HTTPException(status_code=400, detail="batch must be in 1..100")
+    if workers is not None and not (1 <= workers <= 16):
+        raise HTTPException(status_code=400, detail="workers must be in 1..16")
     with _pipeline_lock:
         if _pipeline_state["status"] == "running":
             raise HTTPException(status_code=409, detail="Pipeline already running")
@@ -371,7 +392,11 @@ def pipeline_run(body: PipelineRunBody | None = None):
             step_done=0, step_total=0, last_line="",
             error=None, started_at=_now(), finished_at=None,
         )
-    threading.Thread(target=_do_run_pipeline, args=(model,), daemon=True).start()
+    threading.Thread(
+        target=_do_run_pipeline,
+        kwargs={"model": model, "batch": batch, "workers": workers},
+        daemon=True,
+    ).start()
     return {"ok": True}
 
 
