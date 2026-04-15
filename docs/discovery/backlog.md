@@ -264,6 +264,7 @@
 |---|------|-------|
 | 93 | **Dark-тема для Minimalism** — третий скин рядом с Minimalism / Cyberpunk: мягкие тёмные фоны, читаемый текст, сохранение «cards on field» концепции (карточки чуть светлее фона, контрастные границы). Без неона и анимаций — «ночной» вариант обычной темы для чтения с выключенным светом. Переключатель в `/settings`. Опционально — авто-активация по `prefers-color-scheme: dark`. | `web/static/dark.css` (new), `web/templates/settings.html`, `web/static/skin-switcher.js` |
 | 94 | **Страница `/benchmark`** — недеструктивная обёртка над `pipeline/benchmark/benchmark.py`. См. детальный план ниже. | `web/templates/benchmark.html`, `web/routers/api.py`, `web/routers/pages.py`, `web/database.py` |
+| 95 | **Автобэкап БД** — перед risky ops (`/api/benchmark/run`, потенциально `/api/refetch`) копия `data/urls.db` → `data/backups/urls-YYYYMMDD-HHMMSS.db`. Ротация: последние 3 по mtime. Ручной download в `/settings` (`GET /api/db/backup` → stream file). Хелпер `backup_db()` в `web/database.py`. Реализуем **до** #94. | `web/database.py`, `web/routers/api.py`, `web/templates/settings.html`, `.gitignore` |
 
 ### Детальный план #94 — `/benchmark`
 

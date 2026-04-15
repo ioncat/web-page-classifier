@@ -163,6 +163,126 @@ def get_pending_count() -> int:
         ).fetchone()[0]
 
 
+# ── Backup БД ─────────────────────────────────────────────────────────────────
+
+_BACKUP_DIR = _PROJECT_ROOT / "data" / "backups"
+_BACKUP_KEEP = 3
+
+
+def backup_db(reason: str = "manual") -> Path:
+    """Копирует urls.db в data/backups/urls-YYYYMMDD-HHMMSS-REASON.db.
+    Ротирует, оставляя последние `_BACKUP_KEEP` файлов. Использует SQLite
+    backup API для консистентности при параллельной записи.
+    Возвращает путь к созданному файлу.
+    """
+    _BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    ts = __import__("datetime").datetime.now().strftime("%Y%m%d-%H%M%S")
+    safe_reason = re.sub(r"[^a-zA-Z0-9_-]", "", reason)[:20] or "backup"
+    target = _BACKUP_DIR / f"urls-{ts}-{safe_reason}.db"
+    src = sqlite3.connect(DB_PATH)
+    try:
+        dst = sqlite3.connect(str(target))
+        try:
+            src.backup(dst)
+        finally:
+            dst.close()
+    finally:
+        src.close()
+    # Ротация
+    backups = sorted(_BACKUP_DIR.glob("urls-*.db"), key=lambda p: p.stat().st_mtime)
+    for old in backups[:-_BACKUP_KEEP]:
+        try:
+            old.unlink()
+        except OSError:
+            pass
+    return target
+
+
+def list_backups() -> list[dict]:
+    """Возвращает список бэкапов (новые сверху) с метаданными."""
+    if not _BACKUP_DIR.exists():
+        return []
+    out = []
+    for p in sorted(_BACKUP_DIR.glob("urls-*.db"), key=lambda p: p.stat().st_mtime, reverse=True):
+        st = p.stat()
+        out.append({
+            "name": p.name,
+            "size": st.st_size,
+            "mtime": st.st_mtime,
+        })
+    return out
+
+
+# ── Benchmark snapshot/restore ────────────────────────────────────────────────
+
+def benchmark_eligible_count() -> int:
+    """Сколько done+classified URL с title пригодны для бенчмарка."""
+    with _get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM urls "
+            "WHERE status='done' AND category IS NOT NULL "
+            "AND title IS NOT NULL AND title != ''"
+        ).fetchone()[0]
+
+
+def benchmark_has_snapshot() -> bool:
+    with _get_conn() as conn:
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='_bench_backup'"
+        ).fetchone()
+        return row is not None
+
+
+def benchmark_snapshot(limit: int) -> list[int]:
+    """Берёт первые `limit` done+classified URL с title, сохраняет (id, category,
+    tagged_by) в _bench_backup. Возвращает список id. Идемпотентно для того же набора —
+    если _bench_backup уже есть, ValueError.
+    """
+    if benchmark_has_snapshot():
+        raise ValueError("_bench_backup уже существует — предыдущий прогон не восстановлен")
+    with _get_conn() as conn:
+        conn.execute("""
+            CREATE TABLE _bench_backup (
+                id         INTEGER PRIMARY KEY,
+                category   TEXT,
+                tagged_by  TEXT
+            )
+        """)
+        rows = conn.execute(
+            "SELECT id, category, tagged_by FROM urls "
+            "WHERE status='done' AND category IS NOT NULL "
+            "AND title IS NOT NULL AND title != '' "
+            "ORDER BY id LIMIT ?",
+            (limit,),
+        ).fetchall()
+        if not rows:
+            conn.execute("DROP TABLE _bench_backup")
+            raise ValueError("Нет URL, пригодных для бенчмарка")
+        conn.executemany(
+            "INSERT INTO _bench_backup (id, category, tagged_by) VALUES (?, ?, ?)",
+            rows,
+        )
+        return [r[0] for r in rows]
+
+
+def benchmark_restore() -> int:
+    """Восстанавливает category/tagged_by из _bench_backup. Возвращает число
+    восстановленных строк. Если snapshot нет — 0.
+    """
+    if not benchmark_has_snapshot():
+        return 0
+    with _get_conn() as conn:
+        # SQLite не поддерживает UPDATE ... FROM во всех версиях — используем подзапрос.
+        n = conn.execute(
+            "UPDATE urls SET "
+            "  category  = (SELECT category  FROM _bench_backup WHERE _bench_backup.id = urls.id), "
+            "  tagged_by = (SELECT tagged_by FROM _bench_backup WHERE _bench_backup.id = urls.id) "
+            "WHERE id IN (SELECT id FROM _bench_backup)"
+        ).rowcount
+        conn.execute("DROP TABLE _bench_backup")
+        return n
+
+
 _URL_RE = re.compile(r"https?://[^\s|<>\"'`]+")
 _URL_TRAILING_JUNK = re.compile(r"[.,;!?)]+$")
 

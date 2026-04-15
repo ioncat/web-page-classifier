@@ -8,6 +8,7 @@ from collections import deque
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 import sys
@@ -422,3 +423,38 @@ def pipeline_status():
     """Возвращает текущее состояние пайплайна."""
     with _pipeline_lock:
         return dict(_pipeline_state)
+
+
+# ── Backup БД ─────────────────────────────────────────────────────────────────
+
+@router.post("/db/backup")
+def db_backup_create(reason: str = Query("manual", max_length=20)):
+    """Создаёт бэкап БД и возвращает метаданные созданного файла."""
+    try:
+        path = db.backup_db(reason=reason)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Не удалось создать бэкап: {exc}")
+    st = path.stat()
+    return {"name": path.name, "size": st.st_size, "mtime": st.st_mtime}
+
+
+@router.get("/db/backups")
+def db_backup_list():
+    return {"backups": db.list_backups()}
+
+
+@router.get("/db/backup/download")
+def db_backup_download(name: str | None = None):
+    """Скачивает бэкап. Без `name` — создаёт свежий и отдаёт его."""
+    if name:
+        safe = re.sub(r"[^a-zA-Z0-9._-]", "", name)
+        path = pathlib.Path(db._BACKUP_DIR) / safe
+        if not path.exists() or path.parent != pathlib.Path(db._BACKUP_DIR):
+            raise HTTPException(status_code=404, detail="Бэкап не найден")
+    else:
+        path = db.backup_db(reason="download")
+    return FileResponse(
+        path=str(path),
+        filename=path.name,
+        media_type="application/octet-stream",
+    )

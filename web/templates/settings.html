@@ -70,10 +70,82 @@
   </div>
 </div>
 
+<!-- База данных -->
+<div class="mb-8 mt-12">
+  <h2 class="text-xl font-semibold mb-4">База данных</h2>
+  <p class="text-sm mb-4">Ручной бэкап SQLite-файла с URL'ами и категориями. Рекомендуется перед крупными прогонами.</p>
+
+  <div class="flex items-center gap-3 mb-4">
+    <a id="btn-backup-download"
+       href="/api/db/backup/download"
+       class="inline-block px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+      Скачать бэкап БД
+    </a>
+    <button id="btn-backup-create"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+      Создать снимок на диске
+    </button>
+  </div>
+
+  <div class="mt-3">
+    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Автобэкапы (последние 3)</p>
+    <ul id="backups-list" class="text-xs font-mono text-gray-500 space-y-1">
+      <li class="italic">Загрузка...</li>
+    </ul>
+  </div>
+</div>
+
 <!-- Back Link -->
 <div class="mt-8 pt-8 border-t">
   <a href="/" class="text-sm font-medium hover:underline">← Вернуться на главную</a>
 </div>
+
+<script>
+  async function loadBackups() {
+    try {
+      const r = await fetch('/api/db/backups');
+      const d = await r.json();
+      const ul = document.getElementById('backups-list');
+      if (!d.backups.length) {
+        ul.innerHTML = '<li class="italic">Нет автобэкапов</li>';
+        return;
+      }
+      ul.innerHTML = d.backups.map(b => {
+        const kb = (b.size / 1024 / 1024).toFixed(1);
+        const ts = new Date(b.mtime * 1000).toLocaleString();
+        return `<li>
+          <a class="text-blue-600 hover:underline"
+             href="/api/db/backup/download?name=${encodeURIComponent(b.name)}">${b.name}</a>
+          <span class="text-gray-400">— ${kb} MB, ${ts}</span>
+        </li>`;
+      }).join('');
+    } catch (e) {
+      document.getElementById('backups-list').innerHTML =
+        `<li class="text-red-500">Ошибка: ${e.message}</li>`;
+    }
+  }
+
+  document.getElementById('btn-backup-create').addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = 'Создаём...';
+    try {
+      const r = await fetch('/api/db/backup?reason=manual', { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || 'Ошибка');
+      btn.textContent = '✓ ' + d.name;
+      await loadBackups();
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
+    } catch (e) {
+      alert('Ошибка: ' + e.message);
+      btn.textContent = orig;
+      btn.disabled = false;
+    }
+  });
+
+  loadBackups();
+</script>
 
 <style>
   /* Minimalism: Skin card styling */
