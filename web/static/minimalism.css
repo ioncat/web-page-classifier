@@ -1,0 +1,380 @@
+/* ──────────────────────────────────────────────────────────────────
+   MINIMALISM SKIN - Light Theme with Dynamic Background
+   Светлая, чистая тема с динамичным фоном
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="minimalism"] {
+  --bg-primary: #f5f5f5;              /* Почти белый фон */
+  --bg-secondary: rgba(255, 255, 255, 0.6);   /* Полупрозрачные блоки */
+  --bg-tertiary: rgba(255, 255, 255, 0.8);
+  --bg-hover: rgba(240, 240, 240, 0.8);
+
+  --text-primary: #1a1a1a;
+  --text-secondary: #555555;
+  --text-tertiary: #888888;
+
+  --border-accent: rgba(0, 0, 0, 0.1);
+  --border-focus: #2563eb;
+
+  --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   BODY & LAYOUT
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="minimalism"] {
+  background-color: var(--bg-primary) !important;
+}
+
+html[data-skin="minimalism"] body {
+  color: var(--text-primary) !important;
+  background-color: var(--bg-primary) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   HEADER
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="minimalism"] header {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-accent) !important;
+  box-shadow: var(--shadow-light) !important;
+  border-radius: 0.75rem !important;
+}
+
+html[data-skin="minimalism"] header a {
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="minimalism"] header a:hover {
+  color: var(--border-focus) !important;
+}
+
+html[data-skin="minimalism"] header input {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-accent) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="minimalism"] header input::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+html[data-skin="minimalism"] header input:focus {
+  outline: none !important;
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+}
+
+html[data-skin="minimalism"] header button[type="submit"] {
+  background-color: var(--border-focus) !important;
+  color: white !important;
+  font-weight: 600 !important;
+}
+
+html[data-skin="minimalism"] header button[type="submit"]:hover {
+  background-color: #1d4ed8 !important;
+  box-shadow: var(--shadow-light) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   SIDEBAR
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="minimalism"] aside#sidebar {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-accent) !important;
+  box-shadow: var(--shadow-light) !important;
+  border-radius: 0.75rem !important;
+}
+
+html[data-skin="minimalism"] aside#sidebar .p-3 {
+  border-bottom-color: var(--border-accent) !important;
+}
+
+html[data-skin="minimalism"] aside#sidebar p,
+html[data-skin="minimalism"] aside#sidebar span {
+  color: var(--text-secondary) !important;
+}
+
+html[data-skin="minimalism"] .sidebar-cat {
+  color: var(--text-secondary) !important;
+  transition: all 0.2s ease !important;
+}
+
+html[data-skin="minimalism"] .sidebar-cat:hover {
+  background-color: var(--bg-hover) !important;
+  color: var(--border-focus) !important;
+}
+
+html[data-skin="minimalism"] .sidebar-cat[class*="bg-blue-50"],
+html[data-skin="minimalism"] a.sidebar-cat.bg-blue-50 {
+  background-color: rgba(37, 99, 235, 0.1) !important;
+  color: var(--border-focus) !important;
+  border-left: 2px solid var(--border-focus) !important;
+  padding-left: calc(1.25rem - 2px) !important;
+}
+
+html[data-skin="minimalism"] .sidebar-cat span:last-child {
+  background-color: rgba(37, 99, 235, 0.1) !important;
+  border: 1px solid var(--border-focus) !important;
+  color: var(--border-focus) !important;
+  border-radius: 999px !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   MAIN CONTENT
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="minimalism"] main {
+  background-color: var(--bg-secondary) !important;
+  padding: 2rem !important;
+  border: 1px solid var(--border-accent) !important;
+  box-shadow: var(--shadow-light) !important;
+  border-radius: 0.75rem !important;
+}
+
+html[data-skin="minimalism"] h1 {
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="minimalism"] h2 {
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="minimalism"] p {
+  color: var(--text-secondary) !important;
+}
+
+html[data-skin="minimalism"] span {
+  color: inherit !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   CARDS (URL Cards)
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="minimalism"] .url-card {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-accent) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: var(--shadow-card) !important;
+  transition: all 0.3s ease !important;
+  color: var(--text-primary) !important;
+  padding: 1.5rem !important;
+}
+
+html[data-skin="minimalism"] .url-card:hover {
+  border-color: var(--border-focus) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+}
+
+html[data-skin="minimalism"] .url-card a:not(.card-cat-badge) {
+  color: var(--border-focus) !important;
+}
+
+html[data-skin="minimalism"] .url-card a:not(.card-cat-badge):hover {
+  color: #1d4ed8 !important;
+  text-decoration: underline !important;
+}
+
+html[data-skin="minimalism"] .url-card .text-blue-700 {
+  color: var(--border-focus) !important;
+}
+
+html[data-skin="minimalism"] .url-card .text-gray-600 {
+  color: var(--text-secondary) !important;
+}
+
+html[data-skin="minimalism"] .url-card .text-gray-300 {
+  color: var(--text-tertiary) !important;
+}
+
+html[data-skin="minimalism"] .url-card .text-gray-400 {
+  color: var(--text-tertiary) !important;
+}
+
+html[data-skin="minimalism"] .url-card .card-cat-badge {
+  background-color: rgba(37, 99, 235, 0.1) !important;
+  border: 1px solid var(--border-focus) !important;
+  color: var(--border-focus) !important;
+}
+
+html[data-skin="minimalism"] .url-card .card-cat-badge:hover {
+  background-color: rgba(37, 99, 235, 0.2) !important;
+}
+
+html[data-skin="minimalism"] .url-card .manual-override-icon {
+  color: #f59e0b !important;
+}
+
+/* Button colors in cards */
+html[data-skin="minimalism"] .btn-refetch {
+  color: #f59e0b !important;
+}
+
+html[data-skin="minimalism"] .btn-refetch:hover {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+}
+
+html[data-skin="minimalism"] .btn-move {
+  color: #10b981 !important;
+}
+
+html[data-skin="minimalism"] .btn-move:hover {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+
+html[data-skin="minimalism"] .btn-delete {
+  color: #ef4444 !important;
+}
+
+html[data-skin="minimalism"] .btn-delete:hover {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Card footer divider */
+html[data-skin="minimalism"] .url-card > div:last-of-type {
+  border-top: 1px solid var(--border-accent) !important;
+  padding-top: 0.75rem !important;
+  margin-top: 1rem !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   PAGINATION & BUTTONS
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="minimalism"] nav a,
+html[data-skin="minimalism"] button {
+  border-color: var(--border-accent) !important;
+  color: var(--text-primary) !important;
+  background-color: var(--bg-secondary) !important;
+  box-shadow: var(--shadow-light) !important;
+}
+
+html[data-skin="minimalism"] nav a:hover,
+html[data-skin="minimalism"] button:hover {
+  background-color: var(--bg-hover) !important;
+  border-color: var(--border-focus) !important;
+}
+
+html[data-skin="minimalism"] #btn-select-mode {
+  border-color: var(--border-accent) !important;
+  color: var(--text-primary) !important;
+  background-color: var(--bg-secondary) !important;
+}
+
+html[data-skin="minimalism"] #btn-select-mode:hover {
+  background-color: var(--bg-hover) !important;
+  border-color: var(--border-focus) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   MODALS
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="minimalism"] #move-modal > div:nth-child(2) {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-accent) !important;
+  box-shadow: var(--shadow-medium) !important;
+}
+
+html[data-skin="minimalism"] .modal-cat-btn {
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid var(--border-accent) !important;
+}
+
+html[data-skin="minimalism"] .modal-cat-btn:hover {
+  background-color: var(--bg-hover) !important;
+  color: var(--border-focus) !important;
+}
+
+html[data-skin="minimalism"] #move-modal h3 {
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="minimalism"] #move-modal-close {
+  color: var(--text-tertiary) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   BULK ACTION BAR
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="minimalism"] #bulk-bar {
+  background-color: var(--bg-secondary) !important;
+  border-top: 1px solid var(--border-accent) !important;
+  box-shadow: var(--shadow-light) !important;
+}
+
+html[data-skin="minimalism"] #bulk-count,
+html[data-skin="minimalism"] #bulk-select-all {
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="minimalism"] #bulk-refetch {
+  background-color: #f59e0b !important;
+  color: white !important;
+}
+
+html[data-skin="minimalism"] #bulk-refetch:hover {
+  background-color: #d97706 !important;
+}
+
+html[data-skin="minimalism"] #bulk-delete {
+  background-color: #ef4444 !important;
+  color: white !important;
+}
+
+html[data-skin="minimalism"] #bulk-delete:hover {
+  background-color: #dc2626 !important;
+}
+
+html[data-skin="minimalism"] #bulk-cancel {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-accent) !important;
+}
+
+html[data-skin="minimalism"] #bulk-cancel:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   MOBILE DRAWER
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="minimalism"] #drawer {
+  background-color: var(--bg-secondary) !important;
+  border-right: 1px solid var(--border-accent) !important;
+  box-shadow: var(--shadow-light) !important;
+}
+
+html[data-skin="minimalism"] #overlay {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+html[data-skin="minimalism"] #drawer p,
+html[data-skin="minimalism"] #drawer span {
+  color: var(--text-secondary) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   SCROLLBAR - Hidden
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="minimalism"] {
+  scrollbar-width: none !important;
+}
+
+html[data-skin="minimalism"]::-webkit-scrollbar {
+  display: none !important;
+}
+
+html[data-skin="minimalism"] body {
+  -ms-overflow-style: none !important;
+}

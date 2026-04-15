@@ -1,0 +1,374 @@
+/* ──────────────────────────────────────────────────────────────────
+   CYBERPUNK SKIN - CSS Variables & Styles
+   Контрастная архитектура с глубиной объектов
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="cyberpunk"] {
+  --bg-primary: #0a0e27;      /* Sidebar, Header BG - очень тёмный */
+  --bg-secondary: #111629;    /* Main area BG - основной фон */
+  --bg-tertiary: #1a1f3a;     /* Card BG - карточки светлее */
+  --bg-hover: #252f4a;        /* Hover state BG */
+
+  --text-primary: #ffffff;    /* Main text - белый */
+  --text-secondary: #a8acc7;  /* Secondary text */
+  --text-tertiary: #7a7d8c;   /* Tertiary text */
+
+  --border-neon: #00ff88;     /* Cyan neon */
+  --border-neon-alt: #ff006e; /* Magenta neon */
+  --border-dark: #2a2f4a;     /* Dark border */
+
+  --glow-cyan: rgba(0, 255, 136, 0.3);
+  --glow-magenta: rgba(255, 0, 110, 0.3);
+  --glow-cyan-subtle: rgba(0, 255, 136, 0.15);
+
+  --shadow-glow: 0 0 20px var(--glow-cyan);
+  --shadow-glow-lg: 0 0 32px var(--glow-cyan);
+  --card-shadow: 0 0 12px var(--glow-cyan-subtle);
+  --card-shadow-hover: 0 0 20px var(--glow-cyan);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   BODY & LAYOUT - ОСНОВНОЙ КОНТРАСТ
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="cyberpunk"] {
+  background-color: var(--bg-primary) !important; /* тёмный фон виден в отступах */
+}
+
+html[data-skin="cyberpunk"] body {
+  color: var(--text-primary) !important;
+  background-color: transparent !important; /* canvas с матрицей просвечивает сквозь padding */
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   HEADER - ВЫДЕЛЕННЫЙ
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="cyberpunk"] header {
+  background-color: rgba(10, 14, 39, 0.8) !important;
+  border-bottom: 1px solid var(--border-neon) !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+
+html[data-skin="cyberpunk"] header a {
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="cyberpunk"] header a:hover {
+  color: var(--border-neon) !important;
+}
+
+html[data-skin="cyberpunk"] header input {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-neon) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="cyberpunk"] header input::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+html[data-skin="cyberpunk"] header input:focus {
+  outline: none !important;
+  border-color: var(--border-neon-alt) !important;
+  box-shadow: 0 0 12px var(--glow-magenta) !important;
+}
+
+html[data-skin="cyberpunk"] header button[type="submit"] {
+  background-color: var(--border-neon) !important;
+  color: var(--bg-primary) !important;
+  font-weight: 600 !important;
+}
+
+html[data-skin="cyberpunk"] header button[type="submit"]:hover {
+  background-color: var(--border-neon-alt) !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   SIDEBAR - КОНТРАСТНЫЙ И ВЫДЕЛЕННЫЙ
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="cyberpunk"] aside#sidebar {
+  background-color: rgba(10, 14, 39, 0.8) !important;
+  border-right: 2px solid var(--border-neon) !important;
+  box-shadow: -4px 0 20px var(--glow-cyan) !important;
+  margin-left: 1rem !important;
+}
+
+html[data-skin="cyberpunk"] aside#sidebar .p-3 {
+  border-bottom-color: var(--border-dark) !important;
+}
+
+html[data-skin="cyberpunk"] aside#sidebar p,
+html[data-skin="cyberpunk"] aside#sidebar span {
+  color: var(--text-secondary) !important;
+}
+
+html[data-skin="cyberpunk"] .sidebar-cat {
+  color: var(--text-secondary) !important;
+  transition: all 0.2s ease !important;
+}
+
+html[data-skin="cyberpunk"] .sidebar-cat:hover {
+  background-color: var(--bg-hover) !important;
+  color: var(--border-neon) !important;
+}
+
+html[data-skin="cyberpunk"] .sidebar-cat[class*="bg-blue-50"],
+html[data-skin="cyberpunk"] a.sidebar-cat.bg-blue-50 {
+  background-color: var(--bg-hover) !important;
+  color: var(--border-neon) !important;
+  border-left: 2px solid var(--border-neon) !important;
+  padding-left: calc(1.25rem - 2px) !important;
+  box-shadow: inset 0 0 8px var(--glow-cyan-subtle) !important;
+}
+
+html[data-skin="cyberpunk"] .sidebar-cat span:last-child {
+  background-color: transparent !important;
+  border: 1px solid var(--border-neon) !important;
+  color: var(--border-neon) !important;
+  border-radius: 999px !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   MAIN CONTENT - Тёмный фон с спейсингом
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="cyberpunk"] main {
+  background-color: rgba(17, 22, 41, 0.8) !important;
+  padding: 2rem 3rem !important;
+  margin-right: 1rem !important;
+  margin-bottom: 1rem !important;
+}
+
+html[data-skin="cyberpunk"] h1 {
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="cyberpunk"] h2 {
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="cyberpunk"] p {
+  color: var(--text-secondary) !important;
+}
+
+html[data-skin="cyberpunk"] span {
+  color: inherit !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   CARDS (URL Cards) - ПАРЯЩИЕ НАД ФОНОМ
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="cyberpunk"] .url-card {
+  background-color: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-neon) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: var(--card-shadow) !important;
+  transition: all 0.3s ease !important;
+  color: var(--text-primary) !important;
+  padding: 1.5rem !important; /* Больше спейсинга внутри карточки */
+}
+
+html[data-skin="cyberpunk"] .url-card:hover {
+  border-color: var(--border-neon-alt) !important;
+  box-shadow: var(--card-shadow-hover) !important;
+}
+
+html[data-skin="cyberpunk"] .url-card a:not(.card-cat-badge) {
+  color: var(--border-neon) !important;
+}
+
+html[data-skin="cyberpunk"] .url-card a:not(.card-cat-badge):hover {
+  color: var(--border-neon-alt) !important;
+}
+
+html[data-skin="cyberpunk"] .url-card .text-blue-700 {
+  color: var(--border-neon) !important;
+}
+
+html[data-skin="cyberpunk"] .url-card .text-gray-600 {
+  color: var(--text-secondary) !important;
+}
+
+html[data-skin="cyberpunk"] .url-card .text-gray-300 {
+  color: var(--text-tertiary) !important;
+}
+
+html[data-skin="cyberpunk"] .url-card .text-gray-400 {
+  color: var(--text-tertiary) !important;
+}
+
+html[data-skin="cyberpunk"] .url-card .card-cat-badge {
+  background-color: transparent !important;
+  border: 1px solid var(--border-neon) !important;
+  color: var(--border-neon) !important;
+}
+
+html[data-skin="cyberpunk"] .url-card .card-cat-badge:hover {
+  background-color: var(--glow-cyan-subtle) !important;
+  border-color: var(--border-neon-alt) !important;
+  color: var(--border-neon-alt) !important;
+}
+
+html[data-skin="cyberpunk"] .url-card .manual-override-icon {
+  color: #ffaa00 !important;
+}
+
+/* Button colors in cards */
+html[data-skin="cyberpunk"] .btn-refetch {
+  color: #ffaa00 !important;
+}
+
+html[data-skin="cyberpunk"] .btn-refetch:hover {
+  background-color: var(--bg-hover) !important;
+  box-shadow: 0 0 8px rgba(255, 170, 0, 0.4) !important;
+}
+
+html[data-skin="cyberpunk"] .btn-move {
+  color: #00ff88 !important;
+}
+
+html[data-skin="cyberpunk"] .btn-move:hover {
+  background-color: var(--bg-hover) !important;
+  box-shadow: 0 0 8px var(--glow-cyan) !important;
+}
+
+html[data-skin="cyberpunk"] .btn-delete {
+  color: #ff0055 !important;
+}
+
+html[data-skin="cyberpunk"] .btn-delete:hover {
+  background-color: var(--bg-hover) !important;
+  box-shadow: 0 0 8px var(--glow-magenta) !important;
+}
+
+/* Card footer divider */
+html[data-skin="cyberpunk"] .url-card > div:last-of-type {
+  border-top: 1px solid var(--border-dark) !important;
+  padding-top: 0.75rem !important;
+  margin-top: 1rem !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   PAGINATION & BUTTONS
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="cyberpunk"] nav a,
+html[data-skin="cyberpunk"] button {
+  border-color: var(--border-dark) !important;
+  color: var(--text-primary) !important;
+  background-color: var(--bg-tertiary) !important;
+}
+
+html[data-skin="cyberpunk"] nav a:hover,
+html[data-skin="cyberpunk"] button:hover {
+  background-color: var(--bg-hover) !important;
+  border-color: var(--border-neon) !important;
+  box-shadow: 0 0 8px var(--glow-cyan-subtle) !important;
+}
+
+html[data-skin="cyberpunk"] #btn-select-mode {
+  border-color: var(--border-neon) !important;
+  color: var(--border-neon) !important;
+  background-color: transparent !important;
+}
+
+html[data-skin="cyberpunk"] #btn-select-mode:hover {
+  background-color: var(--glow-cyan-subtle) !important;
+  box-shadow: 0 0 8px var(--glow-cyan) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   MODALS
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="cyberpunk"] #move-modal > div:nth-child(2) {
+  background-color: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-neon) !important;
+  box-shadow: 0 0 32px var(--glow-cyan) !important;
+}
+
+html[data-skin="cyberpunk"] .modal-cat-btn {
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid var(--border-dark) !important;
+}
+
+html[data-skin="cyberpunk"] .modal-cat-btn:hover {
+  background-color: var(--glow-cyan-subtle) !important;
+  color: var(--border-neon) !important;
+}
+
+html[data-skin="cyberpunk"] #move-modal h3 {
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="cyberpunk"] #move-modal-close {
+  color: var(--text-tertiary) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   BULK ACTION BAR
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="cyberpunk"] #bulk-bar {
+  background-color: var(--bg-primary) !important;
+  border-top: 1px solid var(--border-neon) !important;
+  box-shadow: 0 -4px 20px var(--glow-cyan) !important;
+}
+
+html[data-skin="cyberpunk"] #bulk-count,
+html[data-skin="cyberpunk"] #bulk-select-all {
+  color: var(--text-primary) !important;
+}
+
+html[data-skin="cyberpunk"] #bulk-refetch {
+  background-color: #ffaa00 !important;
+  color: var(--bg-primary) !important;
+}
+
+html[data-skin="cyberpunk"] #bulk-refetch:hover {
+  background-color: #ffbb22 !important;
+  box-shadow: 0 0 20px rgba(255, 170, 0, 0.5) !important;
+}
+
+html[data-skin="cyberpunk"] #bulk-delete {
+  background-color: #ff0055 !important;
+  color: white !important;
+}
+
+html[data-skin="cyberpunk"] #bulk-delete:hover {
+  background-color: #ff1166 !important;
+  box-shadow: 0 0 20px var(--glow-magenta) !important;
+}
+
+html[data-skin="cyberpunk"] #bulk-cancel {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-dark) !important;
+}
+
+html[data-skin="cyberpunk"] #bulk-cancel:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   MOBILE DRAWER
+   ────────────────────────────────────────────────────────────────── */
+
+html[data-skin="cyberpunk"] #drawer {
+  background-color: rgba(10, 14, 39, 0.8) !important;
+  border-right: 2px solid var(--border-neon) !important;
+  box-shadow: 4px 0 20px var(--glow-cyan) !important;
+}
+
+html[data-skin="cyberpunk"] #overlay {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+html[data-skin="cyberpunk"] #drawer p,
+html[data-skin="cyberpunk"] #drawer span {
+  color: var(--text-secondary) !important;
+}
