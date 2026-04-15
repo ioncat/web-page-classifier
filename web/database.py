@@ -3,6 +3,7 @@ Read-операции — просмотр данных.
 Write-операции — только удаление и смена категории через UI.
 """
 import os
+import re
 import sqlite3
 from pathlib import Path
 from urllib.parse import urlparse
@@ -153,6 +154,59 @@ def delete_category(name: str, reassign_to: str | None = None) -> tuple[bool, st
             )
         conn.execute("DELETE FROM categories WHERE name = ?", (name,))
     return True, "", url_count
+
+def get_pending_count() -> int:
+    """Количество URL со статусом pending."""
+    with _get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM urls WHERE status = 'pending'"
+        ).fetchone()[0]
+
+
+_URL_RE = re.compile(r"https?://[^\s|<>\"'`]+")
+_URL_TRAILING_JUNK = re.compile(r"[.,;!?)]+$")
+
+
+def extract_urls(text: str) -> list[str]:
+    """Извлекает все http(s) URL из произвольного текста — как step1.py.
+
+    Дедупликация с сохранением порядка. Отсекает типичный мусор
+    в конце URL (.,;!?)).
+    """
+    raw = _URL_RE.findall(text)
+    urls: list[str] = []
+    seen: set[str] = set()
+    for u in raw:
+        u = _URL_TRAILING_JUNK.sub("", u)
+        if u and u not in seen:
+            seen.add(u)
+            urls.append(u)
+    return urls
+
+
+def insert_urls_bulk(text: str) -> dict:
+    """Парсит произвольный текст, вставляет найденные URL как pending.
+
+    Возвращает {added, duplicates}.
+    """
+    urls = extract_urls(text)
+    added: list[str] = []
+    duplicates: list[str] = []
+    with _get_conn() as conn:
+        for url in urls:
+            existing = conn.execute(
+                "SELECT id FROM urls WHERE url = ?", (url,)
+            ).fetchone()
+            if existing:
+                duplicates.append(url)
+            else:
+                conn.execute(
+                    "INSERT INTO urls (url, status, added_at) VALUES (?, 'pending', datetime('now'))",
+                    (url,),
+                )
+                added.append(url)
+    return {"added": added, "duplicates": duplicates}
+
 
 PER_PAGE_DEFAULT = 20
 PER_PAGE_MAX = 100

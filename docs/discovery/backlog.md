@@ -248,6 +248,22 @@
 
 ---
 
+## Сессия 13 — URL Intake Page (15.04.2026)
+
+| # | Фича | Файлы |
+|---|------|-------|
+| 88 | **Страница `/add`** — большой textarea для вставки URL (по строке, через запятую/точку с запятой), кнопка "Добавить" → INSERT в `urls` как `pending`, результат: добавлено N / дубликаты / невалидные | `web/templates/add.html`, `web/database.py`, `web/routers/api.py`, `web/routers/pages.py` |
+| 89 | **`POST /api/add/urls`** — принимает сырой текст, парсит URL, вставляет в БД, возвращает {added, duplicates, invalid} | `web/routers/api.py`, `web/database.py` |
+| 90 | **Запуск пайплайна из UI** — кнопка "Запустить пайплайн" запускает `--only-parse` + `--only-classify` как фоновый subprocess; статус хранится in-memory; прогресс-бар с polling раз в 2 сек | `web/routers/api.py` |
+| 91 | **`GET /api/pipeline/status`** — возвращает {status, step, progress, error}; `POST /api/pipeline/run` — запускает фоновый процесс | `web/routers/api.py` |
+
+### Запланировано
+
+| # | Фича | Файлы |
+|---|------|-------|
+| 92 | **Контролы `--batch` / `--workers` на `/add`** — два поля ввода рядом с селектором модели, дефолты: `batch=10`, `workers=4` (золотой путь из `models-compare.md`: ~1.2 сек/URL на `mistral-small3.2:24b`). Текущий запуск через UI идёт с `batch=1 workers=1` → ~2× медленнее. Значения сохраняются в `localStorage`, передаются в `--only-classify`. Для step2 — отдельный `workers` (там распределение по доменам). | `web/templates/add.html`, `web/routers/api.py` |
+| 93 | **Dark-тема для Minimalism** — третий скин рядом с Minimalism / Cyberpunk: мягкие тёмные фоны, читаемый текст, сохранение «cards on field» концепции (карточки чуть светлее фона, контрастные границы). Без неона и анимаций — «ночной» вариант обычной темы для чтения с выключенным светом. Переключатель в `/settings`. Опционально — авто-активация по `prefers-color-scheme: dark`. | `web/static/dark.css` (new), `web/templates/settings.html`, `web/static/skin-switcher.js` |
+
 ## Итог
 
 | Показатель | Значение |

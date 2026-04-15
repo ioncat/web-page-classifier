@@ -1,9 +1,13 @@
 """JSON API роуты."""
 import os
 import pathlib
+import re
 import subprocess
+import threading
+from collections import deque
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 import sys
@@ -17,6 +21,117 @@ import database as db
 
 router = APIRouter()
 
+# ── Pipeline runner (in-memory state) ────────────────────────────────────────
+
+_pipeline_state: dict = {
+    "status": "idle",   # idle | running | done | error
+    "step": None,       # "parse" | "classify" | None
+    "progress": 0,      # 0–100 (общий)
+    "step_done": 0,     # текущий счётчик в шаге
+    "step_total": 0,    # сколько URL в шаге
+    "last_line": "",    # последняя осмысленная строка вывода
+    "error": None,
+    "started_at": None,
+    "finished_at": None,
+}
+_pipeline_lock = threading.Lock()
+
+# step2/step3 с --no-progress печатают строки вида "[12/345] ..."
+_PROGRESS_RE = re.compile(r"^\[(\d+)/(\d+)\]")
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _do_run_pipeline(model: str | None = None) -> None:
+    """Фоновый поток: step2 (parse) → step3 (classify).
+    Потоково читает stdout, парсит "[N/M]" для прогресса.
+    """
+    python = _pipeline_python()
+    main = str(_PROJECT_ROOT / "pipeline" / "main.py")
+    env = {
+        **os.environ,
+        "TERM": "dumb",
+        "NO_COLOR": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUNBUFFERED": "1",
+    }
+
+    classify_flags = ["--only-classify", "--no-progress"]
+    if model:
+        classify_flags += ["--model", model]
+
+    steps = [
+        ("parse",    ["--only-parse", "--no-progress"], 0,  50),
+        ("classify", classify_flags,                    50, 100),
+    ]
+
+    for step_name, flags, base, cap in steps:
+        with _pipeline_lock:
+            _pipeline_state.update(
+                step=step_name, progress=base,
+                step_done=0, step_total=0, last_line="",
+            )
+
+        tail: deque[str] = deque(maxlen=40)
+        try:
+            proc = subprocess.Popen(
+                [python, "-u", main] + flags,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,   # сливаем, чтобы не блокировать пайпы
+                cwd=str(_PROJECT_ROOT / "pipeline"),
+                env=env,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+            )
+        except Exception as exc:
+            with _pipeline_lock:
+                _pipeline_state.update(
+                    status="error", error=f"Не удалось запустить пайплайн: {exc}",
+                    finished_at=_now(),
+                )
+            return
+
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            line = line.rstrip("\r\n")
+            if not line:
+                continue
+            tail.append(line)
+            m = _PROGRESS_RE.match(line)
+            if m:
+                done, total = int(m.group(1)), int(m.group(2))
+                frac = done / total if total > 0 else 0.0
+                overall = int(base + (cap - base) * frac)
+                with _pipeline_lock:
+                    _pipeline_state.update(
+                        step_done=done, step_total=total,
+                        progress=overall, last_line=line,
+                    )
+            else:
+                with _pipeline_lock:
+                    _pipeline_state["last_line"] = line
+
+        rc = proc.wait()
+        if rc != 0:
+            with _pipeline_lock:
+                _pipeline_state.update(
+                    status="error",
+                    error="\n".join(tail)[-1500:] or f"Exit code {rc}",
+                    finished_at=_now(),
+                )
+            return
+
+        with _pipeline_lock:
+            _pipeline_state["progress"] = cap
+
+    with _pipeline_lock:
+        _pipeline_state.update(
+            status="done", step=None, progress=100, finished_at=_now()
+        )
+
 
 
 # Корень проекта — директория, из которой запускается uvicorn
@@ -28,7 +143,12 @@ def _pipeline_python() -> str:
     env = os.getenv("PIPELINE_PYTHON")
     if env:
         return str(pathlib.Path(env).resolve())
-    for candidate in ("pipeline/venv/Scripts/python.exe", "pipeline/venv/bin/python"):
+    for candidate in (
+        "pipeline/venv/Scripts/python.exe",
+        "pipeline/venv/bin/python",
+        "venv/Scripts/python.exe",
+        "venv/bin/python",
+    ):
         p = _PROJECT_ROOT / candidate
         if p.exists():
             return str(p)
@@ -49,7 +169,13 @@ def _run_refetch_for_url(url: str, timeout: int = 60) -> dict:
         f"step2.main(urls=[{url!r}], no_progress=True)"
     )
     try:
-        env = {**os.environ, "TERM": "dumb", "NO_COLOR": "1", "PYTHONIOENCODING": "utf-8"}
+        env = {
+        **os.environ,
+        "TERM": "dumb",
+        "NO_COLOR": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUNBUFFERED": "1",
+    }
         result = subprocess.run(
             [_pipeline_python(), "-c", script],
             capture_output=True,
@@ -207,3 +333,67 @@ def taxonomy_delete(body: CategoryDelete):
     if not ok:
         raise HTTPException(status_code=400, detail=error)
     return {"ok": True, "urls_affected": urls_affected}
+
+
+# ── Добавление URL ────────────────────────────────────────────────────────────
+
+class AddUrlsBody(BaseModel):
+    text: str
+
+
+@router.post("/add/urls")
+def add_urls(body: AddUrlsBody):
+    """Парсит сырой текст с URL, вставляет в БД как pending."""
+    return db.insert_urls_bulk(body.text)
+
+
+@router.post("/add/extract")
+def add_extract(body: AddUrlsBody):
+    """Извлекает URL из текста без записи в БД (предпросмотр)."""
+    return {"urls": db.extract_urls(body.text)}
+
+
+# ── Запуск пайплайна ──────────────────────────────────────────────────────────
+
+class PipelineRunBody(BaseModel):
+    model: str | None = None
+
+
+@router.post("/pipeline/run")
+def pipeline_run(body: PipelineRunBody | None = None):
+    """Запускает step2+step3 в фоновом потоке."""
+    model = (body.model if body else None) or None
+    with _pipeline_lock:
+        if _pipeline_state["status"] == "running":
+            raise HTTPException(status_code=409, detail="Pipeline already running")
+        _pipeline_state.update(
+            status="running", step="parse", progress=0,
+            step_done=0, step_total=0, last_line="",
+            error=None, started_at=_now(), finished_at=None,
+        )
+    threading.Thread(target=_do_run_pipeline, args=(model,), daemon=True).start()
+    return {"ok": True}
+
+
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+
+
+@router.get("/models")
+def list_models():
+    """Список моделей Ollama через REST (без зависимости от `ollama` пакета)."""
+    import urllib.request
+    import json as _json
+    try:
+        with urllib.request.urlopen(f"{OLLAMA_HOST}/api/tags", timeout=5) as r:
+            data = _json.loads(r.read())
+        names = [m.get("name") or m.get("model") for m in data.get("models", [])]
+        return {"models": [n for n in names if n]}
+    except Exception as exc:
+        return {"models": [], "error": str(exc)}
+
+
+@router.get("/pipeline/status")
+def pipeline_status():
+    """Возвращает текущее состояние пайплайна."""
+    with _pipeline_lock:
+        return dict(_pipeline_state)

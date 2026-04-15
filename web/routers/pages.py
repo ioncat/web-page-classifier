@@ -134,6 +134,20 @@ def settings(request: Request):
     })
 
 
+@router.get("/add", response_class=HTMLResponse)
+def add_page(request: Request):
+    """Страница добавления URL и запуска пайплайна."""
+    all_categories = _all_categories()
+    pending_count = db.get_pending_count()
+    return templates.TemplateResponse("add.html", {
+        "request": request,
+        "all_categories": all_categories,
+        "active_category": None,
+        "pending_count": pending_count,
+        **_common_ctx(),
+    })
+
+
 @router.get("/categories", response_class=HTMLResponse)
 def categories_manage(request: Request):
     """Страница управления таксономией."""
