@@ -13,10 +13,9 @@ _WEB_DIR = str(Path(__file__).resolve().parent.parent)
 if _WEB_DIR not in sys.path:
     sys.path.insert(0, _WEB_DIR)
 
-from auth import verify_auth
 import database as db
 
-router = APIRouter(dependencies=[Depends(verify_auth)])
+router = APIRouter()
 
 
 
@@ -158,3 +157,53 @@ def update_category(url_id: int, body: CategoryUpdate):
     if not db.update_category(url_id, body.category.strip()):
         raise HTTPException(status_code=404, detail="URL не найден")
     return {"ok": True, "category": body.category.strip()}
+
+
+# ── Управление таксономией ────────────────────────────────────────────────────
+
+class CategoryCreate(BaseModel):
+    name: str
+    section: str
+
+class CategoryRename(BaseModel):
+    old_name: str
+    new_name: str
+
+class CategoryMoveSection(BaseModel):
+    name: str
+    section: str
+
+class CategoryDelete(BaseModel):
+    name: str
+    reassign_to: str | None = None
+
+
+@router.post("/taxonomy/create")
+def taxonomy_create(body: CategoryCreate):
+    ok, error = db.create_category(body.name, body.section)
+    if not ok:
+        raise HTTPException(status_code=400, detail=error)
+    return {"ok": True}
+
+
+@router.post("/taxonomy/rename")
+def taxonomy_rename(body: CategoryRename):
+    ok, error, urls_updated = db.rename_category(body.old_name, body.new_name)
+    if not ok:
+        raise HTTPException(status_code=400, detail=error)
+    return {"ok": True, "urls_updated": urls_updated}
+
+
+@router.post("/taxonomy/move-section")
+def taxonomy_move_section(body: CategoryMoveSection):
+    if not db.change_category_section(body.name, body.section):
+        raise HTTPException(status_code=404, detail="Категория не найдена")
+    return {"ok": True}
+
+
+@router.post("/taxonomy/delete")
+def taxonomy_delete(body: CategoryDelete):
+    ok, error, urls_affected = db.delete_category(body.name, body.reassign_to)
+    if not ok:
+        raise HTTPException(status_code=400, detail=error)
+    return {"ok": True, "urls_affected": urls_affected}

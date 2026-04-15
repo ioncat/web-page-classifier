@@ -10,14 +10,149 @@ from urllib.parse import urlparse
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = os.getenv("DB_PATH", str(_PROJECT_ROOT / "data" / "urls.db"))
 
-# Таксономия — загружаем из config/ пайплайна
-import importlib.util
-_tax_path = _PROJECT_ROOT / "pipeline" / "config" / "taxonomy.py"
-_tax_spec = importlib.util.spec_from_file_location("taxonomy", str(_tax_path))
-_tax_mod = importlib.util.module_from_spec(_tax_spec)
-_tax_spec.loader.exec_module(_tax_mod)
-TAXONOMY: list[str] = _tax_mod.TAXONOMY
-TAXONOMY_SECTIONS: list[tuple[str, list[str]]] = _tax_mod.TAXONOMY_SECTIONS
+def _ensure_categories_table(conn: sqlite3.Connection) -> None:
+    """Создаёт таблицу categories и засевает из taxonomy.py если пустая."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS categories (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT NOT NULL UNIQUE,
+            section    TEXT NOT NULL,
+            sort_order INTEGER DEFAULT 0
+        )
+    """)
+    if conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0] > 0:
+        return
+    import importlib.util
+    _tax_path = _PROJECT_ROOT / "pipeline" / "config" / "taxonomy.py"
+    _spec = importlib.util.spec_from_file_location("_tax_seed", str(_tax_path))
+    _mod = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_mod)
+    rows, order = [], 0
+    for section_name, cats in _mod.TAXONOMY_SECTIONS:
+        for cat in cats:
+            rows.append((cat, section_name, order))
+            order += 1
+    conn.executemany(
+        "INSERT OR IGNORE INTO categories (name, section, sort_order) VALUES (?, ?, ?)",
+        rows,
+    )
+
+
+def get_taxonomy() -> list[str]:
+    """Плоский список категорий из БД."""
+    with _get_conn() as conn:
+        _ensure_categories_table(conn)
+        rows = conn.execute(
+            "SELECT name FROM categories ORDER BY sort_order, id"
+        ).fetchall()
+    return [r["name"] for r in rows]
+
+
+def get_taxonomy_sections() -> list[tuple[str, list[str]]]:
+    """Список (раздел, [категории]) из БД."""
+    with _get_conn() as conn:
+        _ensure_categories_table(conn)
+        rows = conn.execute(
+            "SELECT section, name FROM categories ORDER BY sort_order, id"
+        ).fetchall()
+    sections: dict[str, list[str]] = {}
+    for row in rows:
+        sections.setdefault(row["section"], []).append(row["name"])
+    return list(sections.items())
+
+
+def get_sections() -> list[str]:
+    """Список уникальных разделов в порядке появления."""
+    with _get_conn() as conn:
+        rows = conn.execute(
+            "SELECT section FROM categories GROUP BY section ORDER BY MIN(sort_order), MIN(id)"
+        ).fetchall()
+    return [r["section"] for r in rows]
+
+
+# ── Управление категориями (CRUD) ─────────────────────────────────────────────
+
+def get_categories_managed() -> list[dict]:
+    """Все категории с кол-вом URLs — для страницы управления."""
+    with _get_conn() as conn:
+        _ensure_categories_table(conn)
+        rows = conn.execute("""
+            SELECT c.id, c.name, c.section, c.sort_order,
+                   COUNT(u.id) AS url_count
+              FROM categories c
+              LEFT JOIN urls u ON u.category = c.name AND u.status = 'done'
+             GROUP BY c.id
+             ORDER BY c.sort_order, c.id
+        """).fetchall()
+    return [dict(r) for r in rows]
+
+
+def create_category(name: str, section: str) -> tuple[bool, str]:
+    """Создаёт новую категорию. Возвращает (ok, error)."""
+    name = name.strip()
+    if not name:
+        return False, "Название не может быть пустым"
+    try:
+        with _get_conn() as conn:
+            max_order = conn.execute(
+                "SELECT COALESCE(MAX(sort_order), 0) FROM categories WHERE section = ?",
+                (section,),
+            ).fetchone()[0]
+            conn.execute(
+                "INSERT INTO categories (name, section, sort_order) VALUES (?, ?, ?)",
+                (name, section, max_order + 1),
+            )
+        return True, ""
+    except sqlite3.IntegrityError:
+        return False, f"Категория «{name}» уже существует"
+
+
+def rename_category(old_name: str, new_name: str) -> tuple[bool, str, int]:
+    """Переименовывает категорию + мигрирует URLs. Возвращает (ok, error, urls_updated)."""
+    new_name = new_name.strip()
+    if not new_name:
+        return False, "Новое название не может быть пустым", 0
+    if old_name == new_name:
+        return False, "Название не изменилось", 0
+    with _get_conn() as conn:
+        if conn.execute("SELECT 1 FROM categories WHERE name = ?", (new_name,)).fetchone():
+            return False, f"Категория «{new_name}» уже существует", 0
+        cur = conn.execute(
+            "UPDATE urls SET category = ? WHERE category = ?", (new_name, old_name)
+        )
+        urls_updated = cur.rowcount
+        conn.execute(
+            "UPDATE categories SET name = ? WHERE name = ?", (new_name, old_name)
+        )
+    return True, "", urls_updated
+
+
+def change_category_section(name: str, new_section: str) -> bool:
+    """Перемещает категорию в другой раздел."""
+    with _get_conn() as conn:
+        cur = conn.execute(
+            "UPDATE categories SET section = ? WHERE name = ?", (new_section, name)
+        )
+    return cur.rowcount > 0
+
+
+def delete_category(name: str, reassign_to: str | None = None) -> tuple[bool, str, int]:
+    """Удаляет категорию. reassign_to=None → URLs сбрасываются в NULL."""
+    with _get_conn() as conn:
+        url_count = conn.execute(
+            "SELECT COUNT(*) FROM urls WHERE category = ? AND status = 'done'", (name,)
+        ).fetchone()[0]
+        if reassign_to:
+            conn.execute(
+                "UPDATE urls SET category = ? WHERE category = ?", (reassign_to, name)
+            )
+        else:
+            conn.execute(
+                "UPDATE urls SET category = NULL, manual_override = 0 WHERE category = ?",
+                (name,),
+            )
+        conn.execute("DELETE FROM categories WHERE name = ?", (name,))
+    return True, "", url_count
 
 PER_PAGE_DEFAULT = 20
 PER_PAGE_MAX = 100
