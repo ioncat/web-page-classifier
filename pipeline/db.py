@@ -45,6 +45,59 @@ def init_db() -> None:
             except sqlite3.OperationalError:
                 pass  # колонка уже существует
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS categories (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                name       TEXT NOT NULL UNIQUE,
+                section    TEXT NOT NULL,
+                sort_order INTEGER DEFAULT 0
+            )
+        """)
+        _seed_categories_if_empty(conn)
+
+
+def _seed_categories_if_empty(conn: sqlite3.Connection) -> None:
+    """Засевает categories из taxonomy.py — только если таблица пустая."""
+    if conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0] > 0:
+        return
+    from pathlib import Path as _Path
+    import importlib.util as _ilu
+    _tax_path = _Path(__file__).resolve().parent / "config" / "taxonomy.py"
+    _spec = _ilu.spec_from_file_location("_taxonomy_seed", str(_tax_path))
+    _mod = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_mod)
+    rows = []
+    order = 0
+    for section_name, cats in _mod.TAXONOMY_SECTIONS:
+        for cat in cats:
+            rows.append((cat, section_name, order))
+            order += 1
+    conn.executemany(
+        "INSERT OR IGNORE INTO categories (name, section, sort_order) VALUES (?, ?, ?)",
+        rows,
+    )
+
+
+def get_taxonomy() -> list[str]:
+    """Плоский список категорий из БД (по sort_order)."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT name FROM categories ORDER BY sort_order, id"
+        ).fetchall()
+    return [r["name"] for r in rows]
+
+
+def get_taxonomy_sections() -> list[tuple[str, list[str]]]:
+    """Список (раздел, [категории]) из БД, сохраняя порядок разделов."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT section, name FROM categories ORDER BY sort_order, id"
+        ).fetchall()
+    sections: dict[str, list[str]] = {}
+    for row in rows:
+        sections.setdefault(row["section"], []).append(row["name"])
+    return list(sections.items())
+
 
 def insert_urls(urls: list[str]) -> tuple[int, int]:
     """Вставляет URL в БД, пропуская дубликаты.

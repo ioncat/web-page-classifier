@@ -30,8 +30,8 @@ DOMAIN_RULES: dict[str, dict[str, str]] = {
     "amazon.com": {"category": "Интернет-магазин"},
 
     # ── L0 + L1: оба уровня известны ────────────────────────────────────────
-    "github.com": {"section": "IT и разработка", "category": "Программирование"},
-    "gitlab.com": {"section": "IT и разработка", "category": "Программирование"},
+    "github.com": {"section": "IT и разработка", "category": "Repository"},
+    "gitlab.com": {"section": "IT и разработка", "category": "Repository"},
     "stackoverflow.com": {"section": "IT и разработка", "category": "Программирование"},
 }
 
@@ -41,12 +41,16 @@ _section_set = set(_SECTION_CATS.keys())
 
 for _domain, _rule in DOMAIN_RULES.items():
     if "category" in _rule and _rule["category"] not in _taxonomy_set:
-        raise ValueError(
+        import warnings
+        warnings.warn(
             f"domain_rules.py: категория {_rule['category']!r} для домена {_domain!r} "
-            f"отсутствует в TAXONOMY"
+            f"отсутствует в taxonomy.py (возможно, добавлена через Web UI)",
+            stacklevel=1,
         )
     if "section" in _rule and _rule["section"] not in _section_set:
-        raise ValueError(
+        import warnings
+        warnings.warn(
             f"domain_rules.py: раздел {_rule['section']!r} для домена {_domain!r} "
-            f"отсутствует в TAXONOMY_SECTIONS"
+            f"отсутствует в taxonomy.py (возможно, добавлен через Web UI)",
+            stacklevel=1,
         )

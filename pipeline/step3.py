@@ -38,7 +38,6 @@ from config.settings import (
     TAG_MAX_LEN,
     TAG_MAX_WORDS,
 )
-from config.taxonomy import TAXONOMY, TAXONOMY_SECTIONS
 from config.domain_rules import DOMAIN_RULES, _SECTION_CATS
 
 console = Console()
@@ -94,10 +93,20 @@ def _select_model_interactively(available: list[str]) -> str:
 # ── Промпт и классификация ────────────────────────────────────────────────────
 from config.prompts import BATCH_HEADER, BATCH_ITEM, DESCRIPTION_LINE, SINGLE, TAXONOMY_LINE
 
-# Строка таксономии для промптов (формируется один раз)
-_TAXONOMY_STR = TAXONOMY_LINE.format(taxonomy=", ".join(TAXONOMY))
-# Множество для быстрой валидации ответа модели
-_TAXONOMY_SET = {t.lower(): t for t in TAXONOMY}
+# Таксономия загружается из БД при первом вызове _init_taxonomy()
+_TAXONOMY_STR: str = ""
+_TAXONOMY_SET: dict[str, str] = {}
+
+
+def _init_taxonomy() -> None:
+    """Загружает таксономию из БД (вызывается один раз перед классификацией)."""
+    global _TAXONOMY_STR, _TAXONOMY_SET
+    if _TAXONOMY_SET:
+        return
+    from db import get_taxonomy as _get_taxonomy
+    taxonomy = _get_taxonomy()
+    _TAXONOMY_STR = TAXONOMY_LINE.format(taxonomy=", ".join(taxonomy))
+    _TAXONOMY_SET = {t.lower(): t for t in taxonomy}
 
 
 _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
@@ -391,6 +400,7 @@ def main(
             set_category(url, cat, model=model)
 
     init_db()
+    _init_taxonomy()
 
     # ── Подключение к Ollama ───────────────────────────────────────────────────
     client = _build_client()
@@ -434,7 +444,8 @@ def main(
         model = _select_model_interactively(available)
 
     # ── Таксономия ───────────────────────────────────────────────────────────
-    hints = list(TAXONOMY)
+    from db import get_taxonomy as _get_taxonomy_fresh
+    hints = _get_taxonomy_fresh()
     preview = ", ".join(hints[:10]) + ("..." if len(hints) > 10 else "")
     console.print(
         f"Категорий в таксономии: [bold]{len(hints)}[/bold] — [dim]{preview}[/dim]"
