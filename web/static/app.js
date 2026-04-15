@@ -60,7 +60,9 @@ function updateCardBadges(card, category) {
   // Find footer: either from existing badge or from last div (for uncategorized URLs)
   let footer = card.querySelector('.card-cat-badge')?.parentElement;
   if (!footer) {
-    footer = card.querySelector('> div:last-of-type');  // Footer div for uncategorized URLs
+    // Footer div for uncategorized URLs — last direct div child
+    const divs = [...card.children].filter(el => el.tagName === 'DIV');
+    footer = divs[divs.length - 1] ?? null;
   }
   if (!footer) return;
 
