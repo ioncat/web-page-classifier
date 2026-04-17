@@ -642,3 +642,193 @@ def _enrich(row: dict) -> dict:
     raw_cat = row.get("category") or ""
     row["categories_list"] = [c.strip() for c in raw_cat.split(",") if c.strip()]
     return row
+
+
+# ── Сравнение моделей ────────────────────────────────────────────────────────
+
+def _compute_model_scores(
+    models: list[str],
+    rows: list[dict],
+) -> list[dict]:
+    """Вычисляет скоринг моделей по алгоритму из models-compare.md.
+
+    Knockout: пустые ответы, подчёркивания, длина тега >4 слов.
+    Agreement rate (вес 0.7): доля URL, где ответ модели совпал с plurality.
+    Case consistency (вес 0.3): доля тегов в нижнем регистре.
+    (Speed недоступна из model_results — веса перенормированы без неё.)
+    """
+    if not models or not rows:
+        return []
+
+    # ── 1. Собираем теги каждой модели ───────────────────────────────────
+    model_tags: dict[str, list[str]] = {m: [] for m in models}
+    for row in rows:
+        for m in models:
+            tag = (row.get(m) or "").strip()
+            model_tags[m].append(tag)
+
+    total = len(rows)
+
+    # ── 2. Plurality для каждого URL ────────────────────────────────────
+    #    Нормализация: lowercase, без лишних пробелов
+    pluralities: list[str] = []
+    for i, row in enumerate(rows):
+        freq: dict[str, int] = {}
+        for m in models:
+            tag = (row.get(m) or "").strip().lower()
+            if tag:
+                freq[tag] = freq.get(tag, 0) + 1
+        if freq:
+            pluralities.append(max(freq, key=freq.get))  # type: ignore[arg-type]
+        else:
+            pluralities.append("")
+
+    # ── 3. Метрики для каждой модели ────────────────────────────────────
+    scores: list[dict] = []
+    for m in models:
+        tags = model_tags[m]
+
+        # Knockout
+        empty_count = sum(1 for t in tags if not t)
+        underscore_count = sum(1 for t in tags if "_" in t)
+        long_count = sum(1 for t in tags if t and len(t.split()) > 4)
+
+        knockout_reasons: list[str] = []
+        # Пустые ответы — строгий критерий (любое количество)
+        if empty_count > 0:
+            knockout_reasons.append(f"пустых: {empty_count}")
+        # Подчёркивания и длинные теги — knockout если >2% ответов
+        ko_threshold = max(1, int(total * 0.02))
+        if underscore_count > ko_threshold:
+            knockout_reasons.append(f"подчёркивания: {underscore_count}")
+        if long_count > ko_threshold:
+            knockout_reasons.append(f"длинных (>4 слов): {long_count}")
+
+        knocked_out = len(knockout_reasons) > 0
+
+        # Agreement rate
+        if total > 0:
+            matches = sum(
+                1 for i, t in enumerate(tags)
+                if t.strip().lower() == pluralities[i] and pluralities[i]
+            )
+            agreement = matches / total
+        else:
+            agreement = 0.0
+
+        # Case consistency: доля тегов в lowercase
+        non_empty = [t for t in tags if t]
+        if non_empty:
+            lowercase_count = sum(1 for t in non_empty if t == t.lower())
+            case_consistency = lowercase_count / len(non_empty)
+        else:
+            case_consistency = 0.0
+
+        # Final score (speed unavailable → reweighted: 0.7 agreement + 0.3 consistency)
+        if knocked_out:
+            final_score = 0.0
+        else:
+            final_score = agreement * 0.7 + case_consistency * 0.3
+
+        scores.append({
+            "model": m,
+            "agreement": round(agreement * 100, 1),
+            "case_consistency": round(case_consistency * 100, 1),
+            "score": round(final_score * 100, 1),
+            "knocked_out": knocked_out,
+            "knockout_reasons": knockout_reasons,
+            "empty_count": empty_count,
+            "underscore_count": underscore_count,
+            "long_count": long_count,
+        })
+
+    # Сортируем по score (лучшие сверху)
+    scores.sort(key=lambda s: s["score"], reverse=True)
+    return scores
+
+
+def get_compare_results() -> dict:
+    """Читает model_results и возвращает pivot-таблицу + скоринг для UI.
+
+    Возвращает {models: [str], rows: [{url, title, <model>: category, ...}],
+                total, disagreements, scores: [...]}.
+    """
+    with _get_conn() as conn:
+        # Проверяем наличие таблицы
+        if not conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='model_results'"
+        ).fetchone():
+            return {"models": [], "rows": [], "total": 0, "disagreements": 0, "scores": []}
+
+        raw = conn.execute("""
+            SELECT u.id, u.url, u.title, mr.model, mr.category
+              FROM model_results mr
+              JOIN urls u ON u.id = mr.url_id
+             ORDER BY u.id, mr.model
+        """).fetchall()
+
+    if not raw:
+        return {"models": [], "rows": [], "total": 0, "disagreements": 0, "scores": []}
+
+    models_seen: set[str] = set()
+    by_url: dict[int, dict] = {}
+    for r in raw:
+        uid = r["id"]
+        models_seen.add(r["model"])
+        if uid not in by_url:
+            by_url[uid] = {"url": r["url"], "title": r["title"] or ""}
+        by_url[uid][r["model"]] = r["category"] or ""
+
+    models = sorted(models_seen)
+    rows = [by_url[uid] for uid in sorted(by_url)]
+
+    disagreements = sum(
+        1 for row in rows
+        if len(set((row.get(m) or "").lower() for m in models if row.get(m))) > 1
+    )
+
+    scores = _compute_model_scores(models, rows)
+
+    return {
+        "models": models,
+        "rows": rows,
+        "total": len(rows),
+        "disagreements": disagreements,
+        "scores": scores,
+    }
+
+
+def get_compare_models_list() -> list[str]:
+    """Список моделей, для которых есть результаты в model_results."""
+    with _get_conn() as conn:
+        if not conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='model_results'"
+        ).fetchone():
+            return []
+        rows = conn.execute(
+            "SELECT DISTINCT model FROM model_results ORDER BY model"
+        ).fetchall()
+    return [r["model"] for r in rows]
+
+
+def accept_model_results(model: str) -> int:
+    """Принимает результаты модели: копирует category из model_results в urls."""
+    with _get_conn() as conn:
+        cur = conn.execute("""
+            UPDATE urls
+               SET category  = (SELECT category FROM model_results WHERE model_results.url_id = urls.id AND model_results.model = ?),
+                   tagged_by = ?
+             WHERE id IN (SELECT url_id FROM model_results WHERE model = ?)
+        """, (model, model, model))
+        return cur.rowcount
+
+
+def clear_compare_results() -> int:
+    """Очищает таблицу model_results."""
+    with _get_conn() as conn:
+        if not conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='model_results'"
+        ).fetchone():
+            return 0
+        cur = conn.execute("DELETE FROM model_results")
+        return cur.rowcount

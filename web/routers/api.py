@@ -859,3 +859,202 @@ def benchmark_restore_manual():
         return {"ok": True, "restored": 0}
     n = db.benchmark_restore()
     return {"ok": True, "restored": n}
+
+
+# ── Сравнение моделей ────────────────────────────────────────────────────────
+
+_compare_state: dict = {
+    "status": "idle",       # idle | running | done | error
+    "current_model": None,  # имя текущей модели
+    "model_idx": 0,         # индекс текущей модели (0-based)
+    "models_total": 0,      # всего моделей
+    "step_done": 0,         # URL обработано в текущей модели
+    "step_total": 0,        # URL всего
+    "last_line": "",
+    "error": None,
+    "started_at": None,
+    "finished_at": None,
+}
+_compare_lock = threading.Lock()
+
+_COMPARE_MODEL_RE = re.compile(r"^─+\s*(\S+)")  # Rule line "── model_name ──"
+
+
+def _do_compare_models(
+    models: list[str],
+    limit: int,
+    workers: int,
+) -> None:
+    """Фоновый поток: запускает main.py --compare-models m1 m2 --limit N --no-progress."""
+    python = _pipeline_python()
+    main = str(_PROJECT_ROOT / "pipeline" / "main.py")
+    env = {
+        **os.environ,
+        "TERM": "dumb",
+        "NO_COLOR": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUNBUFFERED": "1",
+    }
+
+    flags = [
+        "--compare-models", *models,
+        "--limit", str(limit),
+        "--no-progress",
+    ]
+    if workers > 1:
+        flags += ["--workers", str(workers)]
+
+    tail: deque[str] = deque(maxlen=80)
+    model_idx = -1
+
+    try:
+        proc = subprocess.Popen(
+            [python, "-u", main] + flags,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=str(_PROJECT_ROOT / "pipeline"),
+            env=env,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+        )
+    except Exception as exc:
+        with _compare_lock:
+            _compare_state.update(
+                status="error",
+                error=f"Не удалось запустить: {exc}",
+                finished_at=_now(),
+            )
+        return
+
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        line = line.rstrip("\r\n")
+        if not line:
+            continue
+        tail.append(line)
+
+        # Прогресс "[N/M] ..."
+        m = _PROGRESS_RE.match(line)
+        if m:
+            done, total = int(m.group(1)), int(m.group(2))
+            with _compare_lock:
+                _compare_state.update(
+                    step_done=done, step_total=total, last_line=line,
+                )
+            continue
+
+        # Новая модель — строка содержит имя из нашего списка
+        for i, model_name in enumerate(models):
+            short = model_name.split(":")[0]
+            if short in line and ("─" in line or "OK" not in line):
+                # Проверяем что это Rule-линия с именем модели
+                if "─" in line:
+                    model_idx = i
+                    with _compare_lock:
+                        _compare_state.update(
+                            current_model=model_name,
+                            model_idx=i,
+                            step_done=0, step_total=0,
+                            last_line=line,
+                        )
+                    break
+
+        # Итоговая строка модели "N OK  M ERR"
+        if "OK" in line and "ERR" in line and model_idx >= 0:
+            with _compare_lock:
+                _compare_state["last_line"] = line
+            continue
+
+        with _compare_lock:
+            _compare_state["last_line"] = line
+
+    rc = proc.wait()
+    if rc != 0:
+        with _compare_lock:
+            _compare_state.update(
+                status="error",
+                error="\n".join(tail)[-1500:] or f"Exit code {rc}",
+                finished_at=_now(),
+            )
+        return
+
+    with _compare_lock:
+        _compare_state.update(
+            status="done", current_model=None, finished_at=_now(),
+        )
+
+
+class CompareRunBody(BaseModel):
+    models: list[str]
+    limit: int = 30
+    workers: int = 1
+
+
+@router.post("/compare/run")
+def compare_run(body: CompareRunBody):
+    """Запускает сравнение нескольких моделей."""
+    if len(body.models) < 2:
+        raise HTTPException(status_code=422, detail="Выберите минимум 2 модели")
+    if not (10 <= body.limit <= 500):
+        raise HTTPException(status_code=422, detail="limit must be in 10..500")
+    if body.workers < 1 or body.workers > 16:
+        raise HTTPException(status_code=422, detail="workers must be in 1..16")
+
+    with _compare_lock:
+        if _compare_state["status"] == "running":
+            raise HTTPException(status_code=409, detail="Сравнение уже запущено")
+        _compare_state.update(
+            status="running",
+            current_model=body.models[0],
+            model_idx=0,
+            models_total=len(body.models),
+            step_done=0, step_total=0,
+            last_line="",
+            error=None,
+            started_at=_now(),
+            finished_at=None,
+        )
+
+    threading.Thread(
+        target=_do_compare_models,
+        kwargs={
+            "models": body.models,
+            "limit": body.limit,
+            "workers": body.workers,
+        },
+        daemon=True,
+    ).start()
+    return {"ok": True}
+
+
+@router.get("/compare/status")
+def compare_status():
+    with _compare_lock:
+        return dict(_compare_state)
+
+
+@router.get("/compare/results")
+def compare_results():
+    """Возвращает pivot-таблицу результатов сравнения моделей."""
+    return db.get_compare_results()
+
+
+class AcceptModelBody(BaseModel):
+    model: str
+
+
+@router.post("/compare/accept")
+def compare_accept(body: AcceptModelBody):
+    """Принимает результаты выбранной модели как финальные."""
+    n = db.accept_model_results(body.model)
+    if n == 0:
+        raise HTTPException(status_code=404, detail=f"Нет результатов для модели {body.model}")
+    return {"ok": True, "updated": n}
+
+
+@router.post("/compare/clear")
+def compare_clear():
+    """Очищает таблицу model_results."""
+    n = db.clear_compare_results()
+    return {"ok": True, "deleted": n}

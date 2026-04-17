@@ -5,14 +5,10 @@
 <div class="max-w-4xl">
 
   <div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900">Бенчмарк: batch × workers</h1>
+    <h1 class="text-2xl font-bold text-gray-900">Бенчмарк</h1>
     <p class="mt-1 text-sm text-gray-500">
-      Эмпирически подбирает оптимальные параметры для step3 (классификация).
-      Использует уже классифицированные URL. Перед прогоном делает snapshot,
-      после — восстанавливает. БД бэкапится автоматически.
-    </p>
-    <p class="mt-1 text-sm text-gray-500">
-      Доступно URL для теста: <span class="font-semibold text-gray-800">{{ eligible }}</span>
+      Подбор оптимальных параметров и сравнение моделей.
+      Доступно URL: <span class="font-semibold text-gray-800">{{ eligible }}</span>
     </p>
   </div>
 
@@ -22,7 +18,7 @@
       ⚠ Остался snapshot с прошлого прогона
     </p>
     <p class="text-xs text-amber-700 mb-2">
-      Значит, предыдущий бенчмарк упал до восстановления категорий. Нажмите, чтобы откатить.
+      Предыдущий бенчмарк упал до восстановления категорий. Нажмите, чтобы откатить.
     </p>
     <button id="btn-restore"
             class="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700">
@@ -31,133 +27,328 @@
   </div>
   {% endif %}
 
-  <!-- Form -->
-  <div class="mb-6 p-4 border border-gray-200 rounded-xl">
+  <!-- ── Два таба ────────────────────────────────────────────────────────── -->
+  <div class="flex gap-0 mb-0">
+    <button type="button" data-bench-tab="speed"
+            class="bench-tab active px-5 py-2.5 text-sm font-medium border border-b-0 rounded-t-lg
+                   bg-white border-gray-300 text-gray-800">
+      Скорость (batch × workers)
+    </button>
+    <button type="button" data-bench-tab="compare"
+            class="bench-tab px-5 py-2.5 text-sm font-medium border border-b-0 rounded-t-lg
+                   bg-gray-50 border-gray-200 text-gray-500">
+      Сравнение моделей
+    </button>
+  </div>
 
-    <div class="flex flex-wrap items-end gap-3 mb-4">
-      <label class="flex flex-col text-xs text-gray-500">
-        Модель
-        <select id="model-select"
-                class="mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">Загрузка моделей...</option>
-        </select>
-      </label>
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: Скорость -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <div id="panel-speed" class="bench-panel border border-gray-300 rounded-b-lg rounded-tr-lg p-4 bg-white">
 
-      <label class="flex flex-col text-xs text-gray-500">
-        URL на конфиг
-        <select id="limit-select"
-                class="mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="20">20</option>
-          <option value="30" selected>30</option>
-          <option value="60">60</option>
-          <option value="100">100</option>
-        </select>
-      </label>
+    <div class="mb-4 p-4 border border-gray-200 rounded-xl">
+      <div class="flex flex-wrap items-end gap-3 mb-4">
+        <label class="flex flex-col text-xs text-gray-500">
+          Модель
+          <select id="model-select"
+                  class="mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Загрузка моделей...</option>
+          </select>
+        </label>
 
-      <label class="flex items-center gap-2 text-sm text-gray-600">
-        <input id="no-warmup" type="checkbox" class="rounded">
-        Без warmup
-      </label>
+        <label class="flex flex-col text-xs text-gray-500">
+          URL на конфиг
+          <select id="limit-select"
+                  class="mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="20">20</option>
+            <option value="30" selected>30</option>
+            <option value="60">60</option>
+            <option value="100">100</option>
+          </select>
+        </label>
 
-      <button id="btn-run"
-              class="ml-auto px-5 py-2 text-sm font-medium text-white bg-green-600 rounded-lg
-                     hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed">
-        ▶&nbsp;Запустить
-      </button>
+        <label class="flex items-center gap-2 text-sm text-gray-600">
+          <input id="no-warmup" type="checkbox" class="rounded">
+          Без warmup
+        </label>
+
+        <button id="btn-speed-run"
+                class="ml-auto px-5 py-2 text-sm font-medium text-white bg-green-600 rounded-lg
+                       hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed">
+          Запустить
+        </button>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Конфигурации (<span id="cfg-count">0</span> выбрано)
+          </p>
+          <div class="flex gap-2 text-xs">
+            <button id="btn-check-all"  class="text-blue-600 hover:underline">все</button>
+            <button id="btn-check-none" class="text-gray-500 hover:underline">ни одной</button>
+          </div>
+        </div>
+        <div id="configs-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2"></div>
+      </div>
     </div>
 
-    <div>
-      <div class="flex items-center justify-between mb-2">
-        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          Конфигурации ({{ '<span id="cfg-count">0</span>' | safe }} выбрано)
+    <!-- Speed progress -->
+    <div id="speed-progress" class="hidden mb-4">
+      <div class="flex items-center justify-between mb-1.5">
+        <span id="speed-progress-text" class="text-sm text-gray-600">Подготовка...</span>
+        <span id="speed-progress-pct" class="text-sm font-medium text-gray-700">0%</span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+        <div id="speed-progress-bar"
+             class="h-2.5 rounded-full transition-all duration-500 bg-blue-600"
+             style="width: 0%"></div>
+      </div>
+      <p id="speed-progress-detail" class="mt-2 text-xs font-mono text-gray-400 truncate"></p>
+    </div>
+
+    <!-- Speed results table -->
+    <div id="speed-results" class="hidden mb-4">
+      <h3 class="text-sm font-semibold text-gray-700 mb-2">Результаты</h3>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200">
+            <th class="text-left py-2 px-3">Конфигурация</th>
+            <th class="text-right py-2 px-3">batch</th>
+            <th class="text-right py-2 px-3">workers</th>
+            <th class="text-right py-2 px-3">время, с</th>
+            <th class="text-right py-2 px-3">URL/с</th>
+            <th class="text-right py-2 px-3">vs baseline</th>
+          </tr>
+        </thead>
+        <tbody id="speed-results-tbody"></tbody>
+      </table>
+
+      <div id="speed-winner" class="hidden mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+        <p class="text-sm font-semibold text-green-800 mb-2">
+          ★ Победитель: <span id="speed-winner-text"></span>
         </p>
-        <div class="flex gap-2 text-xs">
-          <button id="btn-check-all"  class="text-blue-600 hover:underline">все</button>
-          <button id="btn-check-none" class="text-gray-500 hover:underline">ни одной</button>
+        <button id="btn-apply-winner"
+                class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700">
+          Применить на /add
+        </button>
+        <span id="apply-ok" class="hidden ml-2 text-sm text-green-700">✓ Сохранено</span>
+      </div>
+    </div>
+
+    <div id="speed-error" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+      <p class="text-sm text-red-700 font-semibold mb-1">Ошибка</p>
+      <pre id="speed-error-text" class="text-xs text-red-600 whitespace-pre-wrap overflow-x-auto"></pre>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: Сравнение моделей -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <div id="panel-compare" class="bench-panel hidden border border-gray-300 rounded-b-lg rounded-tr-lg p-4 bg-white">
+
+    <div class="mb-4 p-4 border border-gray-200 rounded-xl">
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        Выберите модели (минимум 2)
+      </p>
+      <div id="models-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+        <!-- модели инжектятся JS -->
+      </div>
+
+      <div class="flex flex-wrap items-end gap-3">
+        <label class="flex flex-col text-xs text-gray-500">
+          URL на модель
+          <select id="compare-limit"
+                  class="mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="20">20</option>
+            <option value="30" selected>30</option>
+            <option value="60">60</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <label class="flex flex-col text-xs text-gray-500" title="Параллельные потоки">
+          workers
+          <input id="compare-workers" type="number" min="1" max="16" value="1"
+                 class="mt-1 w-16 px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </label>
+        <button id="btn-compare-run"
+                class="ml-auto px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg
+                       hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">
+          Запустить сравнение
+        </button>
+      </div>
+    </div>
+
+    <!-- Compare progress -->
+    <div id="compare-progress" class="hidden mb-4">
+      <div class="flex items-center justify-between mb-1.5">
+        <span id="compare-progress-text" class="text-sm text-gray-600">Подготовка...</span>
+        <span id="compare-progress-pct" class="text-sm font-medium text-gray-700"></span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+        <div id="compare-progress-bar"
+             class="h-2.5 rounded-full transition-all duration-500 bg-blue-600"
+             style="width: 0%"></div>
+      </div>
+      <p id="compare-progress-detail" class="mt-2 text-xs font-mono text-gray-400 truncate"></p>
+    </div>
+
+    <!-- Compare results -->
+    <div id="compare-results" class="hidden mb-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-gray-700">
+          Результаты: <span id="compare-total">0</span> URL,
+          <span id="compare-disagree" class="text-amber-600">0 расхождений</span>
+        </h3>
+        <div class="flex gap-2">
+          <label class="flex items-center gap-1.5 text-xs text-gray-500">
+            <input id="compare-only-diff" type="checkbox" class="rounded">
+            Только расхождения
+          </label>
+          <button id="btn-compare-clear"
+                  class="px-3 py-1 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
+            Очистить результаты
+          </button>
         </div>
       </div>
-      <div id="configs-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-        <!-- configs injected by JS -->
+
+      <!-- ── Scoring card ──────────────────────────────────────────────── -->
+      <div id="scores-card" class="hidden mb-4 p-4 border border-gray-200 rounded-xl">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Рейтинг моделей</p>
+          <span class="text-[10px] text-gray-400">score = agreement × 0.7 + case × 0.3 (speed N/A)</span>
+        </div>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200">
+              <th class="text-left py-2 px-3">#</th>
+              <th class="text-left py-2 px-3">Модель</th>
+              <th class="text-right py-2 px-3">Agreement</th>
+              <th class="text-right py-2 px-3">Case</th>
+              <th class="text-right py-2 px-3">Score</th>
+              <th class="text-left py-2 px-3">Knockout</th>
+            </tr>
+          </thead>
+          <tbody id="scores-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr id="compare-thead" class="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200">
+              <th class="text-left py-2 px-3 sticky left-0 bg-white">Заголовок / URL</th>
+            </tr>
+          </thead>
+          <tbody id="compare-tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="compare-accept" class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <p class="text-sm text-blue-800 mb-2">Принять результаты модели как финальные:</p>
+        <div class="flex items-center gap-2">
+          <select id="accept-model-select"
+                  class="px-3 py-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </select>
+          <button id="btn-accept-model"
+                  class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+            Принять
+          </button>
+          <span id="accept-ok" class="hidden text-sm text-green-700"></span>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Progress -->
-  <div id="progress-block" class="hidden mb-6">
-    <div class="flex items-center justify-between mb-1.5">
-      <span id="progress-text" class="text-sm text-gray-600">Подготовка...</span>
-      <span id="progress-pct" class="text-sm font-medium text-gray-700">0%</span>
+    <div id="compare-error" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+      <p class="text-sm text-red-700 font-semibold mb-1">Ошибка</p>
+      <pre id="compare-error-text" class="text-xs text-red-600 whitespace-pre-wrap overflow-x-auto"></pre>
     </div>
-    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-      <div id="progress-bar"
-           class="h-2.5 rounded-full transition-all duration-500 bg-blue-600"
-           style="width: 0%"></div>
+
+  </div>
+
+  <!-- ── Справка ─────────────────────────────────────────────────────────── -->
+  <details class="mt-4 text-sm text-gray-600">
+    <summary class="cursor-pointer text-xs font-semibold text-gray-400 uppercase tracking-wide hover:text-gray-600 select-none">
+      Справка
+    </summary>
+    <div class="mt-3 space-y-3 text-xs leading-relaxed text-gray-500 border-l-2 border-gray-200 pl-3">
+      <div>
+        <p class="font-semibold text-gray-700 mb-0.5">Скорость (batch × workers)</p>
+        <p>Перебирает конфигурации batch/workers для одной модели и измеряет URL/сек.
+           Перед прогоном делает snapshot категорий, после — восстанавливает. БД бэкапится автоматически.</p>
+      </div>
+      <div>
+        <p class="font-semibold text-gray-700 mb-0.5">Сравнение моделей</p>
+        <p>Прогоняет несколько моделей на одном наборе URL. Результаты сохраняются в таблицу <code>model_results</code>
+           (не затрагивают основные категории). Показывает расхождения — где модели присвоили разные категории.
+           Кнопка «Принять» копирует результаты выбранной модели в основные категории.</p>
+        <p class="mt-1"><strong>Рейтинг:</strong> score = agreement &times; 0.7 + case consistency &times; 0.3.
+           Agreement — доля URL, где тег модели совпал с plurality (самым частым ответом).
+           Case — доля тегов в lowercase. Модели с пустыми ответами или массовым использованием
+           подчёркиваний дисквалифицируются (knockout).</p>
+      </div>
     </div>
-    <p id="progress-detail" class="mt-2 text-xs font-mono text-gray-400 truncate"></p>
-  </div>
-
-  <!-- Results table -->
-  <div id="results-block" class="hidden mb-6">
-    <h2 class="text-base font-semibold text-gray-800 mb-3">Результаты</h2>
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200">
-          <th class="text-left py-2 px-3">Конфигурация</th>
-          <th class="text-right py-2 px-3">batch</th>
-          <th class="text-right py-2 px-3">workers</th>
-          <th class="text-right py-2 px-3">время, с</th>
-          <th class="text-right py-2 px-3">URL/с</th>
-          <th class="text-right py-2 px-3">vs baseline</th>
-        </tr>
-      </thead>
-      <tbody id="results-tbody"></tbody>
-    </table>
-
-    <div id="winner-block" class="hidden mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-      <p class="text-sm font-semibold text-green-800 mb-2">
-        ★ Победитель: <span id="winner-text"></span>
-      </p>
-      <button id="btn-apply-winner"
-              class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700">
-        Применить на /add
-      </button>
-      <span id="apply-ok" class="hidden ml-2 text-sm text-green-700">✓ Сохранено в localStorage</span>
-    </div>
-  </div>
-
-  <div id="error-block" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-    <p class="text-sm text-red-700 font-semibold mb-1">Ошибка</p>
-    <pre id="error-text" class="text-xs text-red-600 whitespace-pre-wrap overflow-x-auto"></pre>
-  </div>
+  </details>
 
 </div>
 
+<style>
+  .bench-tab {
+    opacity: 0.55;
+    transition: opacity 0.15s;
+    cursor: pointer;
+  }
+  .bench-tab:hover { opacity: 0.8; }
+  .bench-tab.active {
+    opacity: 1;
+    background: white;
+    border-color: #d1d5db;
+    color: #1f2937;
+  }
+</style>
+
 <script>
-  let _pollInterval = null;
+  let _speedPoll = null;
+  let _comparePoll = null;
   let _configs = [];
+  let _allModels = [];
 
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  // ── Init configs grid ─────────────────────────────────────────────────────
-  async function loadInitialStatus() {
+  // ── Tab switching ─────────────────────────────────────────────────────────
+  document.querySelectorAll('.bench-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.bench-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.bench-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById('panel-' + tab.dataset.benchTab).classList.remove('hidden');
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SPEED BENCHMARK
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  async function loadSpeedStatus() {
     const r = await fetch('/api/benchmark/status');
     const d = await r.json();
     _configs = d.configs || [];
     renderConfigs();
 
     if (d.status === 'running') {
-      document.getElementById('btn-run').disabled = true;
-      document.getElementById('progress-block').classList.remove('hidden');
-      document.getElementById('results-block').classList.remove('hidden');
-      applyStatus(d);
-      startPolling();
+      document.getElementById('btn-speed-run').disabled = true;
+      document.getElementById('speed-progress').classList.remove('hidden');
+      document.getElementById('speed-results').classList.remove('hidden');
+      applySpeedStatus(d);
+      startSpeedPoll();
     } else if (d.status === 'done' || d.status === 'error') {
       if (d.results && d.results.length > 0) {
-        document.getElementById('results-block').classList.remove('hidden');
+        document.getElementById('speed-results').classList.remove('hidden');
       }
-      applyStatus(d);
+      applySpeedStatus(d);
     }
   }
 
@@ -175,8 +366,7 @@
 
   function updateCfgCount() {
     const n = document.querySelectorAll('.cfg-box:checked').length;
-    const el = document.getElementById('cfg-count');
-    if (el) el.textContent = n;
+    document.getElementById('cfg-count').textContent = n;
   }
 
   document.getElementById('btn-check-all').addEventListener('click', () => {
@@ -188,49 +378,19 @@
     updateCfgCount();
   });
 
-  // ── Load models ───────────────────────────────────────────────────────────
-  (async () => {
-    const sel = document.getElementById('model-select');
-    try {
-      const r = await fetch('/api/models');
-      const d = await r.json();
-      if (d.models && d.models.length > 0) {
-        const saved = localStorage.getItem('pipeline_model') || '';
-        sel.innerHTML = d.models.map(m =>
-          `<option value="${escHtml(m)}"${m === saved ? ' selected' : ''}>${escHtml(m)}</option>`
-        ).join('');
-        sel.addEventListener('change', () => {
-          localStorage.setItem('pipeline_model', sel.value);
-        });
-      } else {
-        sel.innerHTML = '<option value="">Нет моделей</option>';
-        sel.disabled = true;
-        document.getElementById('btn-run').disabled = true;
-      }
-    } catch (e) {
-      sel.innerHTML = '<option value="">Ошибка загрузки</option>';
-    }
-  })();
-
-  // ── Run ───────────────────────────────────────────────────────────────────
-  document.getElementById('btn-run').addEventListener('click', async () => {
+  document.getElementById('btn-speed-run').addEventListener('click', async () => {
     const model = document.getElementById('model-select').value || null;
     const limit = parseInt(document.getElementById('limit-select').value, 10) || 30;
     const noWarmup = document.getElementById('no-warmup').checked;
     const configs = Array.from(document.querySelectorAll('.cfg-box:checked'))
       .map(b => parseInt(b.dataset.idx, 10));
 
-    if (configs.length === 0) {
-      alert('Выберите хотя бы одну конфигурацию');
-      return;
-    }
+    if (configs.length === 0) { alert('Выберите хотя бы одну конфигурацию'); return; }
 
-    document.getElementById('error-block').classList.add('hidden');
-    document.getElementById('results-block').classList.add('hidden');
-    document.getElementById('winner-block').classList.add('hidden');
-    document.getElementById('results-tbody').innerHTML = '';
-    document.getElementById('progress-bar').className =
-      'h-2.5 rounded-full transition-all duration-500 bg-blue-600';
+    document.getElementById('speed-error').classList.add('hidden');
+    document.getElementById('speed-results').classList.add('hidden');
+    document.getElementById('speed-winner').classList.add('hidden');
+    document.getElementById('speed-results-tbody').innerHTML = '';
 
     try {
       const r = await fetch('/api/benchmark/run', {
@@ -238,41 +398,31 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model, limit, configs, no_warmup: noWarmup }),
       });
-      if (!r.ok) {
-        const d = await r.json();
-        alert(d.detail || 'Ошибка запуска');
-        return;
-      }
-      document.getElementById('btn-run').disabled = true;
-      document.getElementById('progress-block').classList.remove('hidden');
-      document.getElementById('results-block').classList.remove('hidden');
-      startPolling();
-    } catch (e) {
-      alert('Ошибка: ' + e.message);
-    }
+      if (!r.ok) { const d = await r.json(); alert(d.detail || 'Ошибка'); return; }
+      document.getElementById('btn-speed-run').disabled = true;
+      document.getElementById('speed-progress').classList.remove('hidden');
+      document.getElementById('speed-results').classList.remove('hidden');
+      startSpeedPoll();
+    } catch (e) { alert('Ошибка: ' + e.message); }
   });
 
-  function startPolling() {
-    if (_pollInterval) clearInterval(_pollInterval);
-    _pollInterval = setInterval(pollStatus, 2000);
-    pollStatus();
+  function startSpeedPoll() {
+    if (_speedPoll) clearInterval(_speedPoll);
+    _speedPoll = setInterval(pollSpeed, 2000);
+    pollSpeed();
   }
 
-  async function pollStatus() {
+  async function pollSpeed() {
     try {
       const r = await fetch('/api/benchmark/status');
       const d = await r.json();
-      applyStatus(d);
-      if (d.status !== 'running') {
-        clearInterval(_pollInterval);
-        _pollInterval = null;
-      }
+      applySpeedStatus(d);
+      if (d.status !== 'running') { clearInterval(_speedPoll); _speedPoll = null; }
     } catch (_) {}
   }
 
-  function applyStatus(s) {
-    // Results table
-    const tbody = document.getElementById('results-tbody');
+  function applySpeedStatus(s) {
+    const tbody = document.getElementById('speed-results-tbody');
     const results = s.results || [];
     const baselineRps = results[0]?.rps || 1.0;
     const bestRps = results.length ? Math.max(...results.map(r => r.rps)) : 0;
@@ -292,40 +442,26 @@
       </tr>`;
     }).join('');
 
-    // Progress
-    const totalCfgs = (s.configs && s.current_idx >= 0) ? 1 : 0;
-    // s.current_idx refers to selected_configs, total = results.length + remaining
-    // Better: derive a simple progress as results_done / configs_selected
-    // But selected count is not in state. Use approximation.
-
     if (s.status === 'running') {
       const done = results.length;
-      const currentInfo = s.current_total > 0
-        ? ` (${s.current_done}/${s.current_total})`
-        : '';
-      document.getElementById('progress-text').textContent =
-        `Конфигурация ${done + 1}${currentInfo}`;
-
-      // Overall % inside current step
-      const stepPct = s.current_total > 0
-        ? Math.min(100, Math.round(100 * s.current_done / s.current_total))
-        : 0;
-      document.getElementById('progress-pct').textContent = stepPct + '%';
-      document.getElementById('progress-bar').style.width = stepPct + '%';
-      document.getElementById('progress-detail').textContent = s.last_line || '';
+      const currentInfo = s.current_total > 0 ? ` (${s.current_done}/${s.current_total})` : '';
+      document.getElementById('speed-progress-text').textContent = `Конфигурация ${done + 1}${currentInfo}`;
+      const stepPct = s.current_total > 0 ? Math.min(100, Math.round(100 * s.current_done / s.current_total)) : 0;
+      document.getElementById('speed-progress-pct').textContent = stepPct + '%';
+      document.getElementById('speed-progress-bar').style.width = stepPct + '%';
+      document.getElementById('speed-progress-detail').textContent = s.last_line || '';
 
     } else if (s.status === 'done') {
-      document.getElementById('progress-text').textContent = 'Готово';
-      document.getElementById('progress-pct').textContent = '100%';
-      document.getElementById('progress-bar').style.width = '100%';
-      document.getElementById('progress-bar').className =
-        'h-2.5 rounded-full transition-all duration-500 bg-green-500';
-      document.getElementById('btn-run').disabled = false;
+      document.getElementById('speed-progress-text').textContent = 'Готово';
+      document.getElementById('speed-progress-pct').textContent = '100%';
+      document.getElementById('speed-progress-bar').style.width = '100%';
+      document.getElementById('speed-progress-bar').className = 'h-2.5 rounded-full transition-all duration-500 bg-green-500';
+      document.getElementById('btn-speed-run').disabled = false;
 
       if (s.winner) {
-        document.getElementById('winner-text').textContent =
+        document.getElementById('speed-winner-text').textContent =
           `batch=${s.winner.batch} workers=${s.winner.workers} — ${s.winner.rps.toFixed(1)} URL/с`;
-        document.getElementById('winner-block').classList.remove('hidden');
+        document.getElementById('speed-winner').classList.remove('hidden');
         document.getElementById('btn-apply-winner').onclick = () => {
           localStorage.setItem('pipeline_batch', s.winner.batch);
           localStorage.setItem('pipeline_workers', s.winner.workers);
@@ -334,16 +470,240 @@
       }
 
     } else if (s.status === 'error') {
-      document.getElementById('progress-text').textContent = 'Ошибка';
-      document.getElementById('progress-bar').className =
-        'h-2.5 rounded-full transition-all duration-500 bg-red-500';
-      document.getElementById('error-block').classList.remove('hidden');
-      document.getElementById('error-text').textContent = s.error || '';
-      document.getElementById('btn-run').disabled = false;
+      document.getElementById('speed-progress-text').textContent = 'Ошибка';
+      document.getElementById('speed-progress-bar').className = 'h-2.5 rounded-full transition-all duration-500 bg-red-500';
+      document.getElementById('speed-error').classList.remove('hidden');
+      document.getElementById('speed-error-text').textContent = s.error || '';
+      document.getElementById('btn-speed-run').disabled = false;
     }
   }
 
-  // ── Manual restore ────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODEL COMPARISON
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function renderModelCheckboxes(models) {
+    const grid = document.getElementById('models-grid');
+    grid.innerHTML = models.map(m => `
+      <label class="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+        <input type="checkbox" class="model-box rounded" value="${escHtml(m)}">
+        <span class="font-mono truncate">${escHtml(m)}</span>
+      </label>
+    `).join('');
+  }
+
+  document.getElementById('btn-compare-run').addEventListener('click', async () => {
+    const selected = Array.from(document.querySelectorAll('.model-box:checked')).map(b => b.value);
+    if (selected.length < 2) { alert('Выберите минимум 2 модели'); return; }
+
+    const limit = parseInt(document.getElementById('compare-limit').value, 10) || 30;
+    const workers = parseInt(document.getElementById('compare-workers').value, 10) || 1;
+
+    document.getElementById('compare-error').classList.add('hidden');
+    document.getElementById('compare-results').classList.add('hidden');
+
+    try {
+      const r = await fetch('/api/compare/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ models: selected, limit, workers }),
+      });
+      if (!r.ok) { const d = await r.json(); alert(d.detail || 'Ошибка'); return; }
+      document.getElementById('btn-compare-run').disabled = true;
+      document.getElementById('compare-progress').classList.remove('hidden');
+      startComparePoll();
+    } catch (e) { alert('Ошибка: ' + e.message); }
+  });
+
+  function startComparePoll() {
+    if (_comparePoll) clearInterval(_comparePoll);
+    _comparePoll = setInterval(pollCompare, 2000);
+    pollCompare();
+  }
+
+  async function pollCompare() {
+    try {
+      const r = await fetch('/api/compare/status');
+      const d = await r.json();
+      applyCompareStatus(d);
+      if (d.status !== 'running') {
+        clearInterval(_comparePoll);
+        _comparePoll = null;
+        if (d.status === 'done') loadCompareResults();
+      }
+    } catch (_) {}
+  }
+
+  function applyCompareStatus(s) {
+    if (s.status === 'running') {
+      const modelLabel = s.current_model ? s.current_model.split(':')[0] : '...';
+      const progress = s.step_total > 0 ? ` ${s.step_done}/${s.step_total}` : '';
+      document.getElementById('compare-progress-text').textContent =
+        `Модель ${s.model_idx + 1}/${s.models_total}: ${modelLabel}${progress}`;
+      const pct = s.step_total > 0 ? Math.round(100 * s.step_done / s.step_total) : 0;
+      document.getElementById('compare-progress-pct').textContent = pct + '%';
+      document.getElementById('compare-progress-bar').style.width = pct + '%';
+      document.getElementById('compare-progress-detail').textContent = s.last_line || '';
+
+    } else if (s.status === 'done') {
+      document.getElementById('compare-progress-text').textContent = 'Готово';
+      document.getElementById('compare-progress-pct').textContent = '100%';
+      document.getElementById('compare-progress-bar').style.width = '100%';
+      document.getElementById('compare-progress-bar').className = 'h-2.5 rounded-full transition-all duration-500 bg-green-500';
+      document.getElementById('btn-compare-run').disabled = false;
+
+    } else if (s.status === 'error') {
+      document.getElementById('compare-progress-text').textContent = 'Ошибка';
+      document.getElementById('compare-progress-bar').className = 'h-2.5 rounded-full transition-all duration-500 bg-red-500';
+      document.getElementById('compare-error').classList.remove('hidden');
+      document.getElementById('compare-error-text').textContent = s.error || '';
+      document.getElementById('btn-compare-run').disabled = false;
+    }
+  }
+
+  async function loadCompareResults() {
+    try {
+      const r = await fetch('/api/compare/results');
+      const d = await r.json();
+      if (!d.models || d.models.length === 0) return;
+      renderCompareTable(d);
+      document.getElementById('compare-results').classList.remove('hidden');
+    } catch (_) {}
+  }
+
+  function renderCompareTable(data) {
+    const { models, rows, total, disagreements, scores } = data;
+
+    document.getElementById('compare-total').textContent = total;
+    document.getElementById('compare-disagree').textContent = disagreements + ' расхождений';
+
+    // ── Scores card ──────────────────────────────────────────────────────
+    const scoresCard = document.getElementById('scores-card');
+    const scoresTbody = document.getElementById('scores-tbody');
+    if (scores && scores.length > 0) {
+      scoresTbody.innerHTML = scores.map((s, i) => {
+        const knocked = s.knocked_out;
+        const rowCls = knocked ? 'text-gray-400 line-through' : '';
+        const scoreCls = !knocked && i === 0 ? 'text-green-700 font-bold' : '';
+        const rank = knocked ? '—' : (i + 1);
+        const medal = !knocked && i === 0 ? '★ ' : '';
+        const koText = knocked
+          ? `<span class="text-red-500 no-underline" style="text-decoration:none">${escHtml(s.knockout_reasons.join('; '))}</span>`
+          : '<span class="text-green-600">OK</span>';
+        return `<tr class="${rowCls} border-b border-gray-100">
+          <td class="py-1.5 px-3 font-mono">${medal}${rank}</td>
+          <td class="py-1.5 px-3 font-mono">${escHtml(s.model.split(':')[0])}</td>
+          <td class="text-right py-1.5 px-3 font-mono">${s.agreement}%</td>
+          <td class="text-right py-1.5 px-3 font-mono">${s.case_consistency}%</td>
+          <td class="text-right py-1.5 px-3 font-mono ${scoreCls}">${s.score}</td>
+          <td class="py-1.5 px-3 text-xs">${koText}</td>
+        </tr>`;
+      }).join('');
+      scoresCard.classList.remove('hidden');
+    } else {
+      scoresCard.classList.add('hidden');
+    }
+
+    // ── Header ───────────────────────────────────────────────────────────
+    const thead = document.getElementById('compare-thead');
+    thead.innerHTML = '<th class="text-left py-2 px-3 sticky left-0 bg-white">Заголовок / URL</th>' +
+      models.map(m => `<th class="text-center py-2 px-3 whitespace-nowrap">${escHtml(m.split(':')[0])}</th>`).join('');
+
+    // ── Body ─────────────────────────────────────────────────────────────
+    const onlyDiff = document.getElementById('compare-only-diff').checked;
+    const tbody = document.getElementById('compare-tbody');
+    tbody.innerHTML = rows
+      .filter(row => {
+        if (!onlyDiff) return true;
+        const cats = models.map(m => (row[m] || '').toLowerCase()).filter(Boolean);
+        return new Set(cats).size > 1;
+      })
+      .map(row => {
+        const cats = models.map(m => (row[m] || '').toLowerCase()).filter(Boolean);
+        const disagree = new Set(cats).size > 1;
+        const cls = disagree ? 'bg-amber-50' : '';
+        const title = (row.title || row.url || '').substring(0, 60);
+        return `<tr class="${cls} border-b border-gray-100">
+          <td class="py-1.5 px-3 text-xs truncate max-w-xs sticky left-0 ${cls || 'bg-white'}"
+              title="${escHtml(row.url)}">${escHtml(title)}</td>
+          ${models.map(m => {
+            const cat = row[m] || '—';
+            return `<td class="py-1.5 px-3 text-center text-xs whitespace-nowrap">${escHtml(cat)}</td>`;
+          }).join('')}
+        </tr>`;
+      }).join('');
+
+    // ── Accept select ────────────────────────────────────────────────────
+    const sel = document.getElementById('accept-model-select');
+    sel.innerHTML = models.map(m =>
+      `<option value="${escHtml(m)}">${escHtml(m.split(':')[0])}</option>`
+    ).join('');
+  }
+
+  // Фильтр "только расхождения"
+  document.getElementById('compare-only-diff').addEventListener('change', loadCompareResults);
+
+  // Принять модель
+  document.getElementById('btn-accept-model').addEventListener('click', async () => {
+    const model = document.getElementById('accept-model-select').value;
+    if (!model) return;
+    if (!confirm(`Принять результаты модели "${model.split(':')[0]}" как финальные категории?`)) return;
+
+    try {
+      const r = await fetch('/api/compare/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || 'Ошибка');
+      document.getElementById('accept-ok').textContent = `✓ Обновлено ${d.updated} URL`;
+      document.getElementById('accept-ok').classList.remove('hidden');
+    } catch (e) { alert('Ошибка: ' + e.message); }
+  });
+
+  // Очистить результаты
+  document.getElementById('btn-compare-clear').addEventListener('click', async () => {
+    if (!confirm('Удалить все результаты сравнения моделей?')) return;
+    try {
+      const r = await fetch('/api/compare/clear', { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || 'Ошибка');
+      document.getElementById('compare-results').classList.add('hidden');
+      alert(`Удалено ${d.deleted} записей`);
+    } catch (e) { alert('Ошибка: ' + e.message); }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // INIT
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Load models for both tabs
+  (async () => {
+    const sel = document.getElementById('model-select');
+    try {
+      const r = await fetch('/api/models');
+      const d = await r.json();
+      _allModels = d.models || [];
+      if (_allModels.length > 0) {
+        const saved = localStorage.getItem('pipeline_model') || '';
+        sel.innerHTML = _allModels.map(m =>
+          `<option value="${escHtml(m)}"${m === saved ? ' selected' : ''}>${escHtml(m)}</option>`
+        ).join('');
+        sel.addEventListener('change', () => localStorage.setItem('pipeline_model', sel.value));
+        renderModelCheckboxes(_allModels);
+      } else {
+        sel.innerHTML = '<option value="">Нет моделей</option>';
+        sel.disabled = true;
+        document.getElementById('btn-speed-run').disabled = true;
+        document.getElementById('btn-compare-run').disabled = true;
+      }
+    } catch (e) {
+      sel.innerHTML = '<option value="">Ошибка загрузки</option>';
+    }
+  })();
+
+  // Manual restore
   const btnRestore = document.getElementById('btn-restore');
   if (btnRestore) {
     btnRestore.addEventListener('click', async () => {
@@ -363,6 +723,8 @@
     });
   }
 
-  loadInitialStatus();
+  // Load initial state for both tabs
+  loadSpeedStatus();
+  loadCompareResults();
 </script>
 {% endblock %}
