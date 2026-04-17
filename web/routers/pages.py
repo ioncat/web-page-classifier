@@ -139,11 +139,33 @@ def add_page(request: Request):
     """Страница добавления URL и запуска пайплайна."""
     all_categories = _all_categories()
     pending_count = db.get_pending_count()
+    error_count = db.get_error_count()
+    transient_error_count = db.get_transient_error_count()
+    incomplete_count = db.get_incomplete_count()
     return templates.TemplateResponse("add.html", {
         "request": request,
         "all_categories": all_categories,
         "active_category": None,
         "pending_count": pending_count,
+        "error_count": error_count,
+        "transient_error_count": transient_error_count,
+        "incomplete_count": incomplete_count,
+        **_common_ctx(),
+    })
+
+
+@router.get("/benchmark", response_class=HTMLResponse)
+def benchmark_page(request: Request):
+    """Страница подбора оптимальных batch/workers."""
+    all_categories = _all_categories()
+    eligible = db.benchmark_eligible_count()
+    has_snapshot = db.benchmark_has_snapshot()
+    return templates.TemplateResponse("benchmark.html", {
+        "request": request,
+        "all_categories": all_categories,
+        "active_category": None,
+        "eligible": eligible,
+        "has_snapshot": has_snapshot,
         **_common_ctx(),
     })
 

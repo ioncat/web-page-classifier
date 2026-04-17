@@ -49,43 +49,190 @@
     </div>
   </div>
 
-  <!-- Разделитель -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- Пайплайн -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <div class="border-t border-gray-200 pt-6">
 
-    <div class="flex items-center justify-between mb-4 gap-3">
-      <div>
-        <h2 class="text-base font-semibold text-gray-800">Запуск пайплайна</h2>
-        <p class="text-sm text-gray-500 mt-0.5">
-          Ожидает обработки:
-          <span id="pending-count" class="font-semibold text-gray-800">{{ pending_count }}</span> URL
-        </p>
-      </div>
-      <div class="flex items-center gap-2">
-        <select id="model-select"
-                class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                title="Модель Ollama для классификации">
-          <option value="">Загрузка моделей...</option>
-        </select>
-        <label class="flex items-center gap-1 text-xs text-gray-500" title="URL в одном LLM-запросе">
-          batch
-          <input id="batch-input" type="number" min="1" max="100" value="1"
-                 class="w-14 px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </label>
-        <label class="flex items-center gap-1 text-xs text-gray-500" title="Параллельные потоки">
-          workers
-          <input id="workers-input" type="number" min="1" max="16" value="1"
-                 class="w-14 px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </label>
-        <button id="btn-run"
-                class="px-5 py-2 text-sm font-medium text-white bg-green-600 rounded-lg
-                       hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                {% if pending_count == 0 %}disabled title="Нет URL, ожидающих обработки"{% endif %}>
-          ▶&nbsp;Запустить
-        </button>
-      </div>
+    <h2 class="text-base font-semibold text-gray-800 mb-4">Запуск пайплайна</h2>
+
+    <!-- ── Три карточки-вкладки ──────────────────────────────────────────── -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-0">
+
+      <!-- Обработка новых -->
+      <button type="button" data-tab="pending"
+              class="tab-card active p-3 rounded-t-lg border border-b-0 text-left flex flex-col
+                     bg-gray-50 border-gray-300">
+        <span class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Обработка новых</span>
+        <div class="flex items-baseline gap-2">
+          <span id="pending-count" class="text-2xl font-bold text-gray-800">{{ pending_count }}</span>
+          <span class="text-sm text-gray-600">ожидают</span>
+        </div>
+      </button>
+
+      <!-- Повтор ошибок -->
+      <button type="button" data-tab="errors"
+              class="tab-card p-3 rounded-t-lg border border-b-0 text-left flex flex-col
+                     bg-red-50/50 border-gray-200">
+        <span class="text-xs font-semibold uppercase tracking-wide text-red-400 mb-1">Повтор ошибок</span>
+        <div class="flex items-baseline gap-2">
+          <span id="error-count" class="text-2xl font-bold text-red-700">{{ error_count }}</span>
+          <span class="text-sm text-red-600">с ошибками</span>
+          <span class="text-xs text-gray-400">(<span id="transient-count">{{ transient_error_count }}</span> врем.)</span>
+        </div>
+      </button>
+
+      <!-- Дополучить описания -->
+      <button type="button" data-tab="incomplete"
+              class="tab-card p-3 rounded-t-lg border border-b-0 text-left flex flex-col
+                     bg-amber-50/50 border-gray-200">
+        <span class="text-xs font-semibold uppercase tracking-wide text-amber-500 mb-1">Дополучить описания</span>
+        <div class="flex items-baseline gap-2">
+          <span id="incomplete-count" class="text-2xl font-bold text-amber-700">{{ incomplete_count }}</span>
+          <span class="text-sm text-amber-700">неполных</span>
+        </div>
+      </button>
+
     </div>
 
-    <!-- Прогресс -->
+    <!-- ── Панель настроек (меняется по вкладке) ─────────────────────────── -->
+    <div class="border border-gray-300 rounded-b-lg rounded-tr-lg p-4 mb-4 bg-white">
+
+      <!-- tab: pending -->
+      <div id="panel-pending" class="tab-panel">
+        <div class="flex flex-wrap items-end gap-3">
+          <label class="flex flex-col text-xs text-gray-500">
+            Модель
+            <select id="model-select"
+                    class="mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Загрузка моделей...</option>
+            </select>
+          </label>
+          <label class="flex flex-col text-xs text-gray-500" title="URL в одном LLM-запросе">
+            batch
+            <input id="batch-input" type="number" min="1" max="100" value="1"
+                   class="mt-1 w-16 px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </label>
+          <label class="flex flex-col text-xs text-gray-500" title="Параллельные потоки">
+            workers
+            <input id="workers-input" type="number" min="1" max="16" value="1"
+                   class="mt-1 w-16 px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </label>
+          <button id="btn-run"
+                  class="ml-auto px-5 py-2 text-sm font-medium text-white bg-green-600 rounded-lg
+                         hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  {% if pending_count == 0 %}disabled{% endif %}>
+            Запустить
+          </button>
+        </div>
+      </div>
+
+      <!-- tab: errors -->
+      <div id="panel-errors" class="tab-panel hidden">
+        <div class="flex flex-wrap items-end gap-3">
+          <label class="flex flex-col text-xs text-gray-500">
+            Модель
+            <select id="model-select-err"
+                    class="mt-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Загрузка...</option>
+            </select>
+          </label>
+          <label class="flex flex-col text-xs text-gray-500" title="URL в одном LLM-запросе">
+            batch
+            <input id="batch-input-err" type="number" min="1" max="100" value="1"
+                   class="mt-1 w-16 px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </label>
+          <label class="flex flex-col text-xs text-gray-500" title="Параллельные потоки">
+            workers
+            <input id="workers-input-err" type="number" min="1" max="16" value="1"
+                   class="mt-1 w-16 px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </label>
+          <div class="flex flex-col gap-1 ml-auto">
+            <button id="btn-retry-all"
+                    class="px-5 py-2 text-sm font-medium text-white bg-red-600 rounded-lg
+                           hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    {% if error_count == 0 %}disabled{% endif %}>
+              Повторить все
+            </button>
+            <button id="btn-retry-transient"
+                    class="px-5 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg
+                           hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                    {% if transient_error_count == 0 %}disabled{% endif %}>
+              Только временные
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- tab: incomplete -->
+      <div id="panel-incomplete" class="tab-panel hidden">
+        <div class="flex flex-wrap items-end gap-3">
+          <label class="flex flex-col text-xs text-gray-500" title="Параллельные потоки">
+            workers
+            <input id="workers-input-inc" type="number" min="1" max="16" value="4"
+                   class="mt-1 w-16 px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </label>
+          <button id="btn-refetch"
+                  class="ml-auto px-5 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg
+                         hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  {% if incomplete_count == 0 %}disabled{% endif %}>
+            Запустить
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Справка (сворачиваемая) ───────────────────────────────────────── -->
+    <details class="mb-4 text-sm text-gray-600">
+      <summary class="cursor-pointer text-xs font-semibold text-gray-400 uppercase tracking-wide hover:text-gray-600 select-none">
+        Справка: как работает пайплайн
+      </summary>
+      <div class="mt-3 space-y-3 text-xs leading-relaxed text-gray-500 border-l-2 border-gray-200 pl-3">
+
+        <div>
+          <p class="font-semibold text-gray-700 mb-0.5">Обработка новых</p>
+          <p>
+            Полный цикл для URL со статусом <em>pending</em>:
+            сначала <strong>парсинг</strong> (HTTP-запрос за title и description),
+            затем <strong>классификация</strong> через LLM (Ollama).
+          </p>
+          <p class="mt-1">
+            <strong>Модель</strong> — какую LLM использовать.
+            <strong>batch</strong> — сколько URL отправлять в один запрос к LLM (экономит токены, но снижает точность).
+            <strong>workers</strong> — параллельные потоки (URL распределяются по доменам, чтобы не перегружать один сайт).
+          </p>
+        </div>
+
+        <div>
+          <p class="font-semibold text-gray-700 mb-0.5">Повтор ошибок</p>
+          <p>
+            URL, у которых парсинг завершился ошибкой (403, 404, 500, таймаут, сетевой сбой),
+            сбрасываются в <em>pending</em> и проходят полный цикл заново: парсинг + классификация.
+          </p>
+          <p class="mt-1">
+            <strong>Повторить все</strong> — сбрасывает все ошибки без разбора.
+            <strong>Только временные</strong> — повторяет только 5xx, 429 и сетевые ошибки;
+            постоянные (404, 403, 410) остаются нетронутыми — повторять их обычно бессмысленно.
+          </p>
+        </div>
+
+        <div>
+          <p class="font-semibold text-gray-700 mb-0.5">Дополучить описания</p>
+          <p>
+            Для URL, которые уже успешно обработаны (<em>done</em>), но у которых пустой title или description.
+            Делает повторный HTTP-запрос за метаданными — <strong>без LLM</strong>,
+            только сетевой запрос. Категория и статус не меняются.
+          </p>
+          <p class="mt-1">
+            Рекомендуется <strong>workers=4–8</strong> — чисто сетевая операция, LLM не задействован.
+          </p>
+        </div>
+
+      </div>
+    </details>
+
+    <!-- ── Прогресс ──────────────────────────────────────────────────────── -->
     <div id="pipeline-status" class="hidden">
       <div class="flex items-center justify-between mb-1.5">
         <span id="status-text" class="text-sm text-gray-600">Подготовка...</span>
@@ -115,8 +262,71 @@
   </div>
 </div>
 
+<style>
+  .tab-card {
+    opacity: 0.55;
+    transition: opacity 0.15s, border-color 0.15s, background-color 0.15s;
+    cursor: pointer;
+  }
+  .tab-card:hover { opacity: 0.8; }
+  .tab-card.active {
+    opacity: 1;
+    border-color: #9ca3af; /* gray-400 */
+    z-index: 1;
+    position: relative;
+  }
+  .tab-card.active[data-tab="pending"]    { background-color: #f9fafb; } /* gray-50 */
+  .tab-card.active[data-tab="errors"]     { background-color: #fef2f2; } /* red-50 */
+  .tab-card.active[data-tab="incomplete"] { background-color: #fffbeb; } /* amber-50 */
+</style>
+
 <script>
   let _pollInterval = null;
+
+  // ── Вкладки ─────────────────────────────────────────────────────────────
+  const tabCards = document.querySelectorAll('.tab-card');
+  const tabPanels = {
+    pending:    document.getElementById('panel-pending'),
+    errors:     document.getElementById('panel-errors'),
+    incomplete: document.getElementById('panel-incomplete'),
+  };
+
+  function switchTab(name) {
+    tabCards.forEach(c => c.classList.toggle('active', c.dataset.tab === name));
+    Object.entries(tabPanels).forEach(([k, p]) => {
+      p.classList.toggle('hidden', k !== name);
+    });
+    syncSettings(name);
+  }
+
+  tabCards.forEach(c => c.addEventListener('click', () => switchTab(c.dataset.tab)));
+
+  function syncSettings(toTab) {
+    // При переключении — копировать общие значения из активной панели
+    const sources = {
+      model:   document.getElementById('model-select'),
+      batch:   document.getElementById('batch-input'),
+      workers: document.getElementById('workers-input'),
+    };
+    const targets = {
+      errors: {
+        model:   document.getElementById('model-select-err'),
+        batch:   document.getElementById('batch-input-err'),
+        workers: document.getElementById('workers-input-err'),
+      },
+      incomplete: {
+        workers: document.getElementById('workers-input-inc'),
+      },
+    };
+
+    // Sync pending → errors
+    if (targets.errors.model)   targets.errors.model.value   = sources.model.value;
+    if (targets.errors.batch)   targets.errors.batch.value   = sources.batch.value;
+    if (targets.errors.workers) targets.errors.workers.value = sources.workers.value;
+
+    // Sync pending workers → incomplete
+    if (targets.incomplete.workers) targets.incomplete.workers.value = sources.workers.value;
+  }
 
   // ── Добавить URL ──────────────────────────────────────────────────────────
   document.getElementById('btn-add').addEventListener('click', async () => {
@@ -138,7 +348,6 @@
 
       document.getElementById('res-added').textContent = d.added.length;
 
-      // Дубликаты
       const dupWrap = document.getElementById('res-dup-wrap');
       const dupList = document.getElementById('res-dup-list');
       if (d.duplicates.length > 0) {
@@ -158,7 +367,6 @@
         const el = document.getElementById('pending-count');
         el.textContent = parseInt(el.textContent || '0') + d.added.length;
         document.getElementById('btn-run').disabled = false;
-        document.getElementById('btn-run').removeAttribute('title');
         if (d.duplicates.length === 0) {
           document.getElementById('url-input').value = '';
         }
@@ -171,7 +379,7 @@
     }
   });
 
-  // ── Извлечь URL (предпросмотр без записи) ────────────────────────────────
+  // ── Извлечь URL ──────────────────────────────────────────────────────────
   document.getElementById('btn-extract').addEventListener('click', async () => {
     const text = document.getElementById('url-input').value;
     if (!text.trim()) return;
@@ -200,43 +408,101 @@
   });
 
   document.getElementById('url-input').addEventListener('keydown', e => {
-    // Ctrl+Enter — добавить
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       document.getElementById('btn-add').click();
     }
   });
 
-  // ── Pipeline ──────────────────────────────────────────────────────────────
-  document.getElementById('btn-run').addEventListener('click', async () => {
-    document.getElementById('pipeline-done').classList.add('hidden');
-    document.getElementById('pipeline-error').classList.add('hidden');
-    document.getElementById('progress-bar').className =
-      'h-2.5 rounded-full transition-all duration-500 bg-blue-600';
-
-    const model = document.getElementById('model-select').value || null;
-    const batch = parseInt(document.getElementById('batch-input').value, 10) || 1;
+  // ── Pipeline: запуск (pending) ────────────────────────────────────────────
+  document.getElementById('btn-run').addEventListener('click', () => {
+    const model   = document.getElementById('model-select').value || null;
+    const batch   = parseInt(document.getElementById('batch-input').value, 10) || 1;
     const workers = parseInt(document.getElementById('workers-input').value, 10) || 1;
-    localStorage.setItem('pipeline_batch', batch);
-    localStorage.setItem('pipeline_workers', workers);
+    saveSettings(batch, workers);
+    runPipeline({ model, batch, workers });
+  });
+
+  // ── Pipeline: retry all errors ────────────────────────────────────────────
+  document.getElementById('btn-retry-all').addEventListener('click', () => {
+    const model   = document.getElementById('model-select-err').value || null;
+    const batch   = parseInt(document.getElementById('batch-input-err').value, 10) || 1;
+    const workers = parseInt(document.getElementById('workers-input-err').value, 10) || 1;
+    runPipeline({ model, batch, workers, retry_failed: true });
+  });
+
+  // ── Pipeline: retry transient only ────────────────────────────────────────
+  document.getElementById('btn-retry-transient').addEventListener('click', () => {
+    const model   = document.getElementById('model-select-err').value || null;
+    const batch   = parseInt(document.getElementById('batch-input-err').value, 10) || 1;
+    const workers = parseInt(document.getElementById('workers-input-err').value, 10) || 1;
+    runPipeline({ model, batch, workers, retry_transient: true });
+  });
+
+  // ── Pipeline: refetch descriptions ────────────────────────────────────────
+  document.getElementById('btn-refetch').addEventListener('click', () => {
+    const workers = parseInt(document.getElementById('workers-input-inc').value, 10) || 1;
+    refetchMissing(workers);
+  });
+
+  // ── Общие функции запуска ─────────────────────────────────────────────────
+  async function runPipeline(body) {
+    resetProgress();
     try {
       const r = await fetch('/api/pipeline/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, batch, workers }),
+        body: JSON.stringify(body),
       });
       if (!r.ok) {
         const d = await r.json();
-        alert(d.detail || 'Ошибка запуска пайплайна');
+        alert(d.detail || 'Ошибка запуска');
         return;
       }
-      document.getElementById('btn-run').disabled = true;
+      disableAllActions();
       document.getElementById('pipeline-status').classList.remove('hidden');
       startPolling();
     } catch (e) {
       alert('Ошибка: ' + e.message);
     }
-  });
+  }
 
+  async function refetchMissing(workers) {
+    resetProgress();
+    try {
+      const params = workers > 1 ? `?workers=${workers}` : '';
+      const r = await fetch('/api/pipeline/refetch-missing' + params, { method: 'POST' });
+      if (!r.ok) {
+        const d = await r.json();
+        alert(d.detail || 'Ошибка запуска');
+        return;
+      }
+      disableAllActions();
+      document.getElementById('pipeline-status').classList.remove('hidden');
+      startPolling();
+    } catch (e) {
+      alert('Ошибка: ' + e.message);
+    }
+  }
+
+  function resetProgress() {
+    document.getElementById('pipeline-done').classList.add('hidden');
+    document.getElementById('pipeline-error').classList.add('hidden');
+    document.getElementById('progress-bar').className =
+      'h-2.5 rounded-full transition-all duration-500 bg-blue-600';
+    document.getElementById('progress-bar').style.width = '0%';
+    document.getElementById('status-pct').textContent = '0%';
+    document.getElementById('status-text').textContent = 'Подготовка...';
+    document.getElementById('status-detail').textContent = '';
+  }
+
+  function disableAllActions() {
+    document.getElementById('btn-run').disabled = true;
+    document.getElementById('btn-retry-all').disabled = true;
+    document.getElementById('btn-retry-transient').disabled = true;
+    document.getElementById('btn-refetch').disabled = true;
+  }
+
+  // ── Polling ───────────────────────────────────────────────────────────────
   function startPolling() {
     if (_pollInterval) clearInterval(_pollInterval);
     _pollInterval = setInterval(pollStatus, 2000);
@@ -252,13 +518,14 @@
         clearInterval(_pollInterval);
         _pollInterval = null;
       }
-    } catch (_) { /* network hiccup — keep polling */ }
+    } catch (_) {}
   }
 
   function applyStatus(s) {
     const labels = {
       parse:    'Парсинг страниц (step 2)...',
       classify: 'Классификация (step 3)...',
+      refetch:  'Дозагрузка описаний...',
     };
 
     if (s.status === 'running') {
@@ -276,8 +543,7 @@
       document.getElementById('progress-bar').className =
         'h-2.5 rounded-full transition-all duration-500 bg-green-500';
       document.getElementById('pipeline-done').classList.remove('hidden');
-      document.getElementById('btn-run').disabled = false;
-      document.getElementById('pending-count').textContent = '0';
+      refreshCounts();
 
     } else if (s.status === 'error') {
       document.getElementById('status-text').textContent = 'Ошибка';
@@ -285,45 +551,95 @@
         'h-2.5 rounded-full transition-all duration-500 bg-red-500';
       document.getElementById('pipeline-error').classList.remove('hidden');
       document.getElementById('pipeline-error-text').textContent = s.error || '';
-      document.getElementById('btn-run').disabled = false;
+      refreshCounts();
     }
   }
 
+  // ── Утилиты ───────────────────────────────────────────────────────────────
   function escHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
+
+  function saveSettings(batch, workers) {
+    localStorage.setItem('pipeline_batch', batch);
+    localStorage.setItem('pipeline_workers', workers);
+  }
+
+  async function refreshCounts() {
+    try {
+      const r = await fetch('/api/stats');
+      const d = await r.json();
+
+      if (d.pending_count !== undefined) {
+        document.getElementById('pending-count').textContent = d.pending_count;
+        document.getElementById('btn-run').disabled = d.pending_count === 0;
+      }
+      if (d.error_count !== undefined) {
+        document.getElementById('error-count').textContent = d.error_count;
+        document.getElementById('btn-retry-all').disabled = d.error_count === 0;
+      }
+      if (d.transient_error_count !== undefined) {
+        document.getElementById('transient-count').textContent = d.transient_error_count;
+        document.getElementById('btn-retry-transient').disabled = d.transient_error_count === 0;
+      }
+      if (d.incomplete_count !== undefined) {
+        document.getElementById('incomplete-count').textContent = d.incomplete_count;
+        document.getElementById('btn-refetch').disabled = d.incomplete_count === 0;
+      }
+    } catch (_) {}
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
 
   // Восстановить batch/workers из localStorage
   {
     const b = localStorage.getItem('pipeline_batch');
     const w = localStorage.getItem('pipeline_workers');
-    if (b) document.getElementById('batch-input').value = b;
-    if (w) document.getElementById('workers-input').value = w;
+    if (b) {
+      document.getElementById('batch-input').value = b;
+      document.getElementById('batch-input-err').value = b;
+    }
+    if (w) {
+      document.getElementById('workers-input').value = w;
+      document.getElementById('workers-input-err').value = w;
+      document.getElementById('workers-input-inc').value = w;
+    }
   }
 
-  // Загрузить список моделей Ollama
+  // Загрузить список моделей Ollama (заполнить оба select)
   (async () => {
-    const sel = document.getElementById('model-select');
+    const selectors = [
+      document.getElementById('model-select'),
+      document.getElementById('model-select-err'),
+    ];
     try {
       const r = await fetch('/api/models');
       const d = await r.json();
       if (d.models && d.models.length > 0) {
         const saved = localStorage.getItem('pipeline_model') || '';
-        sel.innerHTML = d.models.map(m =>
+        const html = d.models.map(m =>
           `<option value="${escHtml(m)}"${m === saved ? ' selected' : ''}>${escHtml(m)}</option>`
         ).join('');
-        sel.addEventListener('change', () => {
-          localStorage.setItem('pipeline_model', sel.value);
+        selectors.forEach(sel => {
+          sel.innerHTML = html;
+          sel.addEventListener('change', () => {
+            localStorage.setItem('pipeline_model', sel.value);
+            // Синхронизировать другой select
+            selectors.forEach(s => { if (s !== sel) s.value = sel.value; });
+          });
         });
       } else {
-        sel.innerHTML = '<option value="">Нет моделей (Ollama недоступен?)</option>';
-        sel.disabled = true;
+        selectors.forEach(sel => {
+          sel.innerHTML = '<option value="">Нет моделей (Ollama недоступен?)</option>';
+          sel.disabled = true;
+        });
         document.getElementById('btn-run').disabled = true;
-        document.getElementById('btn-run').title = d.error || 'Нет доступных моделей';
       }
     } catch (e) {
-      sel.innerHTML = '<option value="">Ошибка загрузки моделей</option>';
-      sel.disabled = true;
+      selectors.forEach(sel => {
+        sel.innerHTML = '<option value="">Ошибка загрузки моделей</option>';
+        sel.disabled = true;
+      });
     }
   })();
 
@@ -334,7 +650,7 @@
       const d = await r.json();
       if (d.status === 'running') {
         document.getElementById('pipeline-status').classList.remove('hidden');
-        document.getElementById('btn-run').disabled = true;
+        disableAllActions();
         applyStatus(d);
         startPolling();
       } else if (d.status === 'done' || d.status === 'error') {

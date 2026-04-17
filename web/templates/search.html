@@ -18,6 +18,8 @@
             class="px-3 py-2 text-sm border border-gray-300 rounded-lg
                    focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
       <option value="">Все категории</option>
+      <option value="recent" {% if active_category == 'recent' %}selected{% endif %}>Новые</option>
+      <option value="uncategorized" {% if active_category == 'uncategorized' %}selected{% endif %}>Без категории</option>
       {% for cat in all_categories %}
       <option value="{{ cat.category }}"
               {% if cat.category == active_category %}selected{% endif %}>

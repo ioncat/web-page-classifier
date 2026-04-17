@@ -43,6 +43,10 @@
            class="nav-link px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors">
           Таксономия
         </a>
+        <a href="/benchmark"
+           class="nav-link px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors">
+          Бенчмарк
+        </a>
       </nav>
 
       <!-- Settings -->
@@ -98,18 +102,20 @@
         </div>
         {% for cat_name in section_cats %}
         {% set count = cat_counts.get(cat_name, 0) %}
-        {% if count > 0 %}
         <a href="/category/{{ cat_name | urlencode }}"
            data-category="{{ cat_name }}"
            class="sidebar-cat flex items-center justify-between px-4 py-1.5 pl-5 text-sm hover:bg-gray-50
-                  {% if active_category == cat_name %}bg-blue-50 text-blue-700 font-semibold{% else %}text-gray-700{% endif %}">
+                  {% if active_category == cat_name %}bg-blue-50 text-blue-700 font-semibold
+                  {% elif count == 0 %}text-gray-400
+                  {% else %}text-gray-700{% endif %}">
           <span class="truncate">{{ cat_name }}</span>
+          {% if count > 0 %}
           <span class="ml-2 shrink-0 text-xs px-1.5 py-0.5 rounded-full
                        {% if active_category == cat_name %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-500{% endif %}">
             {{ count }}
           </span>
+          {% endif %}
         </a>
-        {% endif %}
         {% endfor %}
         {% endfor %}
         {# Категории не из таксономии (legacy) #}
@@ -150,17 +156,19 @@
         </div>
         {% for cat_name in section_cats %}
         {% set count = cat_counts.get(cat_name, 0) %}
-        {% if count > 0 %}
         <a href="/category/{{ cat_name | urlencode }}"
            class="flex items-center justify-between px-4 py-2.5 pl-5 text-sm hover:bg-gray-50
-                  {% if active_category == cat_name %}bg-blue-50 text-blue-700 font-semibold{% else %}text-gray-700{% endif %}">
+                  {% if active_category == cat_name %}bg-blue-50 text-blue-700 font-semibold
+                  {% elif count == 0 %}text-gray-400
+                  {% else %}text-gray-700{% endif %}">
           <span class="truncate">{{ cat_name }}</span>
+          {% if count > 0 %}
           <span class="ml-2 shrink-0 text-xs px-1.5 py-0.5 rounded-full
                        {% if active_category == cat_name %}bg-blue-100 text-blue-700{% else %}bg-gray-100 text-gray-500{% endif %}">
             {{ count }}
           </span>
+          {% endif %}
         </a>
-        {% endif %}
         {% endfor %}
         {% endfor %}
         {% for cat in all_categories if cat.category not in taxonomy_set %}

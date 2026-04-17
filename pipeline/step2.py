@@ -102,9 +102,27 @@ def _try_js_challenge(resp: requests.Response, session: requests.Session,
 
 
 # ── Получение метаданных страницы ────────────────────────────────────────────
+def _extract_json_ld(soup: BeautifulSoup) -> dict:
+    """Ищет первый <script type="application/ld+json"> и возвращает распарсенный dict.
+    Если тегов несколько — возвращает первый с полем 'name' или 'description'.
+    """
+    import json
+    for tag in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(tag.string or "")
+            # data может быть списком
+            if isinstance(data, list):
+                data = next((d for d in data if isinstance(d, dict)), {})
+            if isinstance(data, dict) and ("name" in data or "description" in data):
+                return data
+        except (ValueError, TypeError):
+            continue
+    return {}
+
+
 def _extract_description(soup: BeautifulSoup) -> str | None:
-    """Извлекает описание страницы из мета-тегов.
-    Порядок приоритета: og:description → description.
+    """Извлекает описание страницы.
+    Порядок приоритета: og:description → meta description → JSON-LD description → H1 → первый <p>.
     """
     for attr, name in [("property", "og:description"), ("name", "description")]:
         tag = soup.find("meta", attrs={attr: name})
@@ -112,6 +130,20 @@ def _extract_description(soup: BeautifulSoup) -> str | None:
             desc = tag["content"].strip()
             if desc:
                 return desc
+
+    ld = _extract_json_ld(soup)
+    if ld.get("description"):
+        return ld["description"].strip()
+
+    h1 = soup.find("h1")
+    if h1 and h1.get_text(strip=True):
+        return h1.get_text(strip=True)
+
+    for p in soup.find_all("p"):
+        text = p.get_text(strip=True)
+        if len(text) > 40:
+            return text[:300]
+
     return None
 
 
@@ -141,7 +173,17 @@ def fetch_page_meta(url: str) -> dict:
                 resp = resp2
 
             soup = BeautifulSoup(resp.text, "html.parser")
+
             title = soup.title.string.strip() if soup.title and soup.title.string else None
+            if not title:
+                og_title = soup.find("meta", attrs={"property": "og:title"})
+                if og_title and og_title.get("content"):
+                    title = og_title["content"].strip()
+            if not title:
+                ld = _extract_json_ld(soup)
+                if ld.get("name"):
+                    title = ld["name"].strip()
+
             description = _extract_description(soup)
             return {"title": title, "description": description}
 

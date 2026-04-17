@@ -336,6 +336,8 @@ SORT_OPTIONS = {
     "newest": ("added_at DESC, id DESC", "Новые сверху"),
     "oldest": ("added_at ASC, id ASC", "Старые сверху"),
     "title":  ("COALESCE(title, url) ASC", "По алфавиту"),
+    "id_desc": ("id DESC", "По ID ↓"),
+    "id_asc":  ("id ASC",  "По ID ↑"),
 }
 SORT_DEFAULT = "newest"
 
@@ -415,14 +417,16 @@ def search_urls(
     conditions = ["status='done'"]
     params: list = []
 
+    if category == "uncategorized":
+        conditions.append("(category IS NULL OR category = '')")
+    elif category and category != "recent":
+        conditions.append("category=?")
+        params.append(category)
+
     if query:
         like = f"%{query}%"
         conditions.append("(title LIKE ? OR description LIKE ? OR url LIKE ?)")
         params.extend([like, like, like])
-
-    if category:
-        conditions.append("category=?")
-        params.append(category)
 
     where = " AND ".join(conditions)
 
@@ -528,7 +532,62 @@ def get_stats() -> dict:
             "SELECT COUNT(DISTINCT category) FROM urls"
             " WHERE status='done' AND category IS NOT NULL AND category != ''"
         ).fetchone()[0]
-    return {"total_urls": total, "total_categories": cats}
+        errors = conn.execute(
+            "SELECT COUNT(*) FROM urls WHERE status='error'"
+        ).fetchone()[0]
+        incomplete = conn.execute(
+            "SELECT COUNT(*) FROM urls WHERE status='done' "
+            "AND (title IS NULL OR title = '' OR description IS NULL OR description = '')"
+        ).fetchone()[0]
+        pending = conn.execute(
+            "SELECT COUNT(*) FROM urls WHERE status='pending'"
+        ).fetchone()[0]
+        placeholders = ",".join("?" * len(_TRANSIENT_CODES))
+        transient = conn.execute(
+            f"SELECT COUNT(*) FROM urls WHERE status='error'"
+            f" AND (error_code IS NULL OR error_code IN ({placeholders}))",
+            list(_TRANSIENT_CODES),
+        ).fetchone()[0]
+    return {
+        "total_urls": total,
+        "total_categories": cats,
+        "error_count": errors,
+        "transient_error_count": transient,
+        "incomplete_count": incomplete,
+        "pending_count": pending,
+    }
+
+
+def get_error_count() -> int:
+    """Количество URL со статусом error."""
+    with _get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM urls WHERE status='error'"
+        ).fetchone()[0]
+
+
+# Временные HTTP-коды (retry имеет смысл) — зеркалит pipeline/db.py
+_TRANSIENT_CODES = frozenset({429, 500, 502, 503, 504})
+
+
+def get_transient_error_count() -> int:
+    """Количество URL с временными ошибками (5xx, 429, сетевые/таймаут)."""
+    placeholders = ",".join("?" * len(_TRANSIENT_CODES))
+    with _get_conn() as conn:
+        return conn.execute(
+            f"SELECT COUNT(*) FROM urls WHERE status='error'"
+            f" AND (error_code IS NULL OR error_code IN ({placeholders}))",
+            list(_TRANSIENT_CODES),
+        ).fetchone()[0]
+
+
+def get_incomplete_count() -> int:
+    """Количество URL со status=done, но без title или без description."""
+    with _get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM urls WHERE status='done' "
+            "AND (title IS NULL OR title = '' OR description IS NULL OR description = '')"
+        ).fetchone()[0]
 
 
 def update_category(url_id: int, new_category: str, manual: bool = True) -> bool:
