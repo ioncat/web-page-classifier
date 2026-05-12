@@ -33,8 +33,7 @@ def _common_ctx() -> dict:
 def index(request: Request):
     categories = _all_categories()
     stats = db.get_stats()
-    return templates.TemplateResponse("index.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "index.html", {
         "categories": categories,
         "all_categories": categories,
         "stats": stats,
@@ -52,8 +51,7 @@ def category(
 ):
     data = db.get_urls_by_category(category_name, page=page, sort=sort)
     all_categories = _all_categories()
-    return templates.TemplateResponse("category.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "category.html", {
         "all_categories": all_categories,
         "active_category": category_name,
         "sort": sort,
@@ -71,8 +69,7 @@ def recent(
 ):
     data = db.get_recent_urls(page=page, sort=sort)
     all_categories = _all_categories()
-    return templates.TemplateResponse("recent.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "recent.html", {
         "all_categories": all_categories,
         "active_category": None,
         "sort": sort,
@@ -90,8 +87,7 @@ def uncategorized(
 ):
     data = db.get_uncategorized_urls(page=page, sort=sort)
     all_categories = _all_categories()
-    return templates.TemplateResponse("uncategorized.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "uncategorized.html", {
         "all_categories": all_categories,
         "active_category": None,
         "sort": sort,
@@ -111,8 +107,7 @@ def search(
 ):
     data = db.search_urls(query=q, category=category, page=page, sort=sort)
     all_categories = _all_categories()
-    return templates.TemplateResponse("search.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "search.html", {
         "all_categories": all_categories,
         "active_category": category or None,
         "q": q,
@@ -126,8 +121,7 @@ def search(
 @router.get("/settings", response_class=HTMLResponse)
 def settings(request: Request):
     all_categories = _all_categories()
-    return templates.TemplateResponse("settings.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "settings.html", {
         "all_categories": all_categories,
         "active_category": None,
         **_common_ctx(),
@@ -142,8 +136,7 @@ def add_page(request: Request):
     error_count = db.get_error_count()
     transient_error_count = db.get_transient_error_count()
     incomplete_count = db.get_incomplete_count()
-    return templates.TemplateResponse("add.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "add.html", {
         "all_categories": all_categories,
         "active_category": None,
         "pending_count": pending_count,
@@ -160,8 +153,7 @@ def benchmark_page(request: Request):
     all_categories = _all_categories()
     eligible = db.benchmark_eligible_count()
     has_snapshot = db.benchmark_has_snapshot()
-    return templates.TemplateResponse("benchmark.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "benchmark.html", {
         "all_categories": all_categories,
         "active_category": None,
         "eligible": eligible,
@@ -187,8 +179,7 @@ def categories_manage(request: Request):
             grouped.append({"section": s, "cats": []})
         grouped[idx[s]]["cats"].append(cat)
 
-    return templates.TemplateResponse("categories.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "categories.html", {
         "all_categories": all_categories,
         "active_category": None,
         "grouped": grouped,
