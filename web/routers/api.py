@@ -58,6 +58,13 @@ def _do_run_pipeline(
     retry_transient — сбрасывает только 5xx/429/сетевые → pending.
     """
     python = _pipeline_python()
+    pyerr = _check_pipeline_python(python)
+    if pyerr:
+        with _pipeline_lock:
+            _pipeline_state.update(
+                status="error", error=pyerr, finished_at=_now(),
+            )
+        return
     main = str(_PROJECT_ROOT / "pipeline" / "main.py")
     env = {
         **os.environ,
@@ -176,6 +183,78 @@ def _pipeline_python() -> str:
     return "python"
 
 
+def _check_pipeline_python(python_path: str | None = None) -> str | None:
+    """Проверяет работоспособность pipeline-интерпретатора.
+
+    Запускает `python --version` и `python -c "import requests, bs4, ollama"`.
+    Возвращает None если всё ок, или человекочитаемое сообщение об ошибке
+    с инструкцией по восстановлению.
+
+    Используется как pre-flight check перед запуском фоновых подпроцессов
+    (`_do_run_pipeline`, `_do_refetch_missing`, `_do_benchmark`,
+    `_do_compare_models`, `_run_refetch_for_url`) — иначе ошибки venv'а
+    проявляются как невнятный exit code или silent kill.
+    """
+    python_path = python_path or _pipeline_python()
+    recreate_hint = (
+        "To recreate the pipeline venv:\n"
+        "  rmdir /s /q pipeline\\venv\n"
+        "  \"C:\\Program Files\\Python312\\python.exe\" -m venv pipeline\\venv\n"
+        "  pipeline\\venv\\Scripts\\python.exe -m pip install -r pipeline\\requirements.txt\n"
+        "  pipeline\\venv\\Scripts\\python.exe -m pip install -r pipeline\\requirements-ml.txt"
+    )
+
+    # 1) python.exe запускается?
+    try:
+        result = subprocess.run(
+            [python_path, "--version"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode != 0:
+            return (
+                f"Pipeline Python broken: {python_path}\n"
+                f"--version failed (rc={result.returncode}): "
+                f"{(result.stderr or result.stdout).strip()[:300]}\n\n"
+                f"{recreate_hint}"
+            )
+    except FileNotFoundError:
+        return (
+            f"Pipeline Python not found: {python_path}\n"
+            f"The venv likely was never created or got deleted.\n\n"
+            f"{recreate_hint}"
+        )
+    except OSError as exc:
+        # Например: shim указывает на удалённый Microsoft Store Python.
+        return (
+            f"Pipeline Python is a dead shim: {python_path}\n"
+            f"OS error: {exc}\n"
+            f"This typically means the Python interpreter the venv was bound to "
+            f"was removed or auto-updated (e.g. Microsoft Store Python).\n\n"
+            f"{recreate_hint}"
+        )
+    except subprocess.TimeoutExpired:
+        return f"Pipeline Python hangs on --version (10s timeout): {python_path}"
+
+    # 2) Базовые зависимости pipeline установлены?
+    try:
+        result = subprocess.run(
+            [python_path, "-c", "import requests, bs4, ollama"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode != 0:
+            return (
+                f"Pipeline venv exists but core dependencies are missing.\n"
+                f"Import failed: {result.stderr.strip()[:300]}\n\n"
+                f"Run:\n"
+                f"  pipeline\\venv\\Scripts\\python.exe -m pip install "
+                f"-r pipeline\\requirements.txt"
+            )
+    except Exception as exc:
+        return f"Pipeline dependency check failed: {exc}"
+
+    return None
+
+
 def _run_refetch_for_url(url: str, timeout: int = 60) -> dict:
     """Сбрасывает URL в pending и перезагружает title + description через step2.
 
@@ -183,6 +262,10 @@ def _run_refetch_for_url(url: str, timeout: int = 60) -> dict:
       db.set_url_pending(url) → step2.main(urls=[url])
     Никакого импорта / step1 / raw_links.txt.
     """
+    python = _pipeline_python()
+    pyerr = _check_pipeline_python(python)
+    if pyerr:
+        return {"ok": False, "stdout": "", "stderr": pyerr}
     script = (
         "from db import init_db, set_url_pending; import step2; "
         "init_db(); "
@@ -198,7 +281,7 @@ def _run_refetch_for_url(url: str, timeout: int = 60) -> dict:
         "PYTHONUNBUFFERED": "1",
     }
         result = subprocess.run(
-            [_pipeline_python(), "-c", script],
+            [python, "-c", script],
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -234,6 +317,20 @@ def urls(
 @router.get("/stats")
 def stats():
     return db.get_stats()
+
+
+@router.get("/health/pipeline")
+def health_pipeline():
+    """Проверка работоспособности pipeline-интерпретатора.
+
+    Используется UI на /add чтобы заранее показать предупреждение, если
+    venv пайплайна сломан, прежде чем пользователь нажмёт кнопку.
+    """
+    python = _pipeline_python()
+    err = _check_pipeline_python(python)
+    if err:
+        return {"ok": False, "python": python, "error": err}
+    return {"ok": True, "python": python}
 
 
 class BulkDelete(BaseModel):
@@ -389,6 +486,13 @@ def _do_refetch_missing(workers: int | None = None) -> None:
     Дозаполняет title/description у done-URL где они пустые.
     """
     python = _pipeline_python()
+    pyerr = _check_pipeline_python(python)
+    if pyerr:
+        with _pipeline_lock:
+            _pipeline_state.update(
+                status="error", error=pyerr, finished_at=_now(),
+            )
+        return
     main = str(_PROJECT_ROOT / "pipeline" / "main.py")
     env = {
         **os.environ,
@@ -618,6 +722,13 @@ def _do_benchmark(
 ) -> None:
     """Фоновый поток: snapshot → benchmark.py subprocess → restore в finally."""
     python = _pipeline_python()
+    pyerr = _check_pipeline_python(python)
+    if pyerr:
+        with _bench_lock:
+            _bench_state.update(
+                status="error", error=pyerr, finished_at=_now(),
+            )
+        return
     bench = str(_PROJECT_ROOT / "pipeline" / "benchmark" / "benchmark.py")
     env = {
         **os.environ,
@@ -887,6 +998,13 @@ def _do_compare_models(
 ) -> None:
     """Фоновый поток: запускает main.py --compare-models m1 m2 --limit N --no-progress."""
     python = _pipeline_python()
+    pyerr = _check_pipeline_python(python)
+    if pyerr:
+        with _compare_lock:
+            _compare_state.update(
+                status="error", error=pyerr, finished_at=_now(),
+            )
+        return
     main = str(_PROJECT_ROOT / "pipeline" / "main.py")
     env = {
         **os.environ,

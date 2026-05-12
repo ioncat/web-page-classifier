@@ -320,6 +320,19 @@
 - [ ] Крэш сервера во время прогона: `_bench_backup` остаётся, UI предлагает восстановить.
 - [ ] «Применить победителя» меняет дефолты на `/add`.
 
+## Сделано (12.05.2026) — Recovery & robustness
+
+| # | Задача | Статус | Описание |
+|---|--------|--------|---------|
+| R1 | **Pre-flight check для pipeline-интерпретатора в Web UI** | ✅ | Добавлена `_check_pipeline_python()` в `web/routers/api.py`: проверяет `python --version` (10s timeout) и `import requests, bs4, ollama` (15s timeout), возвращает None или человекочитаемое сообщение об ошибке с инструкцией пересоздания. Вызывается в начале каждого `_do_*` фонового потока (`_do_run_pipeline`, `_do_refetch_missing`, `_do_benchmark`, `_do_compare_models`) и в синхронном `_run_refetch_for_url`. Также добавлен endpoint `GET /api/health/pipeline` для проактивной проверки из UI. |
+| R2 | **Pre-flight check в `web.vbs` / `web.bat`** | ✅ | В обоих лаунчерах перед запуском uvicorn проверяется (a) `venv\Scripts\python.exe --version` и (b) `python.exe -c "import uvicorn"`. При ошибке — внятное сообщение в терминале с инструкцией пересоздания venv, `pause`, `exit /b 1`. |
+| R3 | **Удалить корневой `venv/`** | ✅ | После перезагрузки Windows папка перестала держаться процессом, `rm -rf venv` прошёл. Pipeline теперь использует только `pipeline/venv/` (свежий, на стабильном `C:\Program Files\Python312`). |
+| R4 | **Memory: не использовать Microsoft Store Python для venv** | ✅ | Создан файл `.claude/memory/python_venv_strategy.md`: главное правило (только `C:\Program Files\Python312\python.exe`), история ловушки, превентивные меры, инструкция восстановления при поломке. App Execution Aliases для python.exe/python3.exe отключены пользователем в Windows Settings. |
+| R5 | **CLAUDE.md / README: задокументировать pipeline/venv/** | (не нужно) | Проверено: CLAUDE.md уже корректно указывает `pipeline/venv/`, README актуален. После удаления корневого `venv/` упоминаний нет. |
+| R6 | **Миграция TemplateResponse на новый Starlette синтаксис** | ✅ | Свежий `web/venv/` принёс fastapi 0.136 + starlette 1.0.0, в которых старый `templates.TemplateResponse("name.html", {"request": request, ...})` бросает `TypeError: unhashable type: 'dict'`. Все 9 вызовов в `web/routers/pages.py` переведены на новый синтаксис `TemplateResponse(request, "name.html", {...})` (без `request` в контексте). Все страницы (/, /recent, /add, /uncategorized, /benchmark, /categories, /settings, /search) проверены — HTTP 200. |
+
+---
+
 ## Итог
 
 | Показатель | Значение |
